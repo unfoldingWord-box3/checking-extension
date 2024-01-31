@@ -5,3 +5,12 @@ main {
   align-items: flex-start;
   height: 100%;
 }
+
+#view-verse {
+  flex-direction: column;
+}
+
+h1,
+p {
+  display: block;
+}
