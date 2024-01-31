@@ -46,7 +46,7 @@ export class TranslationNotesPanel {
   public static render(extensionUri: Uri) {
     if (TranslationNotesPanel.currentPanel) {
       // If the webview panel already exists reveal it
-      TranslationNotesPanel.currentPanel._panel.reveal(ViewColumn.Two);
+      TranslationNotesPanel.currentPanel._panel.reveal(ViewColumn.Beside);
     } else {
       // If a webview panel does not already exist create and show a new one
       const panel = window.createWebviewPanel(
@@ -55,7 +55,7 @@ export class TranslationNotesPanel {
         // Panel title
         "Translation Notes",
         // The editor column the panel should be displayed in
-        ViewColumn.Two,
+        ViewColumn.Beside,
         // Extra panel configurations
         {
           // Enable JavaScript in the webview
