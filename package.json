@@ -1,6 +1,6 @@
 {
-  "name": "translation-notes-viewer",
-  "displayName": "translation-notes-viewer",
+  "name": "translation-notes-extension",
+  "displayName": "translation-notes-extension",
   "description": "A vscode extension to open translation note tsv files and display them for a specific verse",
   "version": "0.0.1",
   "engines": {
@@ -10,7 +10,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "translation-notes-viewer.showTranslationNotes",
+        "command": "translation-notes-extension.showTranslationNotes",
         "title": "Show Translation Notes"
       }
     ]

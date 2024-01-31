@@ -4,7 +4,7 @@ import { TranslationNotesPanel } from "./panels/TranslationNotesPanel";
 export function activate(context: ExtensionContext) {
   // Create the show translation notes command
   const showTranslationNotesCommand = commands.registerCommand(
-    "translation-notes-viewer.showTranslationNotes",
+    "translation-notes-extension.showTranslationNotes",
     () => {
       TranslationNotesPanel.render(context.extensionUri);
     }
