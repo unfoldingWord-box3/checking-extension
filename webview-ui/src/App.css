@@ -10,7 +10,3 @@ main {
   flex-direction: column;
 }
 
-h1,
-p {
-  display: block;
-}

@@ -55,7 +55,7 @@ function App() {
           {/* <VSCodePanelView id="view-chapter">Output content.</VSCodePanelView> */}
           <VSCodePanelView id="view-verse">
             <h3>{origWordHeading}</h3>
-            <p>{noteHTML}</p>
+            <div dangerouslySetInnerHTML={{ __html: noteHTML }} />
           </VSCodePanelView>
         </VSCodePanels>
       </section>
