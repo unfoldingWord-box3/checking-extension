@@ -1,7 +1,8 @@
 // import { vscode } from "./utilities/vscode";
 import { VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react";
 import "./App.css";
-import { markdownToHTML } from "scripture-tsv";
+
+import TranslationNoteScroller from "./components/TranslationNoteScroller";
 import type { ScriptureTSV } from "scripture-tsv";
 
 const TITUS_1_1_TSV: ScriptureTSV = {
@@ -38,12 +39,6 @@ function App() {
   //   });
   // }
 
-  const origWordHeading = !!TITUS_1_1_TSV[1][1][0].Quote
-    ? TITUS_1_1_TSV.Quote
-    : "General Verse Note";
-
-  const noteHTML = markdownToHTML(TITUS_1_1_TSV[1][1][0].Note);
-
   return (
     <main>
       <section className="translation-note-view">
@@ -54,8 +49,7 @@ function App() {
           {/* <VSCodePanelView id="view-book">Problems content.</VSCodePanelView> */}
           {/* <VSCodePanelView id="view-chapter">Output content.</VSCodePanelView> */}
           <VSCodePanelView id="view-verse">
-            <h3>{origWordHeading}</h3>
-            <div dangerouslySetInnerHTML={{ __html: noteHTML }} />
+            <TranslationNoteScroller tsvs={TITUS_1_1_TSV} />
           </VSCodePanelView>
         </VSCodePanels>
       </section>

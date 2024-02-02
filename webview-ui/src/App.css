@@ -6,7 +6,6 @@ main {
   height: 100%;
 }
 
-#view-verse {
+div[id^="note_"] {
   flex-direction: column;
 }
-
