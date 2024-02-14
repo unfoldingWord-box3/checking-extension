@@ -1,6 +1,7 @@
 // import { vscode } from "./utilities/vscode";
 import { VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react";
 import "./App.css";
+import "./codicon.css";
 
 import TranslationNoteScroller from "./components/TranslationNoteScroller";
 import type { ScriptureTSV } from "scripture-tsv";
@@ -31,6 +32,8 @@ const TITUS_1_1_TSV: ScriptureTSV = {
 };
 
 function App() {
+  const BOOK = 
+  
   // TODO: Implement note navigation
   // function handleNoteNavigation() {
   //   vscode.postMessage({

@@ -104,6 +104,12 @@ export class TranslationNotesPanel {
   private _getWebviewContent(webview: Webview, extensionUri: Uri) {
     // The CSS file from the React build output
     const stylesUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.css"]);
+    const codiconFontUri = getUri(webview, extensionUri, [
+      "webview-ui",
+      "build",
+      "assets",
+      "codicon.ttf",
+    ]);
     // The JS file from the React build output
     const scriptUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.js"]);
 
@@ -115,10 +121,17 @@ export class TranslationNotesPanel {
       <html lang="en">
         <head>
           <meta charset="UTF-8" />
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
           <link rel="stylesheet" type="text/css" href="${stylesUri}">
           <title>Translation Notes</title>
+          <style nonce="${nonce}">
+            @font-face {
+              font-family: "codicon";
+              font-display: block;
+              src: url("${codiconFontUri}") format("truetype");
+            }
+          </style>
         </head>
         <body>
           <div id="root"></div>
