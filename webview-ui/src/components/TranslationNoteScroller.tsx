@@ -1,26 +1,44 @@
 import React from "react";
-import type { ScriptureTSV } from "scripture-tsv";
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 import TranslationNote from "./TranslationNote";
 import "./TranslationNoteScroller.css";
+import "../App.css";
+import { TranslationNoteType, NoteIndex } from "../TnTypes";
 
-const TranslationNoteScroller = ({ tsvs }: { tsvs: ScriptureTSV }) => {
+const TranslationNoteScroller = ({
+  notes,
+  currentIndex,
+  incrementIndex,
+  decrementIndex,
+}: {
+  notes: TranslationNoteType[];
+  currentIndex: NoteIndex;
+  incrementIndex: () => void;
+  decrementIndex: () => void;
+}) => {
   return (
-    <div>
-      <div id="note-position">Top Element</div>
+    <div className="scroller-container">
+      <div id="note-position">
+        {currentIndex + 1} of {notes.length}
+      </div>
 
       {/* Container for the three elements side by side */}
       <div className="column-container">
         {/* Left Button */}
-        <button className="arrow-button">Left</button>
+        <VSCodeButton onClick={decrementIndex} appearance="icon" aria-label="left">
+          <span className="arrow-button codicon codicon-chevron-left"></span>
+        </VSCodeButton>
 
         {/* Middle Element */}
         <div id="note-container">
-          <TranslationNote note={tsvs[1][1][0]} />
+          <TranslationNote note={notes[currentIndex]} />
         </div>
 
         {/* Right Button */}
-        <button className="arrow-button">Right</button>
+        <VSCodeButton onClick={incrementIndex} appearance="icon" aria-label="right">
+          <span className="arrow-button codicon codicon-chevron-right"></span>
+        </VSCodeButton>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 // import { vscode } from "./utilities/vscode";
+import { useState } from "react";
 import { VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react";
 import "./App.css";
 import "./codicon.css";
@@ -32,8 +33,18 @@ const TITUS_1_1_TSV: ScriptureTSV = {
 };
 
 function App() {
-  const BOOK = 
-  
+  const chapter = 1;
+  const verse = 1;
+
+  const [noteIndex, setNoteIndex] = useState(0);
+
+  const incrementNoteIndex = () =>
+    setNoteIndex((prevIndex) =>
+      prevIndex < TITUS_1_1_TSV[chapter][verse].length - 1 ? prevIndex + 1 : prevIndex
+    );
+  const decrementNoteIndex = () =>
+    setNoteIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : prevIndex));
+
   // TODO: Implement note navigation
   // function handleNoteNavigation() {
   //   vscode.postMessage({
@@ -52,7 +63,12 @@ function App() {
           {/* <VSCodePanelView id="view-book">Problems content.</VSCodePanelView> */}
           {/* <VSCodePanelView id="view-chapter">Output content.</VSCodePanelView> */}
           <VSCodePanelView id="view-verse">
-            <TranslationNoteScroller tsvs={TITUS_1_1_TSV} />
+            <TranslationNoteScroller
+              notes={TITUS_1_1_TSV[chapter][verse]}
+              currentIndex={noteIndex}
+              incrementIndex={incrementNoteIndex}
+              decrementIndex={decrementNoteIndex}
+            />
           </VSCodePanelView>
         </VSCodePanels>
       </section>

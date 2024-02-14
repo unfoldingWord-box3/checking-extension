@@ -24,3 +24,8 @@ export type TranslationNoteType = {
   Occurrence: NumericString;
   Note: MarkdownString;
 };
+
+/**
+ * A number that must be >= 0
+ */
+export type NoteIndex = number;

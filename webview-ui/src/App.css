@@ -11,3 +11,7 @@ div[id^="note_"] {
   margin: 1em;
   text-align: left;
 }
+
+.translation-note-view {
+  width: 100%;
+}

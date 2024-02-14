@@ -1,3 +1,7 @@
+.scroller-container {
+  width: 100%;
+}
+
 #note-position {
   width: 100%;
   margin-bottom: 20px;
@@ -7,7 +11,7 @@
 .column-container {
   display: flex;
   width: 100%;
-  align-items: center;
+  align-items: stretch;
 }
 
 .arrow-button {
