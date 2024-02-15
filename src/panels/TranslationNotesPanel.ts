@@ -15,6 +15,7 @@ import { getNonce } from "../utilities/getNonce";
 export class TranslationNotesPanel {
   public static currentPanel: TranslationNotesPanel | undefined;
   private readonly _panel: WebviewPanel;
+  private readonly _extensionUri: Uri;
   private _disposables: Disposable[] = [];
 
   /**
@@ -23,15 +24,13 @@ export class TranslationNotesPanel {
    * @param panel A reference to the webview panel
    * @param extensionUri The URI of the directory containing the extension
    */
-  private constructor(panel: WebviewPanel, extensionUri: Uri) {
+  public constructor(panel: WebviewPanel, extensionUri: Uri) {
     this._panel = panel;
+    this._extensionUri = extensionUri;
 
     // Set an event listener to listen for when the panel is disposed (i.e. when the user closes
     // the panel or when the panel is closed programmatically)
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-
-    // Set the HTML content for the webview panel
-    this._panel.webview.html = this._getWebviewContent(this._panel.webview, extensionUri);
 
     // Set an event listener to listen for messages passed from the webview context
     this._setWebviewMessageListener(this._panel.webview);
@@ -70,6 +69,15 @@ export class TranslationNotesPanel {
 
       TranslationNotesPanel.currentPanel = new TranslationNotesPanel(panel, extensionUri);
     }
+  }
+
+  /**
+   * Initializes or updates the HTML content of the webview.
+   * This is called from within a custom text editor.
+   */
+  public initializeWebviewContent() {
+    const webview = this._panel.webview;
+    webview.html = this._getWebviewContent(webview, this._extensionUri);
   }
 
   /**
@@ -151,8 +159,7 @@ export class TranslationNotesPanel {
   private _setWebviewMessageListener(webview: Webview) {
     webview.onDidReceiveMessage(
       (message: any) => {
-        const command = message.command;
-        const text = message.text;
+        const { command, text } = message;
 
         switch (command) {
           case "hello":

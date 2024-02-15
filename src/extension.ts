@@ -1,15 +1,7 @@
 import { commands, ExtensionContext } from "vscode";
-import { TranslationNotesPanel } from "./panels/TranslationNotesPanel";
+import { TnTSVEditorProvider } from "./TnTSVEditorProvider";
 
 export function activate(context: ExtensionContext) {
-  // Create the show translation notes command
-  const showTranslationNotesCommand = commands.registerCommand(
-    "translation-notes-extension.showTranslationNotes",
-    () => {
-      TranslationNotesPanel.render(context.extensionUri);
-    }
-  );
-
-  // Add command to the extension context
-  context.subscriptions.push(showTranslationNotesCommand);
+  // Register the custom tsv editor provider
+  context.subscriptions.push(TnTSVEditorProvider.register(context));
 }

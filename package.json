@@ -13,6 +13,18 @@
         "command": "translation-notes-extension.showTranslationNotes",
         "title": "Show Translation Notes"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "translation-notes-extension.tsvNoteEditor",
+        "displayName": "Translation Note TSV Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.tsv"
+          }
+        ],
+        "priority": "default"
+      }
     ]
   },
   "scripts": {
@@ -29,9 +41,9 @@
     "@types/glob": "^7.1.3",
     "@types/node": "^12.11.7",
     "@types/vscode": "^1.46.0",
-    "@typescript-eslint/eslint-plugin": "^4.14.1",
-    "@typescript-eslint/parser": "^4.14.1",
-    "eslint": "^7.19.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "eslint": "^8.56.0",
     "glob": "^7.1.6",
     "prettier": "^2.2.1",
     "typescript": "^5.3.3",
