@@ -10,13 +10,13 @@
   "contributes": {
     "commands": [
       {
-        "command": "translation-notes-extension.showTranslationNotes",
+        "command": "translation-notes-extension.openTnEditor",
         "title": "Show Translation Notes"
       }
     ],
     "customEditors": [
       {
-        "viewType": "translation-notes-extension.tsvNoteEditor",
+        "viewType": "translation-notes-extension.translationNotesEditor",
         "displayName": "Translation Note TSV Editor",
         "selector": [
           {
@@ -48,5 +48,9 @@
     "prettier": "^2.2.1",
     "typescript": "^5.3.3",
     "vscode-test": "^1.5.0"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.35",
+    "bible-reference-range": "^1.1.1"
   }
 }

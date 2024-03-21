@@ -12,7 +12,7 @@
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
         "--folder-uri",
-        "file:///home/kintsoogi/uw"
+        "file:///home/kintsoogi/code/vscode_extensions/translation-project"
       ],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"

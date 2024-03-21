@@ -1,3 +1,13 @@
+div[id^="note_"] {
+  flex-direction: column;
+  margin: 1em;
+  text-align: left;
+}
+
+.translation-note-view {
+  width: 100%;
+}
+
 .scroller-container {
   width: 100%;
 }

@@ -1,7 +1,10 @@
-import { commands, ExtensionContext } from "vscode";
-import { TnTSVEditorProvider } from "./TnTSVEditorProvider";
+import { ExtensionContext } from "vscode";
+import { TranslationNotesProvider } from "./TranslationNotesProvider";
 
 export function activate(context: ExtensionContext) {
   // Register the custom tsv editor provider
-  context.subscriptions.push(TnTSVEditorProvider.register(context));
+  const { providerRegistration, commandRegistration } =
+      TranslationNotesProvider.register(context);
+  context.subscriptions.push(providerRegistration);
+  context.subscriptions.push(commandRegistration);
 }
