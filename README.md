@@ -66,7 +66,7 @@ Follow the following steps to see the translation notes extension in action. Rep
     
     b. If in the `webview-ui` directory, run:
     ```bash
-    npm build
+    npm run build
     ```
 
 6. Open vscode editor (using `code .` in the current directory or using the UI)
