@@ -5,31 +5,35 @@ import {
     VSCodePanelTab,
     VSCodePanelView,
 } from "@vscode/webview-ui-toolkit/react";
-import { vscode } from "./utilities/vscode";
+import { vscode } from "../utilities/vscode";
 import "./TranslationNotes.css";
 
-import TranslationNoteScroller from "./components/TranslationNoteScroller";
-import { extractBookChapterVerse } from "../../src/utilities/extractBookChapterVerse"
-import type { TnTSV } from "../../types/TsvTypes"
-import type { VerseRefGlobalState } from "../../types"
+import TranslationNoteScroller from "./TranslationNoteScroller";
+import { extractBookChapterVerse } from "../../../src/utilities/extractBookChapterVerse"
+import type { TnTSV } from "../../../types/TsvTypes"
+import type { VerseRefGlobalState } from "../../../types"
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
-function TranslationNotesView() {
-    const [chapter, setChapter] = useState<number>(1);
-    const [verse, setVerse] = useState<number>(1);
+type TranslationNotesViewProps = {
+    chapter: number;
+    verse: number;
+};
+
+function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [translationNotesObj, setTranslationNotesObj] = useState<TnTSV>({});
 
-    const changeChapterVerse = (ref: VerseRefGlobalState): void => {
-        const { verseRef } = ref;
-        const { chapter: newChapter, verse: newVerse } =
-            extractBookChapterVerse(verseRef);
+    // TODO: Implement this if in Codex!
+    // const changeChapterVerse = (ref: VerseRefGlobalState): void => {
+    //     const { verseRef } = ref;
+    //     const { chapter: newChapter, verse: newVerse } =
+    //         extractBookChapterVerse(verseRef);
 
-        setChapter(newChapter);
-        setVerse(newVerse);
-        setNoteIndex(0);
-    };
+    //     setChapter(newChapter);
+    //     setVerse(newVerse);
+    //     setNoteIndex(0);
+    // };
 
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
@@ -37,8 +41,8 @@ function TranslationNotesView() {
 
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: (data: TnTSV) => setTranslationNotesObj(data),
-            ["changeRef"]: (data: VerseRefGlobalState) =>
-                changeChapterVerse(data),
+            // ["changeRef"]: (data: VerseRefGlobalState) =>
+            //     changeChapterVerse(data),
         };
 
         commandToFunctionMapping[command](data);

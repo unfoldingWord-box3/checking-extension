@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import TranslationNotesView from "./TranslationNotesView";
+import App from "./App";
 
 // Assuming the element with id 'root' exists in your HTML file
 const rootElement = document.getElementById("root") as HTMLElement;
@@ -11,6 +11,6 @@ const root = ReactDOM.createRoot(rootElement);
 // Initial render: Render the TranslationNotesView component to the root.
 root.render(
   <React.StrictMode>
-    <TranslationNotesView />
+    <App />
   </React.StrictMode>
 );
