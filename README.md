@@ -20,12 +20,12 @@ Follow the following steps to see the translation notes extension in action. Rep
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/kintsoogi/translation-notes-extension.git
+    git clone https://github.com/unfoldingWord-box3/extension.git
     ```
 
 2. Clone the translation-project repository to test the extension in:
     ```bash
-    git clone https://github.com/ryderwishart/translation-project
+    git clone https://github.com/unfoldingWord-box3/checking-extension.git
     ```
 
 3. Change the `launch.json` file under the `.vscode` extension so that it opens this project on debugging:
@@ -50,23 +50,23 @@ Follow the following steps to see the translation notes extension in action. Rep
 
     a. Install root directory dependencies
     ```bash
-    npm install
+    pnpm i
     ```
     b. Move to the `webview-ui` directory and install dependencies
     ```bash
-    npm install
+    pnpm i
     ```
 
 5. Build the webview so that it renders on extension run
 
     a. If in the root directory, run:
     ```bash
-    npm build:webview
+    pnpm run build:webview
     ```
     
     b. If in the `webview-ui` directory, run:
     ```bash
-    npm run build
+    pnpm run build
     ```
 
 6. Open vscode editor (using `code .` in the current directory or using the UI)

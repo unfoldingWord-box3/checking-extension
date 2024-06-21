@@ -1,6 +1,6 @@
 {
-  "name": "translation-notes-extension",
-  "displayName": "translation-notes-extension",
+  "name": "checking-extension-extension",
+  "displayName": "checking-extension-extension",
   "description": "A vscode extension to open translation note tsv files and display them for a specific verse",
   "version": "0.0.1",
   "engines": {
@@ -10,17 +10,17 @@
   "contributes": {
     "commands": [
       {
-        "command": "translation-notes-extension.openTnEditor",
-        "title": "Show Translation Notes"
+        "command": "checking-extension.openChecker",
+        "title": "Show Checker"
       }
     ],
     "customEditors": [
       {
-        "viewType": "translation-notes-extension.translationNotesEditor",
-        "displayName": "Translation Note TSV Editor",
+        "viewType": "checking-extension.translationChecker",
+        "displayName": "Translation Checking Tool",
         "selector": [
           {
-            "filenamePattern": "*.tsv"
+            "filenamePattern": "*.check"
           }
         ],
         "priority": "default"

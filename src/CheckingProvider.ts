@@ -23,9 +23,16 @@ type CommandToFunctionMap = Record<string, (text: string) => void>;
 const getTnUri = (bookID: string): Uri => {
     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
     return Uri.joinPath(
-        workspaceRootUri,
-        // `resources/unfoldingWord/tn_${bookID}.tsv`,
-        `.project/resources/en_tn/tn_${bookID}.tsv`,
+      workspaceRootUri,
+      `tn_${bookID}.check`,
+    );
+};
+
+const getTwlUri = (bookID: string): Uri => {
+    const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
+    return Uri.joinPath(
+      workspaceRootUri,
+      `twl_${bookID}.check`,
     );
 };
 
@@ -36,19 +43,19 @@ const getTnUri = (bookID: string): Uri => {
  * towards tsv files that contain translation notes.
  *
  */
-export class TranslationNotesProvider implements CustomTextEditorProvider {
+export class CheckingProvider implements CustomTextEditorProvider {
     public static register(context: ExtensionContext): {
         providerRegistration: Disposable;
         commandRegistration: Disposable;
     } {
-        const provider = new TranslationNotesProvider(context);
+        const provider = new CheckingProvider(context);
         const providerRegistration = window.registerCustomEditorProvider(
-            TranslationNotesProvider.viewType,
+            CheckingProvider.viewType,
             provider,
         );
 
         const commandRegistration = commands.registerCommand(
-            "translation-notes-extension.openTnEditor",
+            "checking-extension.openChecker",
             async (verseRef: string) => {
                 const { bookID } = extractBookChapterVerse(verseRef);
                 const tnUri = getTnUri(bookID);
@@ -56,7 +63,7 @@ export class TranslationNotesProvider implements CustomTextEditorProvider {
                 await commands.executeCommand(
                     "vscode.openWith",
                     tnUri,
-                    TranslationNotesProvider.viewType,
+                    CheckingProvider.viewType,
                     {
                         viewColumn: ViewColumn.Beside,
                         preserveFocus: true,
@@ -69,7 +76,7 @@ export class TranslationNotesProvider implements CustomTextEditorProvider {
         return { providerRegistration, commandRegistration };
     }
     
-    private static readonly viewType = "translation-notes-extension.translationNotesEditor";
+    private static readonly viewType = "checking-extension.translationChecker";
 
     constructor(private readonly context: ExtensionContext) {}
 
