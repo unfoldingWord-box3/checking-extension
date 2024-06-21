@@ -17,6 +17,11 @@ import { TranslationNotesPanel } from "./panels/TranslationNotesPanel";
 import { extractBookChapterVerse } from "./utilities/extractBookChapterVerse";
 import { TranslationNotePostMessages } from "../types";
 import { ScriptureTSV } from "../types/TsvTypes";
+import { initProject } from "./utilities/checkerFileUtils";
+// @ts-ignore
+import path from "path-extra";
+// @ts-ignore
+import ospath from 'ospath';
 
 type CommandToFunctionMap = Record<string, (text: string) => void>;
 
@@ -55,21 +60,18 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
 
         const commandRegistration = commands.registerCommand(
-            "checking-extension.openChecker",
+            "checking-extension.openCheckerTW",
             async (verseRef: string) => {
-                const { bookID } = extractBookChapterVerse(verseRef);
-                const tnUri = getTnUri(bookID);
-
-                await commands.executeCommand(
-                    "vscode.openWith",
-                    tnUri,
-                    CheckingProvider.viewType,
-                    {
-                        viewColumn: ViewColumn.Beside,
-                        preserveFocus: true,
-                        preview: true,
-                    },
-                );
+                const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
+                const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
+                const completeResourcesPath = path.join(resourcesBasePath, 'completeResources.json')
+                
+                const gl_owner = 'unfoldingWord'
+                const gl_languageId = 'en'
+                const languageId = 'en'
+                const projectId = 'twl'
+                const repoPath = path.join(resourcesBasePath, '../projects', `${languageId}_${projectId}_checks`)
+                const success = await initProject(repoPath, languageId, gl_languageId, gl_owner, resourcesBasePath, projectId)
             },
         );
 

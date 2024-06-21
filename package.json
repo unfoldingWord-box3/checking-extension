@@ -10,8 +10,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "checking-extension.openChecker",
-        "title": "Show Checker"
+        "command": "checking-extension.initCheckerTN",
+        "title": "Init Checker tN"
+      },
+      {
+        "command": "checking-extension.initCheckerTW",
+        "title": "Init Checker tW"
       }
     ],
     "customEditors": [
@@ -51,6 +55,11 @@
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.35",
-    "bible-reference-range": "^1.1.1"
+    "bible-reference-range": "^1.1.1",
+    "checking-tool-rcl": "file:.yalc/checking-tool-rcl",
+    "fs-extra": "^11.2.0",
+    "ospath": "^1.2.2",
+    "path-extra": "^4.3.0",
+    "tc-source-content-updater": "^1.4.24"
   }
 }
