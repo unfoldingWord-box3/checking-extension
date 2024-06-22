@@ -1,9 +1,8 @@
 // @ts-ignore
-import fs from 'fs-extra';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 // @ts-ignore
-import path from 'path-extra';
-// @ts-ignore
-import ospath from 'ospath';
+import * as ospath from 'ospath';
 import { readHelpsFolder } from './folderUtils'
 // @ts-ignore
 import { apiHelpers, BooksOfTheBible } from 'tc-source-content-updater'
@@ -14,7 +13,6 @@ const {
     resourcesHelpers,
     resourcesDownloadHelpers,
 } = require('tc-source-content-updater');
-const resourcesList = require('./fixtures/updatedResources.json');
 
 
 const RESOURCE_ID_MAP = {
@@ -604,7 +602,18 @@ async function getLatestLangResourcesFromCatalog(catalog:any[], languageId:strin
     return { processed, updatedCatalogResources: catalog }
 }
 
-export function initProject(repoPath:string, languageId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string) {
+/**
+ * Initialize folder of project
+ * @param repoPath
+ * @param targetLanguageId
+ * @param targetOwner
+ * @param targetBibleId
+ * @param gl_languageId
+ * @param gl_owner
+ * @param resourcesBasePath
+ * @param sourceResourceId
+ */
+export function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string) {
     const exists = fs.pathExistsSync(repoPath)
     if (!exists) {
         try {
@@ -638,8 +647,9 @@ export function initProject(repoPath:string, languageId:string, gl_languageId:st
 
             // create manifest
             const manifest = {
+                resourceType: 'Translation Checker',
                 checkingType: sourceResourceId,
-                languageId,
+                languageId: targetLanguageId,
                 gatewayLanguageId: gl_languageId,
                 gatewayLanguageOwner: gl_owner,
                 resourcesPath: resourcesBasePath,

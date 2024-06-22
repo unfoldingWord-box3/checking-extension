@@ -18,10 +18,10 @@ import { extractBookChapterVerse } from "./utilities/extractBookChapterVerse";
 import { TranslationNotePostMessages } from "../types";
 import { ScriptureTSV } from "../types/TsvTypes";
 import { initProject } from "./utilities/checkerFileUtils";
+import * as path from 'path';
 // @ts-ignore
-import path from "path-extra";
-// @ts-ignore
-import ospath from 'ospath';
+import * as ospath from 'ospath';
+
 
 type CommandToFunctionMap = Record<string, (text: string) => void>;
 
@@ -60,7 +60,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
 
         const commandRegistration = commands.registerCommand(
-            "checking-extension.openCheckerTW",
+            "checking-extension.initCheckerTN",
             async (verseRef: string) => {
                 const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
                 const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
@@ -68,10 +68,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 
                 const gl_owner = 'unfoldingWord'
                 const gl_languageId = 'en'
-                const languageId = 'en'
-                const projectId = 'twl'
-                const repoPath = path.join(resourcesBasePath, '../projects', `${languageId}_${projectId}_checks`)
-                const success = await initProject(repoPath, languageId, gl_languageId, gl_owner, resourcesBasePath, projectId)
+                const targetLanguageId = 'es-419'
+                const targetOwner = 'es-419_gl'
+                const targetBibleId = 'glt'
+                const projectId = 'tn'
+                const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
+                const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
+                if (!success) {
+                    console.error(`checking-extension.initCheckerTN - failed to init folder ${repoPath}`)
+                }
             },
         );
 

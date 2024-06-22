@@ -48,13 +48,9 @@ Follow the following steps to see the translation notes extension in action. Rep
 
 4. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
 
-    a. Install root directory dependencies
+    a. Install dependencies in root directory
     ```bash
-    pnpm i
-    ```
-    b. Move to the `webview-ui` directory and install dependencies
-    ```bash
-    pnpm i
+    pnpm run install:all
     ```
 
 5. Build the webview so that it renders on extension run
