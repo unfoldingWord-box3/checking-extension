@@ -239,6 +239,7 @@ async function fetchBibleResource(catalog:any[], languageId:string, owner:string
                     const sourcePath = path.join(importPath, `${item.languageId}_${item.resourceId}`)
                     fs.moveSync(sourcePath, destFolder)
                     fs.removeSync(importFolder)
+                    results.destFolder = destFolder
                 }
                 return results
             } else {
@@ -489,7 +490,7 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangHelpsResourcesFromCatalog(catalog:any[], languageId:string, owner:string, resourcesPath:string) {
+async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
     if (!catalog?.length) {
         catalog = await getLatestResources(resourcesPath)
     }
@@ -502,7 +503,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:any[], languageId:
 
     const found = []
     for (const resource of checkingHelpsResources) {
-        const item = findResource(catalog, languageId, owner, resource.id)
+        const item = findResource(catalog || [], languageId, owner, resource.id)
         if (item) {
             item.bookRes = resource.bookRes
             found.push(item)
@@ -556,7 +557,7 @@ function getLanguageAndOwnerForBible(languageId:string, owner:string, bibleId:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangResourcesFromCatalog(catalog:any[], languageId:string, owner:string, resourcesPath:string) {
+export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
     const { processed, updatedCatalogResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath)
 
     // get aligned bibles
@@ -576,7 +577,7 @@ async function getLatestLangResourcesFromCatalog(catalog:any[], languageId:strin
         if (!fetched) {
             for (const bibleId of alignedBibles) {
                 const { languageId_, owner_ } = getLanguageAndOwnerForBible(languageId, owner, bibleId)
-                const item = findResource(updatedCatalogResources, languageId_, owner_, bibleId)
+                const item = findResource(updatedCatalogResources || [], languageId_, owner_, bibleId)
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
                     const resource = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
@@ -603,6 +604,47 @@ async function getLatestLangResourcesFromCatalog(catalog:any[], languageId:strin
 }
 
 /**
+ * copy bible USFM files
+ * @param repoPath
+ */
+function getBibleFiles(repoPath: string) {
+    if (fs.pathExistsSync(repoPath)) {
+        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm"));
+    }
+    return []
+}
+
+/**
+ * get list of files with extension of fileType
+ * @param repoPath
+ * @param fileType
+ */
+function getFilesOfType(repoPath: string, fileType: string) {
+    if (fs.pathExistsSync(repoPath)) {
+        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === fileType));
+    }
+    return []
+}
+
+/**
+ * copy files from one folder to destination
+ * @param sourcePath
+ * @param destPath
+ * @param files
+ */
+function copyFiles(sourcePath: string, destPath: string, files: string[]) {
+    try {
+        fs.ensureDirSync(destPath)
+        for (const file of files) {
+            fs.copyFileSync(path.join(sourcePath, file), path.join(destPath, file))
+        }
+    } catch (e) {
+        console.error(`copyFiles failed`)
+        return false
+    }
+}
+
+/**
  * Initialize folder of project
  * @param repoPath
  * @param targetLanguageId
@@ -613,52 +655,92 @@ async function getLatestLangResourcesFromCatalog(catalog:any[], languageId:strin
  * @param resourcesBasePath
  * @param sourceResourceId
  */
-export function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string) {
-    const exists = fs.pathExistsSync(repoPath)
-    if (!exists) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string, catalog:null|any[] = null) {
+    const projectExists = fs.pathExistsSync(repoPath)
+    const checkingPath = path.join(repoPath, 'checking', sourceResourceId)
+    const checkingPathExists = fs.pathExistsSync(checkingPath)
+    const bibleFiles = getBibleFiles(repoPath)
+    const hasBibleFiles = bibleFiles?.length
+    const shouldCreateProject = !projectExists
+        || (hasBibleFiles && !checkingPathExists)
+
+    if (shouldCreateProject) {
         try {
-            let sourceTsvsPath;
-            switch (sourceResourceId) {
-                case 'tn':
-                case 'twl':
-                    const resourceName = RESOURCE_ID_MAP[sourceResourceId] || ''
-                    const folderPath = path.join(resourcesBasePath, gl_languageId, 'translationHelps', resourceName)
-                    sourceTsvsPath = resourcesHelpers.getLatestVersionInPath(folderPath, gl_owner, false)
-                    break
+            const { processed, updatedCatalogResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath)
+            if (updatedCatalogResources) {
+                let sourceTsvsPath;
+                switch (sourceResourceId) {
+                    case 'tn':
+                    case 'twl':
+                        const resourceName = RESOURCE_ID_MAP[sourceResourceId] || ''
+                        const folderPath = path.join(resourcesBasePath, gl_languageId, 'translationHelps', resourceName)
+                        sourceTsvsPath = resourcesHelpers.getLatestVersionInPath(folderPath, gl_owner, false)
+                        break
 
-                default:
-                    console.error(`initProject - unsupported source project ID: ${sourceResourceId}`)
-                    return false
-            }
+                    default:
+                        console.error(`initProject - unsupported source project ID: ${sourceResourceId}`)
+                        return false
+                }
 
-            fs.ensureDirSync(repoPath)
-            fs.copySync(sourceTsvsPath, repoPath)
+                // more checks per book
+                fs.ensureDirSync(checkingPath)
+                fs.copySync(sourceTsvsPath, checkingPath)
 
-            // create check json files
-            const files = fs.readdirSync(repoPath).filter((filename:string) => path.extname(filename) === '.json')
-            if (files?.length) {
-                for (const filename of files) {
-                    let newName = filename.replace('.json', '.check')
-                    if (newName !== filename) {
-                        fs.moveSync(path.join(repoPath, filename), path.join(repoPath, newName))
+                // create check files from json files
+                const files = getFilesOfType(repoPath, '.json')
+                if (files?.length) {
+                    for (const filename of files) {
+                        let newName = filename.replace('.json', '.check')
+                        if (newName !== filename) {
+                            fs.moveSync(path.join(repoPath, filename), path.join(repoPath, newName))
+                        }
                     }
                 }
-            }
 
-            // create manifest
-            const manifest = {
-                resourceType: 'Translation Checker',
-                checkingType: sourceResourceId,
-                languageId: targetLanguageId,
-                gatewayLanguageId: gl_languageId,
-                gatewayLanguageOwner: gl_owner,
-                resourcesPath: resourcesBasePath,
-                sourceTsvsPath
+                const alreadyHave_ = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog)
+                if (!alreadyHave_) {
+                    const item = findResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId)
+                    if (item) {
+                        console.log('getLangResourcesFromCatalog - downloading', item)
+                        const resource = await downloadAndProcessResource(item, resourcesBasePath, item.bookRes, false)
+                        if (resource) {
+                            processed.push(resource)
+                        } else {
+                            console.error('getLangResourcesFromCatalog - Resource item not downloaded', {
+                                targetLanguageId,
+                                targetOwner,
+                                targetBibleId
+                            })
+                        }
+                    }
+                }
+                
+                if (!hasBibleFiles) { // download and bible files
+                    const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath)
+                    if (!results.destFolder) {
+                        console.error(`initProject - cannot copy target bible: ${repoPath}`)
+                        return false
+                    }
+                    copyFiles(results.destFolder, repoPath, bibleFiles)
+                    copyFiles(results.destFolder, repoPath, getFilesOfType(results.destFolder, '.json'))
+                }
+                    
+                // create metadata
+                const metadata = {
+                    'translation.checker': {
+                        resourceType: "Translation Checker",
+                        checkingType: sourceResourceId,
+                        languageId: targetLanguageId,
+                        gatewayLanguageId: gl_languageId,
+                        gatewayLanguageOwner: gl_owner,
+                        resourcesPath: resourcesBasePath,
+                        sourceTsvsPath,
+                    }
+                }
+                const outputPath = path.join(repoPath, `metadata.json`)
+                fs.outputJsonSync(outputPath, metadata, { spaces: 2 })
             }
-            const outputPath = path.join(repoPath, `manifest.json`)
-            fs.outputJsonSync(outputPath, manifest, { spaces: 2 })
             return true
-
         } catch (e) {
             console.error(`initProject - error creating project: ${repoPath}`)
         }

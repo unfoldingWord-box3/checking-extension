@@ -13,7 +13,7 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
   const updatedResourcesPath = path.join(resourcesPath, 'updatedResources.json')
   const completeResourcesPath = path.join(resourcesPath, 'completeResources.json')
 
-  it('Test initProject tn', () => {
+  it('Test initProject tn', async () => {
     const gl_owner = 'unfoldingWord'
     const gl_languageId = 'en'
     const languageId = 'en'
@@ -21,8 +21,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
-    const repoPath = path.join(resourcesPath, '../projects', `${languageId}_${projectId}_checks`)
-    const success = initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId)
+    const repoPath = path.join(resourcesPath, '../projects', `${languageId}_${projectId}`)
+    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId)
     expect(success).toBeTruthy()
   })
 })
