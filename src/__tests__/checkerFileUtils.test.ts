@@ -4,6 +4,7 @@ import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
 import { initProject } from "../utilities/checkerFileUtils";
+const resourcesList = require('./fixtures/updatedResources.json');
 
 
 // jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -21,8 +22,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
-    const repoPath = path.join(resourcesPath, '../projects', `${languageId}_${projectId}`)
-    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId)
+    const repoPath = path.join(resourcesPath, '../projects', `${targetLanguageId}_${targetBibleId}`)
+    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
 })
