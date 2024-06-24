@@ -690,7 +690,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 const files = getFilesOfType(repoPath, '.json')
                 if (files?.length) {
                     for (const filename of files) {
-                        let newName = filename.replace('.json', '.check')
+                        let newName = filename.replace('.json', `.${sourceResourceId}_check`)
                         if (newName !== filename) {
                             fs.moveSync(path.join(repoPath, filename), path.join(repoPath, newName))
                         }

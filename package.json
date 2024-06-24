@@ -21,10 +21,10 @@
     "customEditors": [
       {
         "viewType": "checking-extension.translationChecker",
-        "displayName": "Translation Checking Tool",
+        "displayName": "Translation Checking Tool - Translation Words",
         "selector": [
           {
-            "filenamePattern": "*.check"
+            "filenamePattern": "*.twl_check"
           }
         ],
         "priority": "default"

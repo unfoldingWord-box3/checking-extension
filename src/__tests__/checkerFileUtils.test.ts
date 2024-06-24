@@ -10,14 +10,14 @@ import { initProject } from "../utilities/checkerFileUtils";
 
 describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () => {
   const resourcesPath = path.join(ospath.home(), 'translationCore/temp/downloaded');
-  const updatedResourcesPath = path.join(resourcesPath, 'updatedResources.json')
-  const completeResourcesPath = path.join(resourcesPath, 'completeResources.json')
+  // const updatedResourcesPath = path.join(resourcesPath, 'updatedResources.json')
+  // const completeResourcesPath = path.join(resourcesPath, 'completeResources.json')
 
   it('Test initProject tn', async () => {
     const gl_owner = 'unfoldingWord'
     const gl_languageId = 'en'
     const languageId = 'en'
-    const projectId = 'tn'
+    const projectId = 'twl'
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
