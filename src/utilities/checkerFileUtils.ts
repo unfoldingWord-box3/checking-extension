@@ -72,7 +72,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         const resourceFiles:string[] = []
         // @ts-ignore
         const resourceName = RESOURCE_ID_MAP[resource.resourceId] || ''
-        const folderPath = path.join(resourcesPath, resource.languageId, 'translationHelps', resourceName, `v${resource.version}_${resource.owner}`)
+        const folderPath = path.join(resourcesPath, resource.languageId, 'translationHelps', resourceName, `v${resource.version}_${resourcesHelpers.encodeOwnerStr(resource.owner)}`)
         if (combineHelps) {
             processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
         }
@@ -213,11 +213,11 @@ async function fetchBibleResource(catalog:any[], languageId:string, owner:string
     if (item) {
         const downloadUrl = item.downloadUrl
         try {
-            const destFolder = path.join(resourcesPath, item.owner, item.languageId, 'bible', `${item.resourceId}`,`v${item.version}_${item.owner}`)
+            const destFolder = path.join(resourcesPath, item.languageId, 'bibles', `${item.resourceId}`,`v${item.version}_${resourcesHelpers.encodeOwnerStr(item.owner)}`)
             const importFolder = path.join(resourcesPath, 'imports')
-            const zipFolder = path.join(importFolder, `v${item.version}_${item.owner}_${item.resourceId}`)
+            const zipFolder = path.join(importFolder, `v${item.version}_${resourcesHelpers.encodeOwnerStr(item.owner)}_${item.resourceId}`)
             fs.ensureDirSync(zipFolder)
-            const zipFileName = `${item.languageId}_${item.resourceId}_v${item.version}_${encodeURIComponent(item.owner)}.zip`;
+            const zipFileName = `${item.languageId}_${item.resourceId}_v${item.version}_${resourcesHelpers.encodeOwnerStr(item.owner)}.zip`;
             const zipFilePath = path.join(zipFolder, zipFileName)
             let importPath;
             console.log('fetching')
@@ -390,7 +390,7 @@ function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:
  * @param  {object[]} catalog - if given then also validate version is equal to or greater than catalog:any[] version
  * @returns {string|null} - path of resource if found
  */
-function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null):null|string {
+function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null, checkForUsfm = false):null|string {
     const folderPath = path.join(resourcesPath, languageId, 'bibles', bibleId) // , `v${resource.version}_${resource.owner}`)
     const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false)
 
@@ -411,8 +411,13 @@ function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageI
             }
         }
 
-        const books = fs.readdirSync(versionPath)
-            .filter((file:string) => path.extname(file) !== '.json' && file !== '.DS_Store');
+        let books = []
+        if (checkForUsfm) { // each book is an USFM file
+            books = getBibleFiles(versionPath)
+        } else { // each book is a chapter
+            books = fs.readdirSync(versionPath)
+              .filter((file:string) => path.extname(file) !== '.json' && file !== '.DS_Store');
+        }
         if (books?.length) {
             return versionPath
         } else {
@@ -722,8 +727,10 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     }
                 }
 
-                const alreadyHave_ = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog)
-                if (!alreadyHave_) {
+                const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true)
+                if (foundPath) {
+                    fs.copySync(foundPath, repoPath)
+                } else {
                     const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath)
                     if (!results.destFolder) {
                         console.error(`initProject - cannot copy target bible: ${repoPath}`)
