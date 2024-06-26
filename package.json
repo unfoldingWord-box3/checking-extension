@@ -65,7 +65,6 @@
   "dependencies": {
     "@vscode/codicons": "^0.0.35",
     "bible-reference-range": "^1.1.1",
-    "checking-tool-rcl": "file:.yalc/checking-tool-rcl",
     "ospath": "^1.2.2",
     "path-extra": "^4.3.0",
     "tc-source-content-updater": "^1.4.24"

@@ -1,7 +1,7 @@
 // @ts-ignore
-import fs from 'fs-extra'
-// @ts-ignore
-import path from 'path-extra'
+import * as fs from "fs-extra";
+import * as path from "path";
+import { basename } from "path";
 
 function readJsonFile(jsonPath:string) {
   if (fs.existsSync(jsonPath)) {
@@ -29,8 +29,9 @@ export function readHelpsFolder(folderPath:string, filterBook:string = '') {
   const files = fs.readdirSync(folderPath)
   for (const file of files) {
     const filePath = path.join(folderPath, file)
-    const key = path.base(file)
-    const type = path.extname(file)
+    const parsed = path.parse(file)
+    const key = parsed.name
+    const type = parsed.ext
     if (type === '.json') {
       const data = readJsonFile(filePath)
       if (data) {
