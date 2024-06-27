@@ -10,7 +10,9 @@ const resourcesList = require('./fixtures/updatedResources.json');
 // jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 
 describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () => {
-  const resourcesPath = path.join(ospath.home(), 'translationCore/temp/downloaded');
+  const workingPath = path.join(ospath.home(), 'translationCore')
+  const resourcesPath = path.join(workingPath, 'cache')
+  const projectsPath = path.join(workingPath, 'otherProjects')
   // const updatedResourcesPath = path.join(resourcesPath, 'updatedResources.json')
   // const completeResourcesPath = path.join(resourcesPath, 'completeResources.json')
 
@@ -22,7 +24,7 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
-    const repoPath = path.join(resourcesPath, '../projects', `${targetLanguageId}_${targetBibleId}`)
+    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
     const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
@@ -32,9 +34,22 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetBibleId = 'glt'
     const bookId = 'tit'
-    const repoPath = path.join(resourcesPath, '../projects', `${targetLanguageId}_${targetBibleId}`)
-    const success = getResourcesForChecking(repoPath, resourcesPath, projectId, bookId)
-    expect(success).toBeTruthy()
+    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
+    const resources = getResourcesForChecking(repoPath, resourcesPath, projectId, bookId)
+    // @ts-ignore
+    expect(resources.lexicons).toBeTruthy()
+    // @ts-ignore
+    expect(resources.locales).toBeTruthy()
+    // @ts-ignore
+    expect(resources.twl).toBeTruthy()
+    // @ts-ignore
+    expect(resources.tw).toBeTruthy()
+    // @ts-ignore
+    expect(resources.project).toBeTruthy()
+    // @ts-ignore
+    expect(resources.bibles.length).toEqual(3)
+    // @ts-ignore
+    expect(resources.targetBible).toBeTruthy()
   })
 
 })

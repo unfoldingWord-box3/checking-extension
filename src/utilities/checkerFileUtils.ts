@@ -2,6 +2,8 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 // @ts-ignore
+import * as ospath from 'ospath';
+// @ts-ignore
 import * as usfmjs from "usfm-js";
 import { readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
@@ -543,7 +545,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         if (resource_) {
             processed.push(resource_)
             // @ts-ignore
-            foundResources[resource_.resource.id] = resource_.resourcePath
+            foundResources[resource_.resource.resourceId] = resource_.resourcePath
         } else {
             // @ts-ignore
             console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {languageId, owner, resourceId: resource.id})
@@ -696,6 +698,30 @@ function copyFiles(sourcePath: string, destPath: string, files: string[]) {
 }
 
 /**
+ * replace the home path with '~'
+ * @param filePath
+ */
+function removeHomePath(filePath:string) {
+    if (filePath && (filePath.indexOf(ospath.home()) === 0)) {
+        const newPath = filePath.replace(ospath.home(), '~')
+        return newPath
+    }
+    return filePath
+}
+
+/**
+ * replace leading ~ with home path
+ * @param filePath
+ */
+function replaceHomePath(filePath:string) {
+    if (filePath && (filePath.indexOf('~') === 0)) {
+        const newPath = filePath.replace('~', ospath.home())
+        return newPath
+    }
+    return filePath
+}
+
+/**
  * Initialize folder of project
  * @param repoPath
  * @param targetLanguageId
@@ -709,7 +735,7 @@ function copyFiles(sourcePath: string, destPath: string, files: string[]) {
 export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string, catalog:null|any[] = null) {
     const projectExists = fs.pathExistsSync(repoPath)
     const checkingPath = path.join(repoPath, 'checking', sourceResourceId)
-    const checkingFiles = getFilesOfType(checkingPath, '.json')
+    const checkingFiles = getFilesOfType(checkingPath, `.${sourceResourceId}_check`)
     const hasCheckingFiles = checkingFiles?.length
     const bibleFiles = getBibleFiles(repoPath)
     const hasBibleFiles = bibleFiles?.length
@@ -762,6 +788,30 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 }
                 
                 const checkingPathName = `${sourceResourceId}_path`
+                
+                // replace home path with ~
+                for (const resourceId of Object.keys(foundResources)) {
+                    if (resourceId === 'bibles') {
+                        // @ts-ignore
+                        const bibles:string[] = foundResources[resourceId]
+                        for (let i = 0; i < bibles.length; i++) {
+                            // @ts-ignore
+                            const bible = bibles[i]
+                            // @ts-ignore
+                            if (bible?.path) {
+                                // @ts-ignore
+                                const newPath = removeHomePath(bible.path)
+                                // @ts-ignore
+                                bible.path = newPath
+                            }
+                        }
+                    } else {
+                        // @ts-ignore
+                        const newPath = removeHomePath(foundResources[resourceId])
+                        // @ts-ignore
+                        foundResources[resourceId] = newPath
+                    }
+                }
                     
                 // create metadata
                 const metadata = {
@@ -771,9 +821,9 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         targetLanguageId,
                         gatewayLanguageId: gl_languageId,
                         gatewayLanguageOwner: gl_owner,
-                        resourcesBasePath,
-                        sourceTsvsPath,
-                        checkingPath,
+                        resourcesBasePath: removeHomePath(resourcesBasePath),
+                        sourceTsvsPath: removeHomePath(sourceTsvsPath),
+                        checkingPath: removeHomePath(checkingPath),
                         otherResources: foundResources,
                     }
                 }
@@ -819,7 +869,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               const twlPath = path.join(repoPath, metadata[`${resourceId}_path`], `${resourceId}_${bookId}.${resourceId}_check` )
               // @ts-ignore
               results.twl = readJsonFileIfExists(twlPath)
-              const twPath = path.join(metadata.otherResources['tw'], 'tw.json')
+              let twPath = replaceHomePath(metadata.otherResources['tw'])
+              twPath = path.join(twPath, 'tw.json')
               // @ts-ignore
               results.tw = readJsonFileIfExists(twPath)
           }
@@ -845,7 +896,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
 
           for (const bible of biblesList) {
               if (bible.path) {
-                  book = getBookOfTheBibleFromFolder(bible.path, bookId)
+                  const biblePath = replaceHomePath(bible.path)
+                  book = getBookOfTheBibleFromFolder(biblePath, bookId)
               } else {
                   book = getBookOfTheBible(resourcesBasePath, bookId, bible.bibleId, bible.languageId, bible.owner);
               }
