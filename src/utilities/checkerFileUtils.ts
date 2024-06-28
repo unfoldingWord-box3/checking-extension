@@ -345,7 +345,7 @@ export const filterCompleteCheckingResources = (resourcesObject:any) => {
     return result;
 };
 
-function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null):null|string {
+function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null):null|object {
     // @ts-ignore
     const resourceName = RESOURCE_ID_MAP[resource.id] || ''
     const folderPath = path.join(resourcesPath, languageId, 'translationHelps', resourceName) // , `v${resource.version}_${resource.owner}`)
@@ -367,10 +367,17 @@ function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:
                 }
             }
         }
+
+        const resourceObject = {
+            id: resource?.id,
+            languageId,
+            path: versionPath
+        }
+        
         if (!resource?.bookRes) {
             const filePath = path.join(versionPath, `${resource?.id}.json`)
             if (fs.pathExistsSync(filePath)) {
-                return versionPath
+                return resourceObject
             } else {
                 console.log(`verifyHaveHelpsResource() - Could not find file: ${versionPath}`)
                 return null
@@ -378,7 +385,7 @@ function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:
         } else { // by book
             const files = fs.readdirSync(versionPath).filter((filename:string) => path.extname(filename) === '.json')
             if (files?.length) {
-                return versionPath
+                return resourceObject
             } else {
                 console.log(`verifyHaveHelpsResource() - Could not find files in : ${versionPath}`)
                 return null
@@ -451,15 +458,15 @@ function verifyHaveGlHelpsResources(languageId:string, owner:string, resourcesPa
     let found = true
     const resources = {}
     for (const resource of checkingHelpsResources) {
-        let foundPath = verifyHaveHelpsResource(resource, resourcesPath, languageId, owner, catalog)
+        let resource_ = verifyHaveHelpsResource(resource, resourcesPath, languageId, owner, catalog)
 
-        if (!foundPath) {
+        if (!resource_) {
             found = false
             break
         }
         
         // @ts-ignore
-        resources[resource.id] = foundPath
+        resources[resource.id] = resource_
     }
     if (found) {
         return resources
@@ -544,8 +551,13 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
         if (resource_) {
             processed.push(resource_)
+            const resourceObject = {
+                id: resource_?.resource?.resourceId,
+                languageId: resource_?.resource?.languageId,
+                path: resource_.resourcePath
+            }
             // @ts-ignore
-            foundResources[resource_.resource.resourceId] = resource_.resourcePath
+            foundResources[resource_.resource.resourceId] = resourceObject
         } else {
             // @ts-ignore
             console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {languageId, owner, resourceId: resource.id})
@@ -607,15 +619,16 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
             const foundPath = verifyHaveBibleResource(bibleId, resourcesPath, languageId_, owner_, catalog)
             if (foundPath) {
                 fetched = true
-                // @ts-ignore
-                foundResources[bibleId] = foundPath
-                // @ts-ignore
-                foundResources.bibles.push({
+                const bible = {
                     bibleId: bibleId,
                     languageId: languageId_,
                     owner: owner_,
                     path: foundPath
-                })
+                };
+                // @ts-ignore
+                foundResources.bibles.push(bible)
+                // @ts-ignore
+                foundResources[bibleId] = bible
                 break
             }
         }
@@ -807,9 +820,14 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         }
                     } else {
                         // @ts-ignore
-                        const newPath = removeHomePath(foundResources[resourceId])
-                        // @ts-ignore
-                        foundResources[resourceId] = newPath
+                        const resource = foundResources[resourceId]
+                        let path_ = resource?.path;
+                        if (path_) {
+                            // @ts-ignore
+                            const newPath = removeHomePath(path_)
+                            // @ts-ignore
+                            resource.path = newPath
+                        }
                     }
                 }
                     
@@ -869,7 +887,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               const twlPath = path.join(repoPath, metadata[`${resourceId}_path`], `${resourceId}_${bookId}.${resourceId}_check` )
               // @ts-ignore
               results.twl = readJsonFileIfExists(twlPath)
-              let twPath = replaceHomePath(metadata.otherResources['tw'])
+              const twResource = metadata.otherResources['tw']
+              let twPath = replaceHomePath(twResource?.path)
               twPath = path.join(twPath, 'tw.json')
               // @ts-ignore
               results.tw = readJsonFileIfExists(twPath)
@@ -877,8 +896,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
 
           // @ts-ignore
           results.project = {
-              identifier: bookId,
-              languageId: metadata.targetLanguageId
+              bookId,
+              languageId: metadata.targetLanguageId,
+              resourceId,
           }
           
           const biblesList = metadata.otherResources.bibles
@@ -901,19 +921,28 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               } else {
                   book = getBookOfTheBible(resourcesBasePath, bookId, bible.bibleId, bible.languageId, bible.owner);
               }
-              
-              bibles.push({
+
+              const bibleObject = {
                   book,
                   languageId: bible.languageId,
                   bibleId: bible.bibleId,
-                  owner: bible.owner                  
-              })
+                  owner: bible.owner
+              };
+              bibles.push(bibleObject)
+              // @ts-ignore
+              results[bible.bibleId] = bibleObject
           }
 
           // @ts-ignore
           results.bibles = bibles
           // @ts-ignore
           results.targetBible = getBookOfTheBibleFromFolder(repoPath, bookId)
+          const validResources = haveNeededResources(results)
+          // @ts-ignore
+          results.validResources = validResources 
+          if (!validResources) {
+              console.error(`getResourcesForChecking (${repoPath}) - needed resources missing`)
+          }
           return results
       }
     }
@@ -923,7 +952,73 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
   return null
 }
 
+/**
+ * make sure that we have the necessary resources to show checking tool
+ * @param resources
+ */
+export function haveNeededResources(resources:object) {
+    if (resources) {
+        // @ts-ignore
+        const project = resources.project;
+        const resourceId = project?.resourceId;
+        const bookId = project?.bookId;
+        const isNt = BooksOfTheBible.isNT(bookId)
+        if (!(bookId && project?.languageId && resourceId)) {
+            console.warn(`haveNeededData - missing project data`)
+            return false
+        }
+        // @ts-ignore
+        if (!(resources?.lexicons)) {
+            console.warn(`haveNeededData - missing lexicon data`)
+            return false
+        }
+        // @ts-ignore
+        if (!(resources?.locales)) {
+            console.warn(`haveNeededData - missing locales data`)
+            return false
+        }
+        
+        if (resourceId === 'twl') {
+            // @ts-ignore
+            if (!(resources?.twl)) {
+                console.warn(`haveNeededData - missing gl twl data`);
+                return false;
+            }
+            // @ts-ignore
+            if (!(resources?.tw)) {
+                console.warn(`haveNeededData - missing gl tw data`);
+                return false;
+            }
+        } else {
+            console.warn(`haveNeededData - unsupported resourceId ${resourceId}`);
+            return false;
+        }
 
+        // @ts-ignore
+        let bibles = resources?.bibles;
+        if (!(bibles?.length > 1)) {
+            console.warn(`haveNeededData - missing bibles should at least be two but only have ${bibles?.length}`)
+            return false
+        }
+        // @ts-ignore
+        if (!resources?.targetBible) {
+            console.warn(`haveNeededData - missing targetBible`)
+            return false
+        }
+        // @ts-ignore
+        if (!(resources?.glt || resources?.ult)) {
+            console.warn(`haveNeededData - missing aligned literal translation`)
+            return false
+        }
+        // @ts-ignore
+        const haveOriginalLang = isNt ? resources?.ugnt : resources?.hbo
+        if (!haveOriginalLang) {
+            console.warn(`haveNeededData - missing aligned original language bible`)
+            return false
+        }
+    }
+    return true
+}
 
 /**
  * @description Parses the usfm file using usfm-parse library.

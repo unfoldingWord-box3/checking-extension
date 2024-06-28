@@ -11,8 +11,8 @@ const resourcesList = require('./fixtures/updatedResources.json');
 
 describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () => {
   const workingPath = path.join(ospath.home(), 'translationCore')
-  const resourcesPath = path.join(workingPath, 'cache')
   const projectsPath = path.join(workingPath, 'otherProjects')
+  const resourcesPath = path.join(projectsPath, 'cache')
   // const updatedResourcesPath = path.join(resourcesPath, 'updatedResources.json')
   // const completeResourcesPath = path.join(resourcesPath, 'completeResources.json')
 
@@ -37,19 +37,7 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
     const resources = getResourcesForChecking(repoPath, resourcesPath, projectId, bookId)
     // @ts-ignore
-    expect(resources.lexicons).toBeTruthy()
-    // @ts-ignore
-    expect(resources.locales).toBeTruthy()
-    // @ts-ignore
-    expect(resources.twl).toBeTruthy()
-    // @ts-ignore
-    expect(resources.tw).toBeTruthy()
-    // @ts-ignore
-    expect(resources.project).toBeTruthy()
-    // @ts-ignore
-    expect(resources.bibles.length).toEqual(3)
-    // @ts-ignore
-    expect(resources.targetBible).toBeTruthy()
+    expect(resources.validResources).toBeTruthy()
   })
 
 })
