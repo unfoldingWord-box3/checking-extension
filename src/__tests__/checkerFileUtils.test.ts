@@ -3,7 +3,13 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
-import { getResourcesForChecking, initProject } from "../utilities/checkerFileUtils";
+import {
+  getBookIdFromPath,
+  getProjectIdFromPath,
+  getResourcesForChecking,
+  initProject,
+  loadResourcesFromPath,
+} from "../utilities/checkerFileUtils";
 const resourcesList = require('./fixtures/updatedResources.json');
 
 
@@ -40,4 +46,65 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     expect(resources.validResources).toBeTruthy()
   })
 
+  it('Test getResourcesForChecking twl repo', () => {
+    const projectId = 'twl'
+    const targetLanguageId = 'es-419'
+    const targetBibleId = 'glt'
+    const bookId = '3jn'
+    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
+    const checkingFile = path.join (repoPath, `checking/twl/twl_${bookId}.twl_check`)
+    const resources = loadResourcesFromPath(checkingFile, resourcesPath)
+    // @ts-ignore
+    expect(resources.validResources).toBeTruthy()
+  })
+})
+
+const tests = [
+  
+]
+
+describe('Tests for getBookIdFromPath()', () => {
+  // iterate through tests in table and verify results
+  test.each`
+  testData    | expected
+  ${'./path/tn_heb.tn_check'} | ${'heb'}
+  ${'./path/twl_luk.twl_check'}  | ${'luk'}
+  ${'tn_jud.tn_check'} | ${'jud'}
+  ${'twl_rut.twl_check'}  | ${'rut'}
+  ${'tn_isa'} | ${'isa'}
+  ${'twl_mrk'}  | ${'mrk'}
+  ${'1jn'} | ${'1jn'}
+  ${'2co.check'} | ${'2co'}
+  ${'3jn_tn'}  | ${'3jn'}
+  ${'revt'}  | ${null}
+  ${''} | ${null}
+  ${null} | ${null}
+  ${undefined} | ${null}
+  `('match of "$testData" should return "$expected"', ({ testData, expected }) => {
+      const results = getBookIdFromPath(testData)
+      expect(results).toEqual(expected);
+    });
+})
+
+describe('Tests for getProjectIdFromPath()', () => {
+  // iterate through tests in table and verify results
+  test.each`
+  testData    | expected
+  ${'./path/tn_heb.tn_check'} | ${'tn'}
+  ${'./path/twl_luk.twl_check'}  | ${'twl'}
+  ${'tn_jud.tn_check'} | ${'tn'}
+  ${'twl_rut.twl_check'}  | ${'twl'}
+  ${'tn_isa'} | ${null}
+  ${'twl_mrk'}  | ${null}
+  ${'1jn'} | ${null}
+  ${'2co.check'} | ${null}
+  ${'3jn_tn'}  | ${null}
+  ${'revt'}  | ${null}
+  ${''} | ${null}
+  ${null} | ${null}
+  ${undefined} | ${null}
+  `('match of "$testData" should return "$expected"', ({ testData, expected }) => {
+    const results = getProjectIdFromPath(testData)
+    expect(results).toEqual(expected);
+  });
 })

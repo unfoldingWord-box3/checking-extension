@@ -21,10 +21,13 @@
     "customEditors": [
       {
         "viewType": "checking-extension.translationChecker",
-        "displayName": "Translation Checking Tool - Translation Words",
+        "displayName": "Translation Checking Tool - Translation Words and Notes",
         "selector": [
           {
             "filenamePattern": "*.twl_check"
+          },
+          {
+            "filenamePattern": "*.tn_check"
           }
         ],
         "priority": "default"

@@ -7,6 +7,7 @@ import * as ospath from 'ospath';
 import * as usfmjs from "usfm-js";
 import { readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
+import { ResourcesObject } from "../../types";
 // helpers
 const {
     apiHelpers,
@@ -1077,4 +1078,81 @@ export function getBookOfTheBible(resourcesPath:string, bookId:string, bibleId:s
     const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false)
     const book = getBookOfTheBibleFromFolder(versionPath, bookId)
     return book
+}
+
+/**
+ * extract the bookId from the file path
+ * @param filePath - like tn_<bookId>.tn_check
+ */
+export function getBookIdFromPath(filePath:string):null|string {
+    if (typeof filePath === 'string') {
+        const parsed = path.parse(filePath);
+        if (parsed?.name) {
+            const nameLower = parsed.name.toLowerCase();
+            const parts = nameLower.split("_");
+            if (parts.length == 2) { // expected use case is like tn_1jn.tn_check, so try this first
+                const bookId = parts[1];
+                // @ts-ignore
+                const found = BooksOfTheBible.ALL_BIBLE_BOOKS[bookId]
+                if (found) {
+                    return bookId;
+                }
+            }
+            for (const bookId of parts) { // check each part for a match
+                if (bookId) {
+                    // @ts-ignore
+                    const found = BooksOfTheBible.ALL_BIBLE_BOOKS[bookId]
+                    if (found) {
+                        return bookId;
+                    }
+                }
+            }
+        }
+    }
+    console.warn(`getBookIdFromPath() - illegal path ${filePath}`)
+    return null
+}
+
+/**
+ * extract the projectId from the file path
+ * @param filePath - like tn_1jn.<projectId>_check
+ */
+export function getProjectIdFromPath(filePath:string):null|string {
+    const match = ['tn', 'twl']
+    if (typeof filePath === 'string') {
+        const parsed = path.parse(filePath);
+        if (parsed?.ext) {
+            const extensionLower = parsed.ext.substring(1).toLowerCase();
+            const parts = extensionLower.split("_");
+            for (const projectId of parts) { // check each part for a match
+                if (projectId) {
+                    // @ts-ignore
+                    const found = match.includes(projectId)
+                    if (found) {
+                        return projectId;
+                    }
+                }
+            }
+        }
+    }
+    console.warn(`getBookIdFromPath() - illegal path ${filePath}`)
+    return null
+}
+
+/**
+ * fetches all the resources for doing checking.
+ * @param filePath path to the file.
+ * @param resourcesBasePath - base path for resources
+ * @returns A resource collection object.
+ */
+export function loadResourcesFromPath(filePath: string, resourcesBasePath:string):ResourcesObject | null {
+    // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
+    const bookId = getBookIdFromPath(filePath)
+    const projectId = getProjectIdFromPath(filePath)
+    if (bookId && projectId) {
+        const repoPath = path.join(path.dirname(filePath), '../..')
+        const resources = getResourcesForChecking(repoPath, resourcesBasePath, projectId, bookId)
+        return resources
+    }
+    return null
 }

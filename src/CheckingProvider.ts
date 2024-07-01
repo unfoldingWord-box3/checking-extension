@@ -12,40 +12,39 @@ import {
     ViewColumn,
 } from "vscode";
 
-import { tsvStringToScriptureTSV } from "./utilities/tsvFileConversions";
 import { TranslationNotesPanel } from "./panels/TranslationNotesPanel";
-import { extractBookChapterVerse } from "./utilities/extractBookChapterVerse";
-import { TranslationNotePostMessages } from "../types";
+import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import { ScriptureTSV } from "../types/TsvTypes";
 import { initProject } from "./utilities/checkerFileUtils";
 import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
+import { loadResources } from "./utilities/checkingServerUtils";
 
 
 type CommandToFunctionMap = Record<string, (text: string) => void>;
 
-const getTnUri = (bookID: string): Uri => {
-    const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
-    return Uri.joinPath(
-      workspaceRootUri,
-      `tn_${bookID}.check`,
-    );
-};
-
-const getTwlUri = (bookID: string): Uri => {
-    const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
-    return Uri.joinPath(
-      workspaceRootUri,
-      `twl_${bookID}.check`,
-    );
-};
+// const getTnUri = (bookID: string): Uri => {
+//     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
+//     return Uri.joinPath(
+//       workspaceRootUri,
+//       `tn_${bookID}.check`,
+//     );
+// };
+//
+// const getTwlUri = (bookID: string): Uri => {
+//     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
+//     return Uri.joinPath(
+//       workspaceRootUri,
+//       `twl_${bookID}.check`,
+//     );
+// };
 
 /**
  * Provider for tsv editors.
  *
- * TSV Editors are used for .tsv files. This editor is specifically geared
- * towards tsv files that contain translation notes.
+ * Checking Editors are used for .tn_check and .twl_check files. This editor is specifically geared
+ * making selections in the target language and saving them in the check file.
  *
  */
 export class CheckingProvider implements CustomTextEditorProvider {
@@ -60,7 +59,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
 
         const commandRegistration = commands.registerCommand(
-            "checking-extension.initCheckerTN",
+            "checking-extension.initTranslationChecker",
             async (verseRef: string) => {
                 const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
                 const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
@@ -75,7 +74,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
                 const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
                 if (!success) {
-                    console.error(`checking-extension.initCheckerTN - failed to init folder ${repoPath}`)
+                    console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
                 }
             },
         );
@@ -105,7 +104,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             webviewPanel.webview.postMessage({
                 command: "update",
                 data: this.getDocumentAsScriptureTSV(document),
-            } as TranslationNotePostMessages);
+            } as TranslationCheckingPostMessages);
         };
 
         const messageEventHandlers = (message: any) => {
@@ -152,19 +151,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
      *
      * @TODO Use this function to turn doc text into ScriptureTSV!
      */
-    private getDocumentAsScriptureTSV(document: TextDocument): ScriptureTSV {
+    private getDocumentAsScriptureTSV(document: TextDocument):null|ResourcesObject {
         const text = document.getText();
         if (text.trim().length === 0) {
             return {};
         }
 
         try {
-            return tsvStringToScriptureTSV(text);
+            return loadResources(text);
         } catch {
             throw new Error(
                 "Could not get document as json. Content is not valid scripture TSV",
             );
         }
+        return null
     }
 
     /**
