@@ -21,6 +21,7 @@ export function loadResources(filePath: string):null|ResourcesObject {
         const resources = loadResourcesFromPath(filePath, resourcesPath)
         return resources
     }
-    console.warn(`loadResources() - invalid checking filePath: ${filePath}`);
-    return null
+    throw new Error(
+      `loadResources() - invalid checking filePath "${filePath}", cannot find project folder`,
+    );
 }

@@ -103,7 +103,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const updateWebview = () => {
             webviewPanel.webview.postMessage({
                 command: "update",
-                data: this.getDocumentAsScriptureTSV(document),
+                data: this.getCheckingResources(document),
             } as TranslationCheckingPostMessages);
         };
 
@@ -151,14 +151,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
      *
      * @TODO Use this function to turn doc text into ScriptureTSV!
      */
-    private getDocumentAsScriptureTSV(document: TextDocument):null|ResourcesObject {
-        const text = document.getText();
-        if (text.trim().length === 0) {
+    private getCheckingResources(document: TextDocument):null|ResourcesObject {
+        const filePath = document.fileName;
+        if (!filePath) {
             return {};
         }
 
         try {
-            return loadResources(text);
+            return loadResources(filePath);
         } catch {
             throw new Error(
                 "Could not get document as json. Content is not valid scripture TSV",
