@@ -7,6 +7,12 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import { vscode } from "../utilities/vscode";
 import "./TranslationNotes.css";
+import {
+    TranslationUtils,
+    twArticleHelpers,
+}
+// @ts-ignore
+from 'checking-tool-rcl'
 
 import TranslationNoteScroller from "./TranslationNoteScroller";
 import type { TnTSV } from "../../../types/TsvTypes"
@@ -48,11 +54,11 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     const origBibleId:string = CheckingObj.origBibleId
     const origBible:object = CheckingObj[origBibleId]
     const alignedGlBible = CheckingObj.glt || CheckingObj.ult
-    const checkingData = glTwl; // twArticleHelpers.extractGroupData(glTwl)
+    const checkingData = glTwl && twArticleHelpers.extractGroupData(glTwl)
     const targetBible = CheckingObj.targetBible
 
     const translate = (key:string) => {
-        const translation = key //TranslationUtils.lookupTranslationForKey(translations, key)
+        const translation = TranslationUtils.lookupTranslationForKey(translations, key)
         return translation
     };
 
@@ -78,10 +84,12 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
 
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
-        1;
-
+        console.log(`handleMessage`, data)
+        
         const commandToFunctionMapping: CommandToFunctionMap = {
-            ["update"]: (data: TnTSV) => setCheckingObj(data),
+            ["update"]: (data: TnTSV) => {
+                setCheckingObj(data);
+            },
             // ["changeRef"]: (data: VerseRefGlobalState) =>
             //     changeChapterVerse(data),
         };
@@ -130,8 +138,8 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
         "No translation notes available for this verse."
     );
     
-    const haveResources = CheckingObj.validResources && CheckingObj.checking && origBible
-    console.log(`commandToFunctionMapping - redraw`, CheckingObj, haveResources)
+    const haveResources = CheckingObj.validResources && CheckingObj.checks && origBible
+    console.log(`TranslationNotesView - redraw`, CheckingObj, haveResources)
 
     return (
         <main>

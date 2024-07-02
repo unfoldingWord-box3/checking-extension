@@ -93,13 +93,13 @@ export class TranslationNotesPanel {
 
         const nonce = getNonce();
 
-        // Tip: Install the es6-string-html VS Code extension to enable code highlighting below
-        return /*html*/ `
+    // Tip: Install the es6-string-html VS Code extension to enable code highlighting below
+    return /*html*/ `
       <!DOCTYPE html>
       <html lang="en">
         <head>
           <meta charset="UTF-8" />
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src 'unsafe-inline' ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'unsafe-inline' 'unsafe-eval' ${webview.cspSource};">
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <link rel="stylesheet" type="text/css" href="${stylesUri}">
           <title>Translation Notes</title>
