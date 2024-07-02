@@ -9,9 +9,8 @@ import { vscode } from "../utilities/vscode";
 import "./TranslationNotes.css";
 
 import TranslationNoteScroller from "./TranslationNoteScroller";
-import { extractBookChapterVerse } from "../../../src/utilities/extractBookChapterVerse"
 import type { TnTSV } from "../../../types/TsvTypes"
-import type { VerseRefGlobalState } from "../../../types"
+import { ResourcesObject } from "../../../types/index";
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -20,10 +19,16 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
+console.log("TranslationNotesView.tsx")
+
+const loadLexiconEntry = (key:string) => {
+    console.log(`loadLexiconEntry(${key})`)
+};
+
 function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     const [noteIndex, setNoteIndex] = useState<number>(0);
-    const [translationNotesObj, setTranslationNotesObj] = useState<TnTSV>({});
-
+    const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
+    
     // TODO: Implement this if in Codex!
     // const changeChapterVerse = (ref: VerseRefGlobalState): void => {
     //     const { verseRef } = ref;
@@ -35,12 +40,48 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     //     setNoteIndex(0);
     // };
 
+    const LexiconData:object = CheckingObj.lexicons;
+    const translations:object = CheckingObj.locales
+    const glTwl:object = CheckingObj.twl
+    const glTwData:object = CheckingObj.tw
+    // @ts-ignore
+    const origBibleId:string = CheckingObj.origBibleId
+    const origBible:object = CheckingObj[origBibleId]
+    const alignedGlBible = CheckingObj.glt || CheckingObj.ult
+    const checkingData = glTwl; // twArticleHelpers.extractGroupData(glTwl)
+    const targetBible = CheckingObj.targetBible
+
+    const translate = (key:string) => {
+        const translation = key //TranslationUtils.lookupTranslationForKey(translations, key)
+        return translation
+    };
+
+    const getLexiconData_ = (lexiconId:string, entryId:string) => {
+        console.log(`loadLexiconEntry(${lexiconId}, ${entryId})`)
+        // @ts-ignore
+        const entryData = (LexiconData && LexiconData[lexiconId]) ? LexiconData[lexiconId][entryId] : null;
+        return { [lexiconId]: { [entryId]: entryData } };
+    };
+
+
+    const bookId = CheckingObj.bookId
+    const resourceId = CheckingObj.resourceId
+
+    const contextId = {}
+    const languageId = CheckingObj.languageId;
+    const project = {
+        identifier: bookId,
+        languageId
+    }
+
+    const bibles = CheckingObj?.bibles
+
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
         1;
 
         const commandToFunctionMapping: CommandToFunctionMap = {
-            ["update"]: (data: TnTSV) => setTranslationNotesObj(data),
+            ["update"]: (data: TnTSV) => setCheckingObj(data),
             // ["changeRef"]: (data: VerseRefGlobalState) =>
             //     changeChapterVerse(data),
         };
@@ -66,7 +107,8 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
 
     const incrementNoteIndex = () =>
         setNoteIndex((prevIndex) =>
-            prevIndex < translationNotesObj[chapter][verse].length - 1
+          // @ts-ignore
+          prevIndex < CheckingObj[chapter][verse].length - 1
                 ? prevIndex + 1
                 : prevIndex,
         );
@@ -75,9 +117,11 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
             prevIndex > 0 ? prevIndex - 1 : prevIndex,
         );
 
-    const content = translationNotesObj?.[chapter]?.[verse] ? (
+    // @ts-ignore
+    const notes = CheckingObj?.[chapter]?.[verse];
+    const content = notes ? (
         <TranslationNoteScroller
-            notes={translationNotesObj[chapter][verse] || {}}
+            notes={notes || {}}
             currentIndex={noteIndex}
             incrementIndex={incrementNoteIndex}
             decrementIndex={decrementNoteIndex}
@@ -85,6 +129,9 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     ) : (
         "No translation notes available for this verse."
     );
+    
+    const haveResources = CheckingObj.validResources && CheckingObj.checking && origBible
+    console.log(`commandToFunctionMapping - redraw`, CheckingObj, haveResources)
 
     return (
         <main>

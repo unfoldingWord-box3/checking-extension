@@ -46,13 +46,13 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     expect(resources.validResources).toBeTruthy()
   })
 
-  it('Test getResourcesForChecking twl repo', () => {
+  it('Test loadResourcesFromPath 3jn.twl_check', () => {
     const projectId = 'twl'
     const targetLanguageId = 'es-419'
     const targetBibleId = 'glt'
     const bookId = '3jn'
     const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
-    const checkingFile = path.join (repoPath, `checking/twl/twl_${bookId}.twl_check`)
+    const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
     const resources = loadResourcesFromPath(checkingFile, resourcesPath)
     // @ts-ignore
     expect(resources.validResources).toBeTruthy()

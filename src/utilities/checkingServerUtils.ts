@@ -1,10 +1,9 @@
 // @ts-ignore
-import * as fs from 'fs-extra';
 import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
 import { ResourcesObject } from "../../types";
-import { getBookIdFromPath, getResourcesForChecking, loadResourcesFromPath } from "./checkerFileUtils";
+import { loadResourcesFromPath } from "./checkerFileUtils";
 
 const workingPath = path.join(ospath.home(), 'translationCore')
 const projectsPath = path.join(workingPath, 'otherProjects')

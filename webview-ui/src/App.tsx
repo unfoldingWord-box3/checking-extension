@@ -3,7 +3,7 @@ import ChapterVerseSelector from './components/ChapterVerseSelector'
 import TranslationNotesView from './components/TranslationNotesView'
 
 
-
+console.log("App.tsx")
 
 const App = () => {
   const [chapter, setChapter] = useState<number>(1);

@@ -1,3 +1,4 @@
+const locales_ =
 {
   "menu": {
     "no_results": "No results",
@@ -250,3 +251,5 @@
   "morph_missing": "Morphology not found",
   "unsaved_changes": "You have unsaved changes."
 }
+
+export const locales = locales_

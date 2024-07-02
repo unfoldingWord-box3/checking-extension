@@ -151,20 +151,29 @@ export class CheckingProvider implements CustomTextEditorProvider {
      *
      * @TODO Use this function to turn doc text into ScriptureTSV!
      */
-    private getCheckingResources(document: TextDocument):null|ResourcesObject {
+    private getCheckingResources(document: TextDocument):ResourcesObject {
+        let checks = document.getText();
+        if (checks.trim().length === 0) {
+            return {};
+        }
+
         const filePath = document.fileName;
         if (!filePath) {
             return {};
         }
 
         try {
-            return loadResources(filePath);
+            const resources = loadResources(filePath) || {};
+            checks = JSON.parse(checks)
+            // @ts-ignore
+            resources.checks = checks
+            return resources;
         } catch {
             throw new Error(
-                "Could not get document as json. Content is not valid scripture TSV",
+                "Could not get document as json. Content is not valid check file in json format",
             );
         }
-        return null
+        return { }
     }
 
     /**

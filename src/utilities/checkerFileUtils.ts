@@ -20,8 +20,8 @@ const {
 // @ts-ignore
   = require('tc-source-content-updater');
 
-const lexicons = require('../data/lexicons.json')
-const locales = require('../data/locales/English-en_US.json')
+const { lexicons } = require('../data/lexicons')
+const { locales } = require('../data/locales/English-en_US')
 
 const checkingName = 'translation.checker'
 
@@ -782,7 +782,8 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 const files = getFilesOfType(checkingPath, '.json')
                 if (files?.length) {
                     for (const filename of files) {
-                        let newName = filename.replace('.json', `.${sourceResourceId}_check`)
+                        const bookId = getBookIdFromPath(filename)
+                        const newName = `${bookId}.${sourceResourceId}_check`
                         if (newName !== filename) {
                             fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName))
                         }
@@ -885,7 +886,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.locales = locales
           if (resourceId === 'twl') {
-              const twlPath = path.join(repoPath, metadata[`${resourceId}_path`], `${resourceId}_${bookId}.${resourceId}_check` )
+              const twlPath = path.join(repoPath, metadata[`${resourceId}_path`], `${bookId}.${resourceId}_check` )
               // @ts-ignore
               results.twl = readJsonFileIfExists(twlPath)
               const twResource = metadata.otherResources['tw']
@@ -938,6 +939,10 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.bibles = bibles
           // @ts-ignore
           results.targetBible = getBookOfTheBibleFromFolder(repoPath, bookId)
+          // @ts-ignore
+          results.isNt = BooksOfTheBible.isNT(bookId)
+          // @ts-ignore
+          results.origBibleId = results.isNt ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const validResources = haveNeededResources(results)
           // @ts-ignore
           results.validResources = validResources 
@@ -963,7 +968,6 @@ export function haveNeededResources(resources:object) {
         const project = resources.project;
         const resourceId = project?.resourceId;
         const bookId = project?.bookId;
-        const isNt = BooksOfTheBible.isNT(bookId)
         if (!(bookId && project?.languageId && resourceId)) {
             console.warn(`haveNeededData - missing project data`)
             return false
@@ -1012,8 +1016,8 @@ export function haveNeededResources(resources:object) {
             return false
         }
         // @ts-ignore
-        const haveOriginalLang = isNt ? resources?.ugnt : resources?.hbo
-        if (!haveOriginalLang) {
+        const haveOriginalLangBible = resources?.[resources.origBibleId]
+        if (!haveOriginalLangBible) {
             console.warn(`haveNeededData - missing aligned original language bible`)
             return false
         }
@@ -1090,14 +1094,6 @@ export function getBookIdFromPath(filePath:string):null|string {
         if (parsed?.name) {
             const nameLower = parsed.name.toLowerCase();
             const parts = nameLower.split("_");
-            if (parts.length == 2) { // expected use case is like tn_1jn.tn_check, so try this first
-                const bookId = parts[1];
-                // @ts-ignore
-                const found = BooksOfTheBible.ALL_BIBLE_BOOKS[bookId]
-                if (found) {
-                    return bookId;
-                }
-            }
             for (const bookId of parts) { // check each part for a match
                 if (bookId) {
                     // @ts-ignore
