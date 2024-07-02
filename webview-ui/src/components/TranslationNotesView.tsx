@@ -9,6 +9,7 @@ import { vscode } from "../utilities/vscode";
 import "./TranslationNotes.css";
 import {
     TranslationUtils,
+    Checker,
     twArticleHelpers,
 }
 // @ts-ignore
@@ -54,7 +55,10 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     const origBibleId:string = CheckingObj.origBibleId
     const origBible:object = CheckingObj[origBibleId]
     const alignedGlBible = CheckingObj.glt || CheckingObj.ult
-    const checkingData = glTwl && twArticleHelpers.extractGroupData(glTwl)
+    const checks:object = CheckingObj.checks
+    // @ts-ignore
+    const haveCheckingData = checks && Object.keys(checks).length
+    const checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
     const targetBible = CheckingObj.targetBible
 
     const translate = (key:string) => {
@@ -124,22 +128,26 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
         setNoteIndex((prevIndex) =>
             prevIndex > 0 ? prevIndex - 1 : prevIndex,
         );
-
-    // @ts-ignore
-    const notes = CheckingObj?.[chapter]?.[verse];
-    const content = notes ? (
-        <TranslationNoteScroller
-            notes={notes || {}}
-            currentIndex={noteIndex}
-            incrementIndex={incrementNoteIndex}
-            decrementIndex={decrementNoteIndex}
-        />
-    ) : (
-        "No translation notes available for this verse."
-    );
     
-    const haveResources = CheckingObj.validResources && CheckingObj.checks && origBible
+    const haveResources = CheckingObj.validResources && checkingData && origBible
     console.log(`TranslationNotesView - redraw`, CheckingObj, haveResources)
+
+    const content = haveResources ? (
+      <Checker
+        styles={{ maxHeight: '500px', overflowY: 'auto' }}
+        translate={translate}
+        contextId={contextId}
+        checkingData={checkingData}
+        glWordsData={glTwData}
+        alignedGlBible={alignedGlBible}
+        checkType={resourceId}
+        bibles={bibles}
+        getLexiconData={getLexiconData_}
+        targetBible={targetBible}
+      />
+    ) : (
+      "Checking resources missing."
+    );
 
     return (
         <main>
