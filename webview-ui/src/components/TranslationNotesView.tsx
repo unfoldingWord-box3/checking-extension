@@ -169,18 +169,9 @@ function TranslationNotesView() {
     );
 
     return (
-        <main>
-            <section className="translation-note-view">
-                <VSCodePanels activeid="tab-verse" aria-label="note-type-tab">
-                    {/* <VSCodePanelTab id="tab-book">BOOK NOTES</VSCodePanelTab> */}
-                    {/* <VSCodePanelTab id="tab-chapter">CHAPTER NOTES</VSCodePanelTab> */}
-                    <VSCodePanelTab id="tab-verse">VERSE NOTES</VSCodePanelTab>
-                    {/* <VSCodePanelView id="view-book">Problems content.</VSCodePanelView> */}
-                    {/* <VSCodePanelView id="view-chapter">Output content.</VSCodePanelView> */}
-                    <VSCodePanelView id="view-verse">{content}</VSCodePanelView>
-                </VSCodePanels>
-            </section>
-        </main>
+        <div>
+            {content}
+        </div>
     );
 }
 
