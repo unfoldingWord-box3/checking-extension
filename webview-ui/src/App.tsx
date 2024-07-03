@@ -19,13 +19,7 @@ const App = () => {
 
   return (
     <div>
-      <ChapterVerseSelector 
-        chapter={chapter} 
-        verse={verse} 
-        onChapterChange={handleChapterChange} 
-        onVerseChange={handleVerseChange} 
-      />
-      <TranslationNotesView chapter={chapter} verse={verse} />
+      <TranslationNotesView />
     </div>
   )
 }

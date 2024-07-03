@@ -33,7 +33,7 @@ const loadLexiconEntry = (key:string) => {
     console.log(`loadLexiconEntry(${key})`)
 };
 
-function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
+function TranslationNotesView() {
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
     
