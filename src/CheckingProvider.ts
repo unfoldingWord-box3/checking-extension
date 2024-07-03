@@ -12,7 +12,7 @@ import {
     ViewColumn,
 } from "vscode";
 
-import { TranslationNotesPanel } from "./panels/TranslationNotesPanel";
+import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import { ScriptureTSV } from "../types/TsvTypes";
 import { initProject } from "./utilities/checkerFileUtils";
@@ -117,7 +117,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             commandToFunctionMapping[command](text);
         };
 
-        new TranslationNotesPanel(
+        new TranslationCheckingPanel(
             webviewPanel,
             this.context.extensionUri,
             messageEventHandlers,

@@ -12,8 +12,8 @@ import { getNonce } from "../utilities/getNonce";
  * - Setting the HTML (and by proxy CSS/JavaScript) content of the webview panel
  * - Setting message listeners so data can be passed between the webview and extension
  */
-export class TranslationNotesPanel {
-    public static currentPanel: TranslationNotesPanel | undefined;
+export class TranslationCheckingPanel {
+    public static currentPanel: TranslationCheckingPanel | undefined;
     private readonly _panel: WebviewPanel;
     private readonly _extensionUri: Uri;
     private _disposables: Disposable[] = [];
@@ -56,7 +56,7 @@ export class TranslationNotesPanel {
      * Cleans up and disposes of webview resources when the webview panel is closed.
      */
     public dispose() {
-        TranslationNotesPanel.currentPanel = undefined;
+        TranslationCheckingPanel.currentPanel = undefined;
 
         // Dispose of the current webview panel
         this._panel.dispose();

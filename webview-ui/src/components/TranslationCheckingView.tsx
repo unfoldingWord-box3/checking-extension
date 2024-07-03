@@ -1,12 +1,7 @@
 // import { vscode } from "./utilities/vscode";
 import React, { useState, useEffect } from "react";
-import {
-    VSCodePanels,
-    VSCodePanelTab,
-    VSCodePanelView,
-} from "@vscode/webview-ui-toolkit/react";
 import { vscode } from "../utilities/vscode";
-import "./TranslationNotes.css";
+import "../css/styles.css";
 import {
     TranslationUtils,
     Checker,
@@ -15,7 +10,6 @@ import {
 // @ts-ignore
 from 'checking-tool-rcl'
 
-import TranslationNoteScroller from "./TranslationNoteScroller";
 import type { TnTSV } from "../../../types/TsvTypes"
 import { ResourcesObject } from "../../../types/index";
 import { ALL_BIBLE_BOOKS } from "../../../src/utilities/BooksOfTheBible";
@@ -27,13 +21,13 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
-console.log("TranslationNotesView.tsx")
+console.log("TranslationCheckingView.tsx")
 
 const loadLexiconEntry = (key:string) => {
     console.log(`loadLexiconEntry(${key})`)
 };
 
-function TranslationNotesView() {
+function TranslationCheckingView() {
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
     
@@ -169,10 +163,10 @@ function TranslationNotesView() {
     );
 
     return (
-        <div>
-            {content}
-        </div>
+      <>
+          {content}
+      </>
     );
 }
 
-export default TranslationNotesView;
+export default TranslationCheckingView;
