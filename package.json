@@ -72,6 +72,7 @@
     "fs-extra": "^11.2.0",
     "ospath": "^1.2.2",
     "tc-source-content-updater": "^1.4.24",
-    "usfm-js": "^3.4.2"
+    "usfm-js": "^3.4.2",
+    "yamljs": "^0.3.0"
   }
 }

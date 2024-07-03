@@ -5,6 +5,8 @@ import * as path from 'path';
 import * as ospath from 'ospath';
 // @ts-ignore
 import * as usfmjs from "usfm-js";
+// @ts-ignore
+import * as YAML from 'yamljs';
 import { readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
@@ -1005,9 +1007,42 @@ export function haveNeededResources(resources:object) {
             console.warn(`haveNeededData - missing bibles should at least be two but only have ${bibles?.length}`)
             return false
         }
+        
+        for (const bible of bibles) {
+            if (!bible?.bibleId) {
+                console.warn(`haveNeededData - missing bibleId for bible`, bible)
+                return false
+            }
+
+            if (!bible?.languageId) {
+                console.warn(`haveNeededData - missing languageId for bible`, bible)
+                return false
+            }
+
+            if (!bible?.owner) {
+                console.warn(`haveNeededData - missing owner for bible`, bible)
+                return false
+            }
+
+            if (!bible?.book) {
+                console.warn(`haveNeededData - missing bible data for bible`, bible)
+                return false
+            } else if (!bible?.book?.manifest) {
+                console.warn(`haveNeededData - missing bible manifest`, bible)
+                return false
+            }
+
+        }
+
         // @ts-ignore
         if (!resources?.targetBible) {
             console.warn(`haveNeededData - missing targetBible`)
+            return false
+        } else
+        // @ts-ignore
+        if (!resources?.targetBible?.manifest) {
+            // @ts-ignore
+            console.warn(`haveNeededData - missing targetBible manifest`, resources?.targetBible)
             return false
         }
         // @ts-ignore
@@ -1040,6 +1075,49 @@ export function getParsedUSFM(usfmData:string) {
 }
 
 /**
+ * @description - Turns a manifest.json file into an object and returns it, null if doesn't exist
+ * @param {string} resourcePath - folder for manifest.json
+ * @return {Object} manifest
+ */
+export function getResourceManifest(resourcePath:string):object|null {
+    let manifest = null;
+    let fileName = 'manifest.json';
+    let manifestPath = path.join(resourcePath, fileName);
+    if (fs.existsSync(manifestPath)) {
+        try {
+            manifest = fs.readJsonSync(manifestPath);
+        } catch (e) {
+            console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+        }
+    } else {
+        fileName = 'manifest.yaml';
+        manifestPath = path.join(resourcePath, fileName);
+        if (fs.existsSync(manifestPath)) {
+            try {
+                const manifestYaml = fs.readFileSync(manifestPath, 'utf8');
+                if (manifestYaml) {
+                    manifest = YAML.parse(manifestYaml)
+                    // copy some data for more convenient access
+                    manifest.language_id = manifest.dublin_core.language.identifier;
+                    manifest.language_name = manifest.dublin_core.language.title;
+                    manifest.direction = manifest.dublin_core.language.direction;
+                    manifest.subject = manifest.dublin_core.subject;
+                    manifest.resource_id = manifest.dublin_core.identifier;
+                    manifest.resource_title = manifest.dublin_core.title;
+                    const oldMainfestIdentifier = manifest.dublin_core.identifier.toLowerCase();
+                    const identifiers = ['ugnt', 'ubh'];
+                    manifest.description = identifiers.includes(oldMainfestIdentifier) ?
+                      'Original Language' : 'Gateway Language';
+                }
+            } catch (e) {
+                console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+            }
+        }
+    }
+    return manifest;
+}
+
+/**
  * read bible book from file system at biblePath
  * @param biblePath
  * @param bookId
@@ -1047,9 +1125,12 @@ export function getParsedUSFM(usfmData:string) {
 export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
     try {
         if (fs.existsSync(biblePath)) {
+            const manifest = getResourceManifest(biblePath)
             let bookPath = path.join(biblePath, bookId);
             if (fs.existsSync(bookPath)) {
                 const bookData = readHelpsFolder(bookPath)
+                // @ts-ignore
+                bookData.manifest = manifest
                 return bookData
             } else {
                 const books = getBibleFiles(biblePath)
@@ -1058,7 +1139,9 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
                     if (matchLowerCase.includes(bookId)) {
                         const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
                         const json = getParsedUSFM(usfm)
-                        return json.chapters
+                        const bookData = json.chapters;
+                        bookData.manifest = manifest
+                        return bookData
                     }
                 }
             }

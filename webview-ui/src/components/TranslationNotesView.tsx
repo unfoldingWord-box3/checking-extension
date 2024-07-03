@@ -18,6 +18,7 @@ from 'checking-tool-rcl'
 import TranslationNoteScroller from "./TranslationNoteScroller";
 import type { TnTSV } from "../../../types/TsvTypes"
 import { ResourcesObject } from "../../../types/index";
+import { ALL_BIBLE_BOOKS } from "../../../src/utilities/BooksOfTheBible";
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -53,8 +54,11 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     const glTwData:object = CheckingObj.tw
     // @ts-ignore
     const origBibleId:string = CheckingObj.origBibleId
-    const origBible:object = CheckingObj[origBibleId]
-    const alignedGlBible = CheckingObj.glt || CheckingObj.ult
+    // @ts-ignore
+    const origBible:object = CheckingObj[origBibleId]?.book
+    const alignedGlBible_ = CheckingObj.glt || CheckingObj.ult;
+    // @ts-ignore
+    const alignedGlBible = alignedGlBible_?.book
     const checks:object = CheckingObj.checks
     // @ts-ignore
     const haveCheckingData = checks && Object.keys(checks).length
@@ -74,17 +78,31 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
     };
 
 
-    const bookId = CheckingObj.bookId
-    const resourceId = CheckingObj.resourceId
-
     const contextId = {}
-    const languageId = CheckingObj.languageId;
-    const project = {
-        identifier: bookId,
-        languageId
-    }
+    const project = CheckingObj.project;
+    // @ts-ignore
+    const bookId = project?.bookId
+    // @ts-ignore
+    const resourceId = project?.resourceId
+    // @ts-ignore
+    const languageId = project?.languageId || 'en'
+    // @ts-ignore
+    const targetLanguageName = CheckingObj.targetBible?.manifest?.language_name
+    // @ts-ignore
+    const targetLanguageDirection = CheckingObj.targetBible?.manifest?.direction
+    // @ts-ignore
+    const bookName = ALL_BIBLE_BOOKS[bookId]
 
     const bibles = CheckingObj?.bibles
+    const targetLanguageDetails = {
+        id: languageId,
+        name: targetLanguageName || languageId,
+        direction: targetLanguageDirection || 'ltr',
+        book: {
+            id: bookId,
+            name: bookName
+        }
+    }
 
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
@@ -129,21 +147,22 @@ function TranslationNotesView({ chapter, verse }: TranslationNotesViewProps) {
             prevIndex > 0 ? prevIndex - 1 : prevIndex,
         );
     
-    const haveResources = CheckingObj.validResources && checkingData && origBible
+    const haveResources = CheckingObj.validResources && checkingData
     console.log(`TranslationNotesView - redraw`, CheckingObj, haveResources)
 
     const content = haveResources ? (
       <Checker
         styles={{ maxHeight: '500px', overflowY: 'auto' }}
-        translate={translate}
-        contextId={contextId}
-        checkingData={checkingData}
-        glWordsData={glTwData}
         alignedGlBible={alignedGlBible}
-        checkType={resourceId}
         bibles={bibles}
+        checkingData={checkingData}
+        checkType={resourceId}
+        contextId={contextId}
         getLexiconData={getLexiconData_}
+        glWordsData={glTwData}
         targetBible={targetBible}
+        targetLanguageDetails={targetLanguageDetails}
+        translate={translate}
       />
     ) : (
       "Checking resources missing."
