@@ -44,8 +44,6 @@ function TranslationCheckingView() {
 
     const LexiconData:object = CheckingObj.lexicons;
     const translations:object = CheckingObj.locales
-    const glTwl:object = CheckingObj.twl
-    const glTwData:object = CheckingObj.tw
     // @ts-ignore
     const origBibleId:string = CheckingObj.origBibleId
     // @ts-ignore
@@ -56,7 +54,6 @@ function TranslationCheckingView() {
     const checks:object = CheckingObj.checks
     // @ts-ignore
     const haveCheckingData = checks && Object.keys(checks).length
-    const checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
     const targetBible = CheckingObj.targetBible
 
     const translate = (key:string) => {
@@ -86,6 +83,19 @@ function TranslationCheckingView() {
     const targetLanguageDirection = CheckingObj.targetBible?.manifest?.direction
     // @ts-ignore
     const bookName = ALL_BIBLE_BOOKS[bookId]
+
+    let glWordsData, checkingData, checkType;
+    if (resourceId === 'twl') {
+        const glTwData: object = CheckingObj.tw;
+        glWordsData = glTwData
+        checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
+        checkType = Checker.translationWords
+    } else if (resourceId === 'tn') {
+        const glTaData: object = CheckingObj.ta;
+        glWordsData = glTaData
+        checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
+        checkType = Checker.translationNotes
+    }
 
     const bibles = CheckingObj?.bibles
     const targetLanguageDetails = {
@@ -150,10 +160,10 @@ function TranslationCheckingView() {
         alignedGlBible={alignedGlBible}
         bibles={bibles}
         checkingData={checkingData}
-        checkType={resourceId}
+        checkType={checkType}
         contextId={contextId}
         getLexiconData={getLexiconData_}
-        glWordsData={glTwData}
+        glWordsData={glWordsData}
         targetBible={targetBible}
         targetLanguageDetails={targetLanguageDetails}
         translate={translate}

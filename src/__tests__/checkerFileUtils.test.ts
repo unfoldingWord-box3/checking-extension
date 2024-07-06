@@ -34,7 +34,21 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
-  
+
+  it('Test initProject tn', async () => {
+    const gl_owner = 'unfoldingWord'
+    const gl_languageId = 'en'
+    const languageId = 'en'
+    const projectId = 'tn'
+    const targetLanguageId = 'es-419'
+    const targetOwner = 'es-419_gl'
+    const targetBibleId = 'glt'
+    const repoName = `${targetLanguageId}_${targetBibleId}_tn`;
+    const repoPath = path.join(projectsPath, repoName)
+    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    expect(success).toBeTruthy()
+  })
+
   it('Test getResourcesForChecking twl', async () => {
     const projectId = 'twl'
     const targetLanguageId = 'es-419'
@@ -51,12 +65,27 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetBibleId = 'glt'
     const bookId = '3jn'
-    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
+    const repoName = `${targetLanguageId}_${targetBibleId}`;
+    const repoPath = path.join(projectsPath, repoName)
     const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
     const resources = loadResourcesFromPath(checkingFile, resourcesPath)
     // @ts-ignore
     expect(resources.validResources).toBeTruthy()
   })
+
+  it('Test loadResourcesFromPath 3jn.tn_check', () => {
+    const projectId = 'tn'
+    const targetLanguageId = 'es-419'
+    const targetBibleId = 'glt'
+    const bookId = '3jn'
+    const repoName = `${targetLanguageId}_${targetBibleId}_tn`;
+    const repoPath = path.join(projectsPath, repoName)
+    const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
+    const resources = loadResourcesFromPath(checkingFile, resourcesPath)
+    // @ts-ignore
+    expect(resources.validResources).toBeTruthy()
+  })
+
 })
 
 const tests = [

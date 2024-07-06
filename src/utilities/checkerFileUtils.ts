@@ -896,6 +896,16 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               twPath = path.join(twPath, 'tw.json')
               // @ts-ignore
               results.tw = readJsonFileIfExists(twPath)
+          } else
+          if (resourceId === 'tn') {
+              const tnPath = path.join(repoPath, metadata[`${resourceId}_path`], `${bookId}.${resourceId}_check` )
+              // @ts-ignore
+              results.tn = readJsonFileIfExists(tnPath)
+              const taResource = metadata.otherResources['ta']
+              let taPath = replaceHomePath(taResource?.path)
+              taPath = path.join(taPath, 'ta.json')
+              // @ts-ignore
+              results.ta = readJsonFileIfExists(taPath)
           }
 
           // @ts-ignore
@@ -994,6 +1004,17 @@ export function haveNeededResources(resources:object) {
             // @ts-ignore
             if (!(resources?.tw)) {
                 console.warn(`haveNeededData - missing gl tw data`);
+                return false;
+            }
+        } else if (resourceId === 'tn') {
+            // @ts-ignore
+            if (!(resources?.tn)) {
+                console.warn(`haveNeededData - missing gl tn data`);
+                return false;
+            }
+            // @ts-ignore
+            if (!(resources?.ta)) {
+                console.warn(`haveNeededData - missing gl ta data`);
                 return false;
             }
         } else {
