@@ -8,6 +8,7 @@ import {
   getProjectIdFromPath,
   getResourcesForChecking,
   initProject,
+  isRepoInitialized,
   loadResourcesFromPath,
 } from "../utilities/checkerFileUtils";
 const resourcesList = require('./fixtures/updatedResources.json');
@@ -100,6 +101,24 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     expect(resources.validResources).toBeTruthy()
   })
 
+  it('Test isRepoInitialized all', () => {
+    const projectId = null
+    const targetLanguageId = 'es-419'
+    const targetBibleId = 'glt'
+    const bookId = '3jn'
+    const repoName = `${targetLanguageId}_${targetBibleId}`;
+    const repoPath = path.join(projectsPath, repoName)
+    const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
+    const results = isRepoInitialized(repoPath, resourcesPath, projectId)
+    // @ts-ignore
+    expect(results.error).toBeFalsy()
+    expect(results.repoExists).toBeTruthy()
+    expect(results.metaDataInitialized).toBeTruthy()
+    expect(results.checksInitialized).toBeTruthy()
+    expect(results.translationHelpsLoaded).toBeTruthy()
+    expect(results.bibleBooksLoaded).toBeTruthy()
+  })
+  
 })
 
 const tests = [

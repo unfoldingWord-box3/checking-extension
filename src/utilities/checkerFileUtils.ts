@@ -858,10 +858,10 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     [checkingName]: checkingMetaData
                 }
                 for (const resourceId of resourceIds) {
-                    const checkingPathName = `${resourceId}_path`
+                    const checkingPathName = `${resourceId}_checksPath`
                     // @ts-ignore
                     checkingMetaData[checkingPathName] = `./checking/${resourceId}`
-                    const tsvSourcePathName = `${resourceId}_tsvSourcePath`
+                    const tsvSourcePathName = `${resourceId}_helpsPath`
                     // @ts-ignore
                     checkingMetaData[tsvSourcePathName] = removeHomePath(sourceTsvsPaths[resourceId])
                 }
@@ -886,8 +886,82 @@ function readJsonFileIfExists(jsonPath:string) {
     }
     return null
 }
+
 /**
- * 
+ * make sure repo is initialized for checking
+ * @param repoPath
+ * @param resourcesBasePath
+ * @param sourceResourceId - if null, then check both tn and twl
+ */
+export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sourceResourceId:string|null) {
+    const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
+    let error = false
+    let repoExists = false
+    let metaDataInitialized = false
+    let checksInitialized = false
+    let translationHelpsLoaded = false
+    let bibleBooksLoaded = false
+    try {
+        repoExists = fs.existsSync(repoPath);
+        const pathToMetaData = path.join(repoPath, 'metadata.json')
+        const metaDataExists = fs.existsSync(pathToMetaData);
+        const metadata = metaDataExists ? fs.readJsonSync(pathToMetaData) : null
+        if (!repoExists) {
+            console.log(`isRepoInitialized - repo does not exist at ${repoPath}`)
+        } else if (metadata) {
+            const checkingMetadata = metadata[checkingName]
+            for (const resourceId of resourceIds) {
+                const resourcePathKey = `${resourceId}_checksPath`;
+                if (checkingMetadata?.[resourcePathKey]) { // metadata initialized for resourceId
+                    metaDataInitialized = true
+                    const checkingPath = path.join(repoPath, checkingMetadata[resourcePathKey])
+                    const checkingFiles = getFilesOfType(checkingPath, `.${resourceId}_check`)
+                    checksInitialized = !!checkingFiles?.length
+                    if (!checksInitialized) {
+                        console.log(`isRepoInitialized - checks not present at ${checkingPath}`)
+                        break
+                    }
+                    const helpsPathKey = `${resourceId}_helpsPath`;
+                    if (checkingMetadata?.[helpsPathKey]) {
+                        const helpsPath = replaceHomePath(checkingMetadata[helpsPathKey])
+                        const helpsFiles = getFilesOfType(helpsPath, `.json`)
+                        translationHelpsLoaded = !!helpsFiles?.length
+                        if (!translationHelpsLoaded) {
+                            console.log(`isRepoInitialized - translationHelps not present at ${helpsPath}`)
+                            break
+                        }
+                    } else {
+                        console.log(`isRepoInitialized - metadata.json does not contain key ${helpsPathKey}:`, metadata)
+                        break
+                    }
+                } else {
+                    console.log(`isRepoInitialized - metadata.json does not contain key ${resourcePathKey}:`, metadata)
+                    break
+                }
+            }
+        } else {
+            console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}`)
+        }
+        
+        const bibleBooks = getBibleFiles(repoPath)
+        bibleBooksLoaded = !!bibleBooks?.length
+    } catch (e) {
+        console.warn(`isRepoInitialized - error checking repo`, e)
+        error = true
+    }
+
+    return {
+        error,
+        repoExists,
+        metaDataInitialized,
+        checksInitialized,
+        translationHelpsLoaded,
+        bibleBooksLoaded
+    }
+}
+
+/**
+ * load all the resources needed for checking
  * @param repoPath
  */
 export function getResourcesForChecking(repoPath:string, resourcesBasePath:string, resourceId:string, bookId:string) {
