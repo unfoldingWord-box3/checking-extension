@@ -30,7 +30,7 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
-    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
+    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_twl`)
     const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
@@ -44,6 +44,20 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
     const repoName = `${targetLanguageId}_${targetBibleId}_tn`;
+    const repoPath = path.join(projectsPath, repoName)
+    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    expect(success).toBeTruthy()
+  })
+
+  it('Test initProject all', async () => {
+    const gl_owner = 'unfoldingWord'
+    const gl_languageId = 'en'
+    const languageId = 'en'
+    const projectId = null
+    const targetLanguageId = 'es-419'
+    const targetOwner = 'es-419_gl'
+    const targetBibleId = 'glt'
+    const repoName = `${targetLanguageId}_${targetBibleId}`;
     const repoPath = path.join(projectsPath, repoName)
     const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()

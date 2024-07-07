@@ -20,6 +20,7 @@ import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
 import { loadResources } from "./utilities/checkingServerUtils";
+import * as vscode from "vscode";
 
 
 type CommandToFunctionMap = Record<string, (text: string) => void>;
@@ -61,6 +62,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const commandRegistration = commands.registerCommand(
             "checking-extension.initTranslationChecker",
             async (verseRef: string) => {
+                window.showInformationMessage('initializing Checker');
+
+                const options = await CheckingProvider.getCheckingOptions()
+
                 const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
                 const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
                 const completeResourcesPath = path.join(resourcesBasePath, 'completeResources.json')
@@ -176,6 +181,34 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { }
     }
 
+    private static async getCheckingOptions() {
+        let project;
+        let fileExists = false
+        const workspaceFolder = vscode.workspace.workspaceFolders
+          ? vscode.workspace.workspaceFolders[0]
+          : undefined;
+        if (workspaceFolder) {
+            const projectFilePath = vscode.Uri.joinPath(
+              workspaceFolder.uri,
+              "metadata.json"
+            );
+            fileExists = await vscode.workspace.fs.stat(projectFilePath).then(
+              () => true,
+              () => false
+            );
+            try {
+                const projectFileData = await vscode.workspace.fs.readFile(projectFilePath);
+                project = JSON.parse(projectFileData.toString());
+            } catch (error) {
+                console.warn("Metadata file does not exist, creating a new one.");
+                project = {}; // Initialize an empty project object if the file does not exist
+            }
+        }
+
+        window.showInformationMessage('checking DCS for GLs');
+        
+        return
+    }
     /**
      * Write out the json to a given document.
      *

@@ -746,48 +746,60 @@ function replaceHomePath(filePath:string) {
  * @param gl_languageId
  * @param gl_owner
  * @param resourcesBasePath
- * @param sourceResourceId
+ * @param sourceResourceId - if null, then init both tn and twl
  */
-export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string, catalog:null|any[] = null) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null) {
     const projectExists = fs.pathExistsSync(repoPath)
-    const checkingPath = path.join(repoPath, 'checking', sourceResourceId)
-    const checkingFiles = getFilesOfType(checkingPath, `.${sourceResourceId}_check`)
-    const hasCheckingFiles = checkingFiles?.length
+    const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
+    let hasCheckingFiles = true
+    for (const resourceId of resourceIds) {
+        const checkingPath = path.join(repoPath, 'checking', resourceId)
+        const checkingFiles = getFilesOfType(checkingPath, `.${resourceId}_check`)
+        const hasCheckingFiles_ = checkingFiles?.length
+        if (!hasCheckingFiles_) {
+            hasCheckingFiles = false
+        }
+    }
     const bibleFiles = getBibleFiles(repoPath)
     const hasBibleFiles = bibleFiles?.length
     const shouldCreateProject = !projectExists
         || (hasBibleFiles && !hasCheckingFiles)
 
     if (shouldCreateProject) {
+        const sourceTsvsPaths = {}
         try {
             const { processed, updatedCatalogResources, foundResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath)
             if (updatedCatalogResources) {
-                let sourceTsvsPath;
-                switch (sourceResourceId) {
-                    case 'tn':
-                    case 'twl':
-                        const resourceName = RESOURCE_ID_MAP[sourceResourceId] || ''
-                        const folderPath = path.join(resourcesBasePath, gl_languageId, 'translationHelps', resourceName)
-                        sourceTsvsPath = resourcesHelpers.getLatestVersionInPath(folderPath, gl_owner, false)
-                        break
+                for (const resourceId of resourceIds) {
+                    let sourceTsvsPath;
+                    switch (resourceId) {
+                        case "tn":
+                        case "twl":
+                            const resourceName = RESOURCE_ID_MAP[resourceId] || "";
+                            const folderPath = path.join(resourcesBasePath, gl_languageId, "translationHelps", resourceName);
+                            sourceTsvsPath = resourcesHelpers.getLatestVersionInPath(folderPath, gl_owner, false);
+                            // @ts-ignore
+                            sourceTsvsPaths[resourceId] = sourceTsvsPath
+                            break;
 
-                    default:
-                        console.error(`initProject - unsupported source project ID: ${sourceResourceId}`)
-                        return false
-                }
+                        default:
+                            console.error(`initProject - unsupported source project ID: ${resourceId}`);
+                            return false;
+                    }
 
-                // more checks per book
-                fs.ensureDirSync(checkingPath)
-                fs.copySync(sourceTsvsPath, checkingPath)
+                    const checkingPath = path.join(repoPath, 'checking', resourceId)
+                    fs.ensureDirSync(checkingPath);
+                    fs.copySync(sourceTsvsPath, checkingPath);
 
-                // create check files from json files
-                const files = getFilesOfType(checkingPath, '.json')
-                if (files?.length) {
-                    for (const filename of files) {
-                        const bookId = getBookIdFromPath(filename)
-                        const newName = `${bookId}.${sourceResourceId}_check`
-                        if (newName !== filename) {
-                            fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName))
+                    // create check files from json files
+                    const files = getFilesOfType(checkingPath, ".json");
+                    if (files?.length) {
+                        for (const filename of files) {
+                            const bookId = getBookIdFromPath(filename);
+                            const newName = `${bookId}.${resourceId}_check`;
+                            if (newName !== filename) {
+                                fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
+                            }
                         }
                     }
                 }
@@ -803,8 +815,6 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     }
                     fs.copySync(results.destFolder, repoPath)
                 }
-                
-                const checkingPathName = `${sourceResourceId}_path`
                 
                 // replace home path with ~
                 for (const resourceId of Object.keys(foundResources)) {
@@ -836,19 +846,26 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 }
                     
                 // create metadata
+                const checkingMetaData = {
+                    resourceType: "Translation Checker",
+                    targetLanguageId,
+                    gatewayLanguageId: gl_languageId,
+                    gatewayLanguageOwner: gl_owner,
+                    resourcesBasePath: removeHomePath(resourcesBasePath),
+                    otherResources: foundResources,
+                };
                 const metadata = {
-                    [checkingName]: {
-                        resourceType: "Translation Checker",
-                        [checkingPathName]: `./checking/${sourceResourceId}`,
-                        targetLanguageId,
-                        gatewayLanguageId: gl_languageId,
-                        gatewayLanguageOwner: gl_owner,
-                        resourcesBasePath: removeHomePath(resourcesBasePath),
-                        sourceTsvsPath: removeHomePath(sourceTsvsPath),
-                        checkingPath: removeHomePath(checkingPath),
-                        otherResources: foundResources,
-                    }
+                    [checkingName]: checkingMetaData
                 }
+                for (const resourceId of resourceIds) {
+                    const checkingPathName = `${resourceId}_path`
+                    // @ts-ignore
+                    checkingMetaData[checkingPathName] = `./checking/${resourceId}`
+                    const tsvSourcePathName = `${resourceId}_tsvSourcePath`
+                    // @ts-ignore
+                    checkingMetaData[tsvSourcePathName] = removeHomePath(sourceTsvsPaths[resourceId])
+                }
+                
                 const outputPath = path.join(repoPath, `metadata.json`)
                 fs.outputJsonSync(outputPath, metadata, { spaces: 2 })
             }
