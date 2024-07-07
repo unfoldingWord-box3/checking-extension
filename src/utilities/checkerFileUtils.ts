@@ -10,6 +10,7 @@ import * as YAML from 'yamljs';
 import { readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
+import { getLanguage } from "./languages";
 // helpers
 const {
     apiHelpers,
@@ -21,6 +22,11 @@ const {
 }
 // @ts-ignore
   = require('tc-source-content-updater');
+
+const workingPath = path.join(ospath.home(), 'translationCore')
+export const projectsBasePath = path.join(workingPath, 'otherProjects')
+export const resourcesPath = path.join(projectsBasePath, 'cache')
+const updatedResourcesPath = path.join(resourcesPath, "updatedResources.json");
 
 const { lexicons } = require('../data/lexicons')
 const { locales } = require('../data/locales/English-en_US')
@@ -99,10 +105,10 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
 
 /**
  * find the latest version resource folder in resourcesPath
- * @param {string} resourcePath - path to search
+ * @param {string} resourcePath - path of downloaded resources
  * @returns {Promise<null>}
  */
-async function getLatestResources(resourcePath:string) {
+export async function getLatestResources(resourcePath:string) {
     const sourceContentUpdater = new SourceContentUpdater();
     await sourceContentUpdater.getLatestResources([], resourcePath)
     const updatedCatalogResources = sourceContentUpdater.updatedCatalogResources;
@@ -117,7 +123,7 @@ async function getLatestResources(resourcePath:string) {
  * @param {string} resourceId
  * @returns {*|null} returns match found
  */
-function findResource(catalog:any[], languageId:string, owner:string, resourceId:string) {
+export function findResource(catalog:any[], languageId:string, owner:string, resourceId:string) {
     for (const item of catalog) {
         const lang = item.languageId
         const owner_ = item.owner
@@ -132,6 +138,40 @@ function findResource(catalog:any[], languageId:string, owner:string, resourceId
 }
 
 /**
+ * search catalog to find a match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ * @param {string} languageId
+ */
+export function findOwnersForLang(catalog:any[], languageId:string) {
+    const owners = {}
+    for (const item of catalog) {
+        const langId = item.languageId
+        if (langId === languageId) {
+            const owner_ = item.owner
+            // @ts-ignore
+            owners[owner_] = true
+        }
+    }
+    return Object.keys(owners).sort()
+}
+
+/**
+ * search catalog to find a match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ */
+export function getLanguagesInCatalog(catalog:any[]) {
+    const codes = {}
+    for (const item of catalog) {
+        const langId = item.languageId
+        // @ts-ignore
+        codes[langId] = true
+    }
+    const languageIds = Object.keys(codes).sort();
+    const languages = languageIds.map(langId => getLanguage(langId))
+    return languages
+}
+
+/**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies
  * @param {object[]} catalog - list of items in catalog
  * @param {string} languageId
@@ -142,6 +182,7 @@ function findResource(catalog:any[], languageId:string, owner:string, resourceId
 async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string, owner:string, resourcesPath:string) {
     if (!catalog?.length) {
         catalog = await getLatestResources(resourcesPath)
+        saveCatalog(catalog)
     }
 
     const found = []
@@ -887,6 +928,17 @@ function readJsonFileIfExists(jsonPath:string) {
     return null
 }
 
+export function saveCatalog(catalog:object) {
+    fs.ensureDirSync(resourcesPath)
+    fs.outputJsonSync(updatedResourcesPath, catalog)
+}
+
+export function getSavedCatalog():null|object[] {
+    const fileExists = fs.existsSync(updatedResourcesPath);
+    const updatedResources = fileExists ? fs.readJsonSync(updatedResourcesPath) : null
+    return updatedResources
+}
+
 /**
  * make sure repo is initialized for checking
  * @param repoPath
@@ -979,7 +1031,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.locales = locales
           if (resourceId === 'twl') {
-              const twlPath = path.join(repoPath, metadata[`${resourceId}_path`], `${bookId}.${resourceId}_check` )
+              const twlPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
               // @ts-ignore
               results.twl = readJsonFileIfExists(twlPath)
               const twResource = metadata.otherResources['tw']
@@ -989,7 +1041,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               results.tw = readJsonFileIfExists(twPath)
           } else
           if (resourceId === 'tn') {
-              const tnPath = path.join(repoPath, metadata[`${resourceId}_path`], `${bookId}.${resourceId}_check` )
+              const tnPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
               // @ts-ignore
               results.tn = readJsonFileIfExists(tnPath)
               const taResource = metadata.otherResources['ta']

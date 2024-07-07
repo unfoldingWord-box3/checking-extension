@@ -15,12 +15,25 @@ import {
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import { ScriptureTSV } from "../types/TsvTypes";
-import { initProject } from "./utilities/checkerFileUtils";
+import {
+    findOwnersForLang,
+    getLanguagesInCatalog,
+    getLatestResources,
+    getSavedCatalog,
+    initProject,
+    projectsBasePath,
+    resourcesPath,
+} from "./utilities/checkerFileUtils";
 import * as path from 'path';
 // @ts-ignore
 import * as ospath from 'ospath';
 import { loadResources } from "./utilities/checkingServerUtils";
 import * as vscode from "vscode";
+import {
+    getGatewayLanguages,
+    getLanguageCodeFromPrompts,
+    getLanguagePrompts
+} from "./utilities/languages";
 
 
 type CommandToFunctionMap = Record<string, (text: string) => void>;
@@ -64,23 +77,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
             async (verseRef: string) => {
                 window.showInformationMessage('initializing Checker');
 
-                const options = await CheckingProvider.getCheckingOptions()
+                const options = await CheckingProvider.getCheckingOptions();
 
-                const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
-                const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
-                const completeResourcesPath = path.join(resourcesBasePath, 'completeResources.json')
-                
-                const gl_owner = 'unfoldingWord'
-                const gl_languageId = 'en'
-                const targetLanguageId = 'es-419'
-                const targetOwner = 'es-419_gl'
-                const targetBibleId = 'glt'
-                const projectId = 'tn'
-                const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
-                const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
-                if (!success) {
-                    console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
-                }
+                // const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
+                // const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
+                // const completeResourcesPath = path.join(resourcesBasePath, 'completeResources.json')
+                //
+                // const gl_owner = 'unfoldingWord'
+                // const gl_languageId = 'en'
+                // const targetLanguageId = 'es-419'
+                // const targetOwner = 'es-419_gl'
+                // const targetBibleId = 'glt'
+                // const projectId = 'tn'
+                // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
+                // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
+                // if (!success) {
+                //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
+                // }
             },
         );
 
@@ -205,7 +218,67 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         }
 
-        window.showInformationMessage('checking DCS for GLs');
+        let catalog = getSavedCatalog()
+        try {
+            if (!catalog) {
+                window.showInformationMessage("Checking DCS for GLs - can take minutes");
+                catalog = await getLatestResources(resourcesPath);
+                window.showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
+            } else {
+                window.showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
+            }
+
+            //////////////////////////////////
+            // GL language
+            
+            const gatewayLanguages = getGatewayLanguages();
+            const glChoices = getLanguagePrompts(gatewayLanguages)
+            let gwLanguagePick = await vscode.window.showQuickPick(
+              glChoices,
+              {
+                  placeHolder: "Select the gateway checking language",
+              }
+            );
+            // @ts-ignore
+            gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || 'en'
+            window.showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
+
+            const owners = findOwnersForLang(catalog || [], gwLanguagePick)
+            const gwOwnerPick = await vscode.window.showQuickPick(
+              owners,
+              {
+                  placeHolder: "Select the gateway checking organization",
+              }
+            );
+            window.showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);
+
+            //////////////////////////////////
+            // Target language
+
+            // @ts-ignore
+            const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
+            let targetLanguagePick = await vscode.window.showQuickPick(
+              targetLangChoices,
+              {
+                  placeHolder: "Select the target language",
+              }
+            );
+            // @ts-ignore
+            targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
+            window.showInformationMessage(`Target language selected ${targetLanguagePick}`);
+
+            const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
+            const targetOwnerPick = await vscode.window.showQuickPick(
+              targetOwners,
+              {
+                  placeHolder: "Select the traget organization",
+              }
+            );
+            window.showInformationMessage(`Target owner selected ${targetOwnerPick}`);
+
+        } catch (e) {
+            window.showInformationMessage('failed to retrieve DCS catalog');
+        }
         
         return
     }

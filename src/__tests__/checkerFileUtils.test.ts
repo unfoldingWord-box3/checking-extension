@@ -7,11 +7,13 @@ import {
   getBookIdFromPath,
   getProjectIdFromPath,
   getResourcesForChecking,
+  getSavedCatalog,
   initProject,
   isRepoInitialized,
   loadResourcesFromPath,
 } from "../utilities/checkerFileUtils";
-const resourcesList = require('./fixtures/updatedResources.json');
+
+const resourcesList = getSavedCatalog();
 
 
 // jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;

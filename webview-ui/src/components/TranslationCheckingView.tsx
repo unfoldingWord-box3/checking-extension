@@ -154,6 +154,14 @@ function TranslationCheckingView() {
     const haveResources = CheckingObj.validResources && checkingData
     console.log(`TranslationNotesView - redraw`, CheckingObj, haveResources)
 
+    function getResourceMissingErrorMsg(CheckingObj:any) {
+        let message = "Checking resources missing.";
+        if (!CheckingObj?.targetBible) {
+            message = `Target bible missing for ${bookId}.`
+        }
+        return message;
+    }
+
     const content = haveResources ? (
       <Checker
         styles={{ maxHeight: '500px', overflowY: 'auto' }}
@@ -168,9 +176,7 @@ function TranslationCheckingView() {
         targetLanguageDetails={targetLanguageDetails}
         translate={translate}
       />
-    ) : (
-      "Checking resources missing."
-    );
+    ) : getResourceMissingErrorMsg(CheckingObj);
 
     return (
       <>
