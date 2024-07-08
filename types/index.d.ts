@@ -5,6 +5,10 @@ interface VerseRefGlobalState {
   uri: string;
 }
 
-type TranslationNotePostMessages =
+export type ResourcesObject = {
+  [key: string]: object;
+};
+
+type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
     | { command: "changeRef"; data: VerseRefGlobalState };
