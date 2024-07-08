@@ -11,13 +11,13 @@
     "commands": [
       {
         "command": "checking-extension.initTranslationChecker",
-        "title": "Initialize Translation Checker Project"
+        "title": "Translation Checking Tool: Initialize Project"
       }
     ],
     "customEditors": [
       {
         "viewType": "checking-extension.translationChecker",
-        "displayName": "Translation Checking Tool - Translation Words and Notes",
+        "displayName": "Translation Checking Tool: Make Selections for Translation Words and Notes",
         "selector": [
           {
             "filenamePattern": "*.twl_check"
