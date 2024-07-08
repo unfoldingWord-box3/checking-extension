@@ -9,8 +9,8 @@ dependencies:
     specifier: ^1.4.0
     version: 1.4.0(react@18.2.0)
   checking-tool-rcl:
-    specifier: 0.9.1
-    version: 0.9.1(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0)
+    specifier: file:.yalc/checking-tool-rcl
+    version: file:.yalc/checking-tool-rcl(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0)
   dompurify:
     specifier: ^3.0.9
     version: 3.0.11
@@ -1198,42 +1198,6 @@ packages:
       supports-color: 5.5.0
     dev: true
 
-  /checking-tool-rcl@0.9.1(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0):
-    resolution: {integrity: sha512-Q9neEmxh8ihNZyD7kjdPCdqD7+GV03YNZp5mnCT+rS8lf5qbtk8hD6HoFUcGqC6e7I4HIr8/7Ca8ivhfLvhOuA==}
-    peerDependencies:
-      prop-types: ^15.x
-      react: ^18.x
-      react-dom: ^18.x
-      react-redux: ^7.1.1
-    dependencies:
-      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
-      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
-      bible-reference-range: 1.1.1
-      deep-equal: 1.0.1
-      file-loader: 6.2.0(webpack@5.91.0)
-      lodash: 4.17.21
-      marked: 0.6.2
-      memoize-one: 5.2.1
-      prop-types: 15.8.1
-      react: 18.2.0
-      react-bootstrap: 0.32.4(react-dom@18.2.0)(react@18.2.0)
-      react-container-dimensions: 1.4.1(react-dom@18.2.0)(react@18.2.0)
-      react-dom: 18.2.0(react@18.2.0)
-      react-draggable: 3.3.2(react-dom@18.2.0)(react@18.2.0)
-      react-icons: 4.12.0(react@18.2.0)
-      react-redux: 7.2.9(react-dom@18.2.0)(react@18.2.0)
-      react-tooltip: 3.11.6(react-dom@18.2.0)(react@18.2.0)
-      string-punctuation-tokenizer: 2.2.0
-      usfm-js: 3.4.2
-      uw-tsv-parser: 1.0.3
-      word-aligner: 1.0.2(usfm-js@3.4.2)
-      word-aligner-rcl: 1.1.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)(webpack@5.91.0)
-      wordmap-lexer: 0.3.6
-    transitivePeerDependencies:
-      - '@types/react'
-      - webpack
-    dev: false
-
   /chrome-trace-event@1.0.4:
     resolution: {integrity: sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ==}
     engines: {node: '>=6.0'}
@@ -2121,11 +2085,11 @@ packages:
       safe-buffer: 5.2.1
     dev: false
 
-  /react-bootstrap@0.32.4(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-xj+JfaPOvnvr3ow0aHC7Y3HaBKZNR1mm361hVxVzVX3fcdJNIrfiodbQ0m9nLBpNxiKG6FTU2lq/SbTDYT2vew==}
+  /react-bootstrap@0.33.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-qWTRravSds87P8WC82tETy2yIso8qDqlIm0czsrduCaYAFtHuyLu0XDbUlfLXeRzqgwm5sRk2wRaTNoiVkk/YQ==}
     peerDependencies:
-      react: ^0.14.9 || >=15.3.0
-      react-dom: ^0.14.9 || >=15.3.0
+      react: '>=16.3.0'
+      react-dom: '>=16.3.0'
     dependencies:
       '@babel/runtime-corejs2': 7.24.6
       classnames: 2.5.1
@@ -2136,10 +2100,10 @@ packages:
       prop-types-extra: 1.1.1(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      react-overlays: 0.8.3(react-dom@18.2.0)(react@18.2.0)
+      react-overlays: 0.9.3(react-dom@18.2.0)(react@18.2.0)
       react-prop-types: 0.4.0(react@18.2.0)
       react-transition-group: 2.9.0(react-dom@18.2.0)(react@18.2.0)
-      uncontrollable: 5.1.0(react@18.2.0)
+      uncontrollable: 7.2.1(react@18.2.0)
       warning: 3.0.0
     dev: false
 
@@ -2198,11 +2162,11 @@ packages:
     resolution: {integrity: sha512-fBASbA6LnOU9dOU2eW7aQ8xmYBSXUIWr+UmF9b1efZBazGNO+rcXT/icdKnYm2pTwcRylVUYwW7H1PHfLekVzA==}
     dev: false
 
-  /react-overlays@0.8.3(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-h6GT3jgy90PgctleP39Yu3eK1v9vaJAW73GOA/UbN9dJ7aAN4BTZD6793eI1D5U+ukMk17qiqN/wl3diK1Z5LA==}
+  /react-overlays@0.9.3(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-u2T7nOLnK+Hrntho4p0Nxh+BsJl0bl4Xuwj/Y0a56xywLMetgAfyjnDVrudLXsNcKGaspoC+t3C1V80W9QQTdQ==}
     peerDependencies:
-      react: ^0.14.9 || >=15.3.0
-      react-dom: ^0.14.9 || >=15.3.0
+      react: '>=16.3.0'
+      react-dom: '>=16.3.0'
     dependencies:
       classnames: 2.5.1
       dom-helpers: 3.4.0
@@ -2552,13 +2516,16 @@ packages:
     hasBin: true
     dev: true
 
-  /uncontrollable@5.1.0(react@18.2.0):
-    resolution: {integrity: sha512-5FXYaFANKaafg4IVZXUNtGyzsnYEvqlr9wQ3WpZxFpEUxl29A3H6Q4G1Dnnorvq9TGOGATBApWR4YpLAh+F5hw==}
+  /uncontrollable@7.2.1(react@18.2.0):
+    resolution: {integrity: sha512-svtcfoTADIB0nT9nltgjujTi7BzVmwjZClOmskKu/E8FW9BXzg9os8OLr4f8Dlnk0rYWJIWr4wv9eKUXiQvQwQ==}
     peerDependencies:
       react: '>=15.0.0'
     dependencies:
+      '@babel/runtime': 7.24.6
+      '@types/react': 18.2.48
       invariant: 2.2.4
       react: 18.2.0
+      react-lifecycles-compat: 3.0.4
     dev: false
 
   /undici-types@5.26.5:
@@ -2799,3 +2766,41 @@ packages:
   /yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
     dev: true
+
+  file:.yalc/checking-tool-rcl(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0):
+    resolution: {directory: .yalc/checking-tool-rcl, type: directory}
+    id: file:.yalc/checking-tool-rcl
+    name: checking-tool-rcl
+    peerDependencies:
+      prop-types: ^15.x
+      react: ^18.x
+      react-dom: ^18.x
+      react-redux: ^7.1.1
+    dependencies:
+      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
+      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
+      bible-reference-range: 1.1.1
+      deep-equal: 1.0.1
+      file-loader: 6.2.0(webpack@5.91.0)
+      lodash: 4.17.21
+      marked: 0.6.2
+      memoize-one: 5.2.1
+      prop-types: 15.8.1
+      react: 18.2.0
+      react-bootstrap: 0.33.1(react-dom@18.2.0)(react@18.2.0)
+      react-container-dimensions: 1.4.1(react-dom@18.2.0)(react@18.2.0)
+      react-dom: 18.2.0(react@18.2.0)
+      react-draggable: 3.3.2(react-dom@18.2.0)(react@18.2.0)
+      react-icons: 4.12.0(react@18.2.0)
+      react-redux: 7.2.9(react-dom@18.2.0)(react@18.2.0)
+      react-tooltip: 3.11.6(react-dom@18.2.0)(react@18.2.0)
+      string-punctuation-tokenizer: 2.2.0
+      usfm-js: 3.4.2
+      uw-tsv-parser: 1.0.3
+      word-aligner: 1.0.2(usfm-js@3.4.2)
+      word-aligner-rcl: 1.1.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)(webpack@5.91.0)
+      wordmap-lexer: 0.3.6
+    transitivePeerDependencies:
+      - '@types/react'
+      - webpack
+    dev: false
