@@ -2,7 +2,7 @@
   "name": "checking-extension-extension",
   "displayName": "checking-extension-extension",
   "description": "A vscode extension to open translation note tsv files and display them for a specific verse",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.75.0"
   },
