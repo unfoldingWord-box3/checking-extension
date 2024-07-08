@@ -118,7 +118,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                         const repoExists = fileExists(repoPath)
                         if (!repoExists) {
-                            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded at ${repoPath}`);
+                            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
                             const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", gl_languageId, gl_owner || "", resourcesPath, null, catalog);
                             if (success) {
                                 window.showInformationMessage(`Created project at ${repoPath}`);
