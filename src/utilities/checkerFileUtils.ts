@@ -983,6 +983,10 @@ export function getSavedCatalog():null|object[] {
     return updatedResources
 }
 
+export function fileExists(filePath:string) {
+    return !!fs.existsSync(filePath)
+}
+
 /**
  * make sure repo is initialized for checking
  * @param repoPath

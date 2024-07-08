@@ -15,6 +15,7 @@ import {
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
+    fileExists,
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
@@ -22,6 +23,8 @@ import {
     getLatestResources,
     getResourceIdsInCatalog,
     getSavedCatalog,
+    initProject,
+    projectsBasePath,
     resourcesPath,
 } from "./utilities/checkerFileUtils";
 import * as path from 'path';
@@ -77,7 +80,70 @@ export class CheckingProvider implements CustomTextEditorProvider {
             async (verseRef: string) => {
                 window.showInformationMessage('initializing Checker');
 
-                const options = await CheckingProvider.getCheckingOptions();
+                let project;
+                let fileExists_ = false
+                const workspaceFolder = vscode.workspace.workspaceFolders
+                  ? vscode.workspace.workspaceFolders[0]
+                  : undefined;
+                if (workspaceFolder) {
+                    const projectFilePath = vscode.Uri.joinPath(
+                      workspaceFolder.uri,
+                      "metadata.json"
+                    );
+                    fileExists_ = await vscode.workspace.fs.stat(projectFilePath).then(
+                      () => true,
+                      () => false
+                    );
+                    try {
+                        const projectFileData = await vscode.workspace.fs.readFile(projectFilePath);
+                        project = JSON.parse(projectFileData.toString());
+                    } catch (error) {
+                        console.warn("Metadata file does not exist.");
+                    }
+                }
+                
+                if (!fileExists_) {
+                    const options = await CheckingProvider.getCheckingOptions();
+                    if (options) {
+                        const {
+                            catalog,
+                            gwLanguagePick: gl_languageId,
+                            gwOwnerPick: gl_owner,
+                            targetLanguagePick: targetLanguageId,
+                            targetOwnerPick: targetOwner,
+                            targetBibleIdPick: targetBibleId,
+                        } = options;
+
+                        const repoPath = path.join(projectsBasePath, `${targetLanguageId}_${targetBibleId}`)
+
+                        const repoExists = fileExists(repoPath)
+                        if (!repoExists) {
+                            window.showInformationMessage(`Initializing project at ${repoPath}`);
+                            const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", gl_languageId, gl_owner || "", resourcesPath, null, catalog);
+                            if (success) {
+                                window.showInformationMessage(`Created project at ${repoPath}`);
+                                const uri = vscode.Uri.file(repoPath);
+                                vscode.commands.executeCommand('vscode.openFolder', uri);
+                            } else {
+                                window.showInformationMessage(`Failed to initialize project at ${repoPath}`);
+                            }
+                        } else {
+                            window.showInformationMessage(`Cannot create project, folder already exists at ${repoPath}`);
+                        }
+                    }
+                }
+
+                // const gl_owner = 'unfoldingWord'
+                // const gl_languageId = 'en'
+                // const targetLanguageId = 'es-419'
+                // const targetOwner = 'es-419_gl'
+                // const targetBibleId = 'glt'
+                // const projectId = 'tn'
+                // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
+                // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
+                // if (!success) {
+                //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
+                // }
             },
         );
 
@@ -179,30 +245,64 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static async getCheckingOptions() {
-        let project;
-        let fileExists = false
-        const workspaceFolder = vscode.workspace.workspaceFolders
-          ? vscode.workspace.workspaceFolders[0]
-          : undefined;
-        if (workspaceFolder) {
-            const projectFilePath = vscode.Uri.joinPath(
-              workspaceFolder.uri,
-              "metadata.json"
-            );
-            fileExists = await vscode.workspace.fs.stat(projectFilePath).then(
-              () => true,
-              () => false
-            );
-            try {
-                const projectFileData = await vscode.workspace.fs.readFile(projectFilePath);
-                project = JSON.parse(projectFileData.toString());
-            } catch (error) {
-                console.warn("Metadata file does not exist, creating a new one.");
-                project = {}; // Initialize an empty project object if the file does not exist
-            }
+        const options = await CheckingProvider.getGatewayLangOptions();
+        if (!options) {
+            return null
         }
 
-        let catalog = getSavedCatalog()
+        const {
+            catalog,
+            gwLanguagePick,
+            gwOwnerPick
+        } = options;
+
+        //////////////////////////////////
+        // Target language
+
+        // @ts-ignore
+        const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
+        let targetLanguagePick = await vscode.window.showQuickPick(
+          targetLangChoices,
+          {
+              placeHolder: "Select the target language",
+          }
+        );
+        // @ts-ignore
+        targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
+        window.showInformationMessage(`Target language selected ${targetLanguagePick}`);
+
+        const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
+        const targetOwnerPick = await vscode.window.showQuickPick(
+          targetOwners,
+          {
+              placeHolder: "Select the target organization",
+          }
+        );
+        window.showInformationMessage(`Target owner selected ${targetOwnerPick}`);
+
+        const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
+        const bibles = findBibleResources(resources || [])
+        const bibleIds = getResourceIdsInCatalog(bibles || [])
+        const targetBibleIdPick = await vscode.window.showQuickPick(
+          bibleIds,
+          {
+              placeHolder: "Select the bibleId",
+          }
+        );
+        window.showInformationMessage(`Bible selected ${targetBibleIdPick}`);
+
+        return {
+            catalog,
+            gwLanguagePick,
+            gwOwnerPick,
+            targetLanguagePick,
+            targetOwnerPick,
+            targetBibleIdPick,
+        }
+    }
+
+    private static async getGatewayLangOptions() {
+        let catalog = getSavedCatalog();
         try {
             if (!catalog) {
                 window.showInformationMessage("Checking DCS for GLs - can take minutes");
@@ -211,86 +311,40 @@ export class CheckingProvider implements CustomTextEditorProvider {
             } else {
                 window.showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
             }
-
-            //////////////////////////////////
-            // GL language
-            
-            const gatewayLanguages = getGatewayLanguages();
-            const glChoices = getLanguagePrompts(gatewayLanguages)
-            let gwLanguagePick = await vscode.window.showQuickPick(
-              glChoices,
-              {
-                  placeHolder: "Select the gateway checking language",
-              }
-            );
-            // @ts-ignore
-            gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || 'en'
-            window.showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
-
-            const owners = findOwnersForLang(catalog || [], gwLanguagePick)
-            const gwOwnerPick = await vscode.window.showQuickPick(
-              owners,
-              {
-                  placeHolder: "Select the gateway checking organization",
-              }
-            );
-            window.showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);
-
-            //////////////////////////////////
-            // Target language
-
-            // @ts-ignore
-            const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
-            let targetLanguagePick = await vscode.window.showQuickPick(
-              targetLangChoices,
-              {
-                  placeHolder: "Select the target language",
-              }
-            );
-            // @ts-ignore
-            targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
-            window.showInformationMessage(`Target language selected ${targetLanguagePick}`);
-
-            const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
-            const targetOwnerPick = await vscode.window.showQuickPick(
-              targetOwners,
-              {
-                  placeHolder: "Select the traget organization",
-              }
-            );
-            window.showInformationMessage(`Target owner selected ${targetOwnerPick}`);
-
-            const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
-            const bibles = findBibleResources(resources || [])
-            const bibleIds = getResourceIdsInCatalog(bibles || [])
-            const bibleIdPick = await vscode.window.showQuickPick(
-              bibleIds,
-              {
-                  placeHolder: "Select the bibleId",
-              }
-            );
-            window.showInformationMessage(`Bible selected ${bibleIdPick}`);
-
         } catch (e) {
-            window.showInformationMessage('failed to retrieve DCS catalog');
+            window.showInformationMessage("failed to retrieve DCS catalog");
         }
 
+        //////////////////////////////////
+        // GL language
 
-            // const gl_owner = 'unfoldingWord'
-        // const gl_languageId = 'en'
-        // const targetLanguageId = 'es-419'
-        // const targetOwner = 'es-419_gl'
-        // const targetBibleId = 'glt'
-        // const projectId = 'tn'
-        // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
-        // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
-        // if (!success) {
-        //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
-        // }
+        const gatewayLanguages = getGatewayLanguages();
+        const glChoices = getLanguagePrompts(gatewayLanguages);
+        let gwLanguagePick = await vscode.window.showQuickPick(
+          glChoices,
+          {
+              placeHolder: "Select the gateway checking language",
+          },
+        );
+        // @ts-ignore
+        gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || "en";
+        window.showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
 
-
-        return
+        const owners = findOwnersForLang(catalog || [], gwLanguagePick);
+        const gwOwnerPick = await vscode.window.showQuickPick(
+          owners,
+          {
+              placeHolder: "Select the gateway checking organization",
+          },
+        );
+        window.showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);
+        return {
+            catalog,
+            gwLanguagePick,
+            gwOwnerPick
+        };
     }
+
     /**
      * Write out the json to a given document.
      *

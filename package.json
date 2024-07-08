@@ -11,7 +11,7 @@
     "commands": [
       {
         "command": "checking-extension.initTranslationChecker",
-        "title": "Init Translation Checker"
+        "title": "Initialize Translation Checker Project"
       }
     ],
     "customEditors": [

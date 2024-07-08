@@ -89,12 +89,12 @@ function TranslationCheckingView() {
         const glTwData: object = CheckingObj.tw;
         glWordsData = glTwData
         checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
-        checkType = Checker.translationWords
+        checkType = 'translationWords'
     } else if (resourceId === 'tn') {
         const glTaData: object = CheckingObj.ta;
         glWordsData = glTaData
         checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
-        checkType = Checker.translationNotes
+        checkType = 'translationNotes'
     }
 
     const bibles = CheckingObj?.bibles
