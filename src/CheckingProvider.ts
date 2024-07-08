@@ -14,14 +14,14 @@ import {
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
-import { ScriptureTSV } from "../types/TsvTypes";
 import {
+    findBibleResources,
     findOwnersForLang,
+    findResourcesForLangAndOwner,
     getLanguagesInCatalog,
     getLatestResources,
+    getResourceIdsInCatalog,
     getSavedCatalog,
-    initProject,
-    projectsBasePath,
     resourcesPath,
 } from "./utilities/checkerFileUtils";
 import * as path from 'path';
@@ -78,22 +78,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 window.showInformationMessage('initializing Checker');
 
                 const options = await CheckingProvider.getCheckingOptions();
-
-                // const resourcesBasePath = path.join(ospath.home(), 'translationCore/temp/downloaded');
-                // const updatedResourcesPath = path.join(resourcesBasePath, 'updatedResources.json')
-                // const completeResourcesPath = path.join(resourcesBasePath, 'completeResources.json')
-                //
-                // const gl_owner = 'unfoldingWord'
-                // const gl_languageId = 'en'
-                // const targetLanguageId = 'es-419'
-                // const targetOwner = 'es-419_gl'
-                // const targetBibleId = 'glt'
-                // const projectId = 'tn'
-                // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
-                // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
-                // if (!success) {
-                //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
-                // }
             },
         );
 
@@ -276,10 +260,35 @@ export class CheckingProvider implements CustomTextEditorProvider {
             );
             window.showInformationMessage(`Target owner selected ${targetOwnerPick}`);
 
+            const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
+            const bibles = findBibleResources(resources || [])
+            const bibleIds = getResourceIdsInCatalog(bibles || [])
+            const bibleIdPick = await vscode.window.showQuickPick(
+              bibleIds,
+              {
+                  placeHolder: "Select the bibleId",
+              }
+            );
+            window.showInformationMessage(`Bible selected ${bibleIdPick}`);
+
         } catch (e) {
             window.showInformationMessage('failed to retrieve DCS catalog');
         }
-        
+
+
+            // const gl_owner = 'unfoldingWord'
+        // const gl_languageId = 'en'
+        // const targetLanguageId = 'es-419'
+        // const targetOwner = 'es-419_gl'
+        // const targetBibleId = 'glt'
+        // const projectId = 'tn'
+        // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
+        // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
+        // if (!success) {
+        //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
+        // }
+
+
         return
     }
     /**

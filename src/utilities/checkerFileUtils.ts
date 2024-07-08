@@ -158,6 +158,35 @@ export function findOwnersForLang(catalog:any[], languageId:string) {
 /**
  * search catalog to find a match for owner, languageId, resourceId
  * @param {object[]} catalog - list of items in catalog
+ * @param {string} languageId
+ */
+export function findResourcesForLangAndOwner(catalog:any[], languageId:string, owner:string) {
+    const resources = catalog.filter(item => {
+        const langId = item.languageId
+        const owner_ = item.owner
+        const match = (langId === languageId) && (owner_ === owner);
+        return match 
+    })
+    return resources
+}
+
+/**
+ * search catalog to find a match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ * @param {string} languageId
+ */
+export function findBibleResources(catalog:any[]) {
+    const resources = catalog.filter(item => {
+        const subject = (item?.subject || '').toLowerCase()
+        const match = subject.includes('bible');
+        return match
+    })
+    return resources
+}
+
+/**
+ * search catalog to find a match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
  */
 export function getLanguagesInCatalog(catalog:any[]) {
     const codes = {}
@@ -169,6 +198,21 @@ export function getLanguagesInCatalog(catalog:any[]) {
     const languageIds = Object.keys(codes).sort();
     const languages = languageIds.map(langId => getLanguage(langId))
     return languages
+}
+
+/**
+ * search catalog to find a match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ */
+export function getResourceIdsInCatalog(catalog:any[]) {
+    const resourceIds = {}
+    for (const item of catalog) {
+        const resourceId = item.resourceId
+        // @ts-ignore
+        resourceIds[resourceId] = true
+    }
+    const bibleIds = Object.keys(resourceIds).sort();
+    return bibleIds
 }
 
 /**
