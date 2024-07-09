@@ -20,6 +20,9 @@ dependencies:
   bible-reference-range:
     specifier: ^1.1.1
     version: 1.1.1
+  deep-equal:
+    specifier: 1.0.1
+    version: 1.0.1
   fs-extra:
     specifier: ^11.2.0
     version: 11.2.0
@@ -2586,6 +2589,10 @@ packages:
       babel-plugin-macros:
         optional: true
     dev: true
+
+  /deep-equal@1.0.1:
+    resolution: {integrity: sha512-bHtC0iYvWhyaTzvV3CZgPeZQqCOBGyGsVV7v4eevpdkLHfiSrXUdBG+qAuSz4RI70sszvjQ1QSZ98An1yNwpSw==}
+    dev: false
 
   /deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}

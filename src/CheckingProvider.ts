@@ -37,9 +37,11 @@ import {
     getLanguageCodeFromPrompts,
     getLanguagePrompts
 } from "./utilities/languages";
+// @ts-ignore
+var isEqual = require('deep-equal');
 
 
-type CommandToFunctionMap = Record<string, (text: string) => void>;
+type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
 // const getTnUri = (bookID: string): Uri => {
 //     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
@@ -175,14 +177,39 @@ export class CheckingProvider implements CustomTextEditorProvider {
             } as TranslationCheckingPostMessages);
         };
 
+        const saveSelection = (text:string, newState:{}) => {
+            // @ts-ignore
+            const selections = newState && newState.selections
+            console.log(`saveSelection - new selections`, selections)
+            // @ts-ignore
+            const currentContextId = newState && newState.currentContextId
+            console.log(`saveSelection - current context data`, currentContextId)
+            // @ts-ignore
+            const checkingData = newState && newState.currentCheckingData
+
+            let checks = document.getText();
+            if (checks.trim().length) {
+                const checkingData = JSON.parse(checks);
+                let foundCheck = this.findCheckToUpdate(currentContextId, checkingData);
+
+                if (foundCheck) {
+                    console.log(`saveSelection - found match`, foundCheck);
+                    // @ts-ignore
+                    foundCheck.selections = selections
+                    this.updateChecks(document, checkingData) // save with updated selections
+                }
+            }
+        };
+
         const messageEventHandlers = (message: any) => {
-            const { command, text } = message;
+            const { command, text, data } = message;
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: updateWebview,
+                ["saveSelection"]: saveSelection,
             };
 
-            commandToFunctionMapping[command](text);
+            commandToFunctionMapping[command](text, data);
         };
 
         new TranslationCheckingPanel(
@@ -214,6 +241,54 @@ export class CheckingProvider implements CustomTextEditorProvider {
         // TODO: Put Global BCV function here
     }
 
+    private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
+        let foundCheck;
+        if (currentContextId && checkingData) {
+            // @ts-ignore
+            const _checkId = currentContextId?.checkId;
+            // @ts-ignore
+            const _groupId = currentContextId?.groupId;
+            // @ts-ignore
+            const _quote = currentContextId?.quote;
+            // @ts-ignore
+            const _occurrence = currentContextId?.occurrence;
+            // @ts-ignore
+            const _reference = currentContextId?.reference;
+            for (const groupId of Object.keys(checkingData)) {
+                if (groupId === 'manifest') { // skip over manifest
+                    continue
+                }
+                // @ts-ignore
+                const groups = checkingData[groupId]?.groups || {};
+                for (const checkId of Object.keys(groups)) {
+                    const checks: object[] = groups[checkId];
+                    foundCheck = checks.find(item => {
+                        // @ts-ignore
+                        const contextId = item?.contextId;
+                        // @ts-ignore
+                        if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
+                            if (isEqual(_reference, contextId?.reference)) {
+                                if ((_quote === contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    });
+
+                    if (foundCheck) {
+                        break;
+                    }
+                }
+
+                if (foundCheck) {
+                    break;
+                }
+            }
+        }
+        return foundCheck;
+    }
+
     /**
      * Try to get a current document as a scripture TSV object
      *
@@ -242,6 +317,21 @@ export class CheckingProvider implements CustomTextEditorProvider {
             );
         }
         return { }
+    }
+
+    private updateChecks(document: TextDocument, checkingData:object) {
+        const newDocumentText = JSON.stringify(checkingData, null, 2)
+
+        const edit = new vscode.WorkspaceEdit();
+
+        // Just replace the entire document every time for this example extension.
+        // A more complete extension should compute minimal edits instead.
+        edit.replace(
+          document.uri,
+          new vscode.Range(0, 0, document.lineCount, 0),
+          newDocumentText);
+
+        return vscode.workspace.applyEdit(edit);
     }
 
     private static async getCheckingOptions() {
