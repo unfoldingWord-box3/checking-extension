@@ -21,6 +21,8 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
+const showDocument = true // set to false to disable showing ta or tw document
+
 console.log("TranslationCheckingView.tsx")
 
 const loadLexiconEntry = (key:string) => {
@@ -190,6 +192,7 @@ function TranslationCheckingView() {
         getLexiconData={getLexiconData_}
         glWordsData={glWordsData}
         saveSelection={_saveSelection}
+        showDocument={showDocument}
         targetBible={targetBible}
         targetLanguageDetails={targetLanguageDetails}
         translate={translate}

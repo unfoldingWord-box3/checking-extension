@@ -9,8 +9,8 @@ dependencies:
     specifier: ^1.4.0
     version: 1.4.0(react@18.2.0)
   checking-tool-rcl:
-    specifier: 0.9.5-beta
-    version: 0.9.5-beta(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0)
+    specifier: 0.9.5-beta.5
+    version: 0.9.5-beta.5(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0)
   dompurify:
     specifier: ^3.0.9
     version: 3.0.11
@@ -1198,8 +1198,8 @@ packages:
       supports-color: 5.5.0
     dev: true
 
-  /checking-tool-rcl@0.9.5-beta(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0):
-    resolution: {integrity: sha512-n04q3minTZ/Et9tvFCUKd9IylF5ULfT/6Bg25wTeHXRFcCpCrEYEfpeXVkoDRyvjnldgKOpqp0BFGKJKsIwcWw==}
+  /checking-tool-rcl@0.9.5-beta.5(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0):
+    resolution: {integrity: sha512-HdGfvM09UGvaWlLs9mePJo93+PbfI9Uw1rvba5rXFTo4VD6HIoiHMxs+DCkePpi5gcLE+95tzqAhxdHoRv/eLg==}
     peerDependencies:
       prop-types: ^15.x
       react: ^18.x
