@@ -7,7 +7,7 @@ import * as ospath from 'ospath';
 import * as usfmjs from "usfm-js";
 // @ts-ignore
 import * as YAML from 'yamljs';
-import { readHelpsFolder } from "./folderUtils";
+import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
@@ -65,11 +65,12 @@ function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:str
         const outputFolder = path.join(folderPath, '../temp')
         for (const bookId of bookIds) {
             const contents = readHelpsFolder(folderPath, bookId)
-            // fs.removeSync(folderPath) // remove unzipped files
-            // fs.ensureDirSync(folderPath)
-            const outputPath = path.join(outputFolder, `${resource.resourceId}_${bookId}.json`)
-            fs.outputJsonSync(outputPath, contents, { spaces: 2 })
-            resourceFiles.push(outputPath)
+            if (objectNotEmpty(contents)) {
+                fs.ensureDirSync(outputFolder);
+                const outputPath = path.join(outputFolder, `${resource.resourceId}_${bookId}.json`);
+                fs.outputJsonSync(outputPath, contents, { spaces: 2 });
+                resourceFiles.push(outputPath);
+            }
         }
         fs.removeSync(folderPath) // remove unzipped files
         fs.moveSync(outputFolder, folderPath)
@@ -86,7 +87,11 @@ function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:str
  */
 async function downloadAndProcessResource(resource:any, resourcesPath:string, byBook = false, combineHelps = false) {
     try {
-        const result = await resourcesDownloadHelpers.downloadAndProcessResource(resource, resourcesPath, [])
+        const errorsList:string[] = [];
+        const downloadErrorsList:string[] = [];
+        const importFolder = path.join(resourcesPath, 'imports')
+        fs.emptyDirSync(importFolder) // clear imports folder to remove leftover files
+        const result = await resourcesDownloadHelpers.downloadAndProcessResourceWithCatch(resource, resourcesPath, errorsList, downloadErrorsList)
         const resourceFiles:string[] = []
         // @ts-ignore
         const resourceName = RESOURCE_ID_MAP[resource.resourceId] || ''
@@ -635,20 +640,43 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
     }
 
     for (const item of found) {
-        console.log('getLangHelpsResourcesFromCatalog - downloading', item)
-        const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
-        if (resource_) {
-            processed.push(resource_)
+        const resourceId = item?.resourceId;
+        // @ts-ignore
+        const resourceName = RESOURCE_ID_MAP?.[resourceId]
+        const languageId_ = item?.languageId;
+        const version = item?.version;
+        const owner_ = item?.owner;
+        const expectedRepo = path.join(resourcesPath, languageId_, apiHelpers.TRANSLATION_HELPS, resourceName, `v${version}_${resourcesHelpers.encodeOwnerStr(owner_)}`)
+        const files = getFilesOfType(expectedRepo, ".json");
+        if (files?.length) {
+            console.log('getLangHelpsResourcesFromCatalog - already have', item)
             const resourceObject = {
-                id: resource_?.resource?.resourceId,
-                languageId: resource_?.resource?.languageId,
-                path: resource_.resourcePath
+                id: item?.resourceId,
+                languageId: item?.languageId,
+                path: expectedRepo
             }
             // @ts-ignore
-            foundResources[resource_.resource.resourceId] = resourceObject
+            foundResources[item.resourceId] = resourceObject
         } else {
-            // @ts-ignore
-            console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {languageId, owner, resourceId: resource.id})
+            console.log('getLangHelpsResourcesFromCatalog - downloading', item)
+            const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
+            if (resource_) {
+                processed.push(resource_)
+                const resourceObject = {
+                    id: resource_?.resource?.resourceId,
+                    languageId: resource_?.resource?.languageId,
+                    path: resource_.resourcePath
+                }
+                // @ts-ignore
+                foundResources[resource_.resource.resourceId] = resourceObject
+            } else {
+                // @ts-ignore
+                console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {
+                    languageId,
+                    owner,
+                    resourceId: item.resourceId
+                })
+            }
         }
     }
     for(const item of processed) {

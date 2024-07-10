@@ -26,6 +26,7 @@ import {
     initProject,
     projectsBasePath,
     resourcesPath,
+    saveCatalog,
 } from "./utilities/checkerFileUtils";
 import * as path from 'path';
 // @ts-ignore
@@ -196,7 +197,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     console.log(`saveSelection - found match`, foundCheck);
                     // @ts-ignore
                     foundCheck.selections = selections
-                    this.updateChecks(document, checkingData) // save with updated selections
+                    this.updateChecks(document, checkingData) // save with updated
                 }
             }
         };
@@ -397,6 +398,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
             if (!catalog) {
                 window.showInformationMessage("Checking DCS for GLs - can take minutes");
                 catalog = await getLatestResources(resourcesPath);
+                // @ts-ignore
+                saveCatalog(catalog);
                 window.showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
             } else {
                 window.showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
