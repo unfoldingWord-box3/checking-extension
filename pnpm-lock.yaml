@@ -33,8 +33,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
       tc-source-content-updater:
-        specifier: ^1.4.25-beta
-        version: 1.4.25-beta(bible-reference-range@1.1.1)(string-punctuation-tokenizer@2.2.0)(tsv-groupdata-parser@1.1.0(string-punctuation-tokenizer@2.2.0))(usfm-js@3.4.2)
+        specifier: ^1.4.25-beta.2
+        version: 1.4.25-beta.2(bible-reference-range@1.1.1)(string-punctuation-tokenizer@2.2.0)(tsv-groupdata-parser@1.1.0(string-punctuation-tokenizer@2.2.0))(usfm-js@3.4.2)
       usfm-js:
         specifier: ^3.4.2
         version: 3.4.2
@@ -2363,8 +2363,8 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  tc-source-content-updater@1.4.25-beta:
-    resolution: {integrity: sha512-j1EgBhwkZ+vVOrT1gpG3aeZAbpe64Dc2XZxV6F2HP6WEcBA85rc3oixHBDm+7frv5WxDqc7RsAD5JsoW364ipA==}
+  tc-source-content-updater@1.4.25-beta.2:
+    resolution: {integrity: sha512-QaoqXSHOzNbEjXTL6yonRfflWcQ8QLQI0sgJMGYGI1yibhStWPV2j08/xrP/RC8xf2ePqxBOzYC3T5pu7ie2kA==}
     peerDependencies:
       bible-reference-range: ^1.0.1
       string-punctuation-tokenizer: ^2.2.0
@@ -5385,7 +5385,7 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  tc-source-content-updater@1.4.25-beta(bible-reference-range@1.1.1)(string-punctuation-tokenizer@2.2.0)(tsv-groupdata-parser@1.1.0(string-punctuation-tokenizer@2.2.0))(usfm-js@3.4.2):
+  tc-source-content-updater@1.4.25-beta.2(bible-reference-range@1.1.1)(string-punctuation-tokenizer@2.2.0)(tsv-groupdata-parser@1.1.0(string-punctuation-tokenizer@2.2.0))(usfm-js@3.4.2):
     dependencies:
       adm-zip: 0.4.16
       agentkeepalive: 4.1.0

@@ -21,6 +21,7 @@ import {
     findResourcesForLangAndOwner,
     getLanguagesInCatalog,
     getLatestResources,
+    getRepoPath,
     getResourceIdsInCatalog,
     getSavedCatalog,
     initProject,
@@ -110,19 +111,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     if (options) {
                         const {
                             catalog,
-                            gwLanguagePick: gl_languageId,
-                            gwOwnerPick: gl_owner,
+                            gwLanguagePick: glLanguageId,
+                            gwOwnerPick: glOwner,
                             targetLanguagePick: targetLanguageId,
                             targetOwnerPick: targetOwner,
                             targetBibleIdPick: targetBibleId,
                         } = options;
 
-                        const repoPath = path.join(projectsBasePath, `${targetLanguageId}_${targetBibleId}`)
+                        const repoPath = getRepoPath(targetLanguageId, targetBibleId || '', glLanguageId)
 
                         const repoExists = fileExists(repoPath)
                         if (!repoExists) {
                             window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
-                            const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", gl_languageId, gl_owner || "", resourcesPath, null, catalog);
+                            const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog);
                             if (success) {
                                 window.showInformationMessage(`Created project at ${repoPath}`);
                                 const uri = vscode.Uri.file(repoPath);

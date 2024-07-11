@@ -785,6 +785,10 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath) {
+    return path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_${glLanguageId}`)
+}
+
 /**
  * copy bible USFM files
  * @param repoPath
@@ -1314,6 +1318,18 @@ export function getParsedUSFM(usfmData:string) {
     }
 }
 
+function generateDefaultManifest() {
+    return {
+        language_id: "unknown",
+        language_name: "unknown",
+        direction: "ltor",
+        subject: "Bible",
+        resource_id: "unknown",
+        resource_title: "unknown Bible",
+        description: "unknown Bible",
+    };
+}
+
 /**
  * @description - Turns a manifest.json file into an object and returns it, null if doesn't exist
  * @param {string} resourcePath - folder for manifest.json
@@ -1327,31 +1343,56 @@ export function getResourceManifest(resourcePath:string):object|null {
         try {
             manifest = fs.readJsonSync(manifestPath);
         } catch (e) {
-            console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+            console.log(`getResourceManifest - manifest load failed ${manifestPath}`)
         }
     } else {
         fileName = 'manifest.yaml';
         manifestPath = path.join(resourcePath, fileName);
         if (fs.existsSync(manifestPath)) {
             try {
-                const manifestYaml = fs.readFileSync(manifestPath, 'utf8');
+                let manifestYaml = fs.readFileSync(manifestPath, 'utf8');
                 if (manifestYaml) {
-                    manifest = YAML.parse(manifestYaml)
-                    // copy some data for more convenient access
-                    manifest.language_id = manifest.dublin_core.language.identifier;
-                    manifest.language_name = manifest.dublin_core.language.title;
-                    manifest.direction = manifest.dublin_core.language.direction;
-                    manifest.subject = manifest.dublin_core.subject;
-                    manifest.resource_id = manifest.dublin_core.identifier;
-                    manifest.resource_title = manifest.dublin_core.title;
-                    const oldMainfestIdentifier = manifest.dublin_core.identifier.toLowerCase();
-                    const identifiers = ['ugnt', 'ubh'];
-                    manifest.description = identifiers.includes(oldMainfestIdentifier) ?
-                      'Original Language' : 'Gateway Language';
+                    let dublinCore
+                    try {
+                        manifest = YAML.parse(manifestYaml)
+                        // copy some data for more convenient access
+                        dublinCore = manifest?.dublin_core;
+                    } catch (e) {
+                        console.error(`getResourceManifest - manifest.yaml invalid ${manifestPath}`, e)
+                        manifestYaml = manifestYaml.replace('---', '').trimLeft()
+                        try {
+                            manifest = YAML.parse(manifestYaml)
+                            // copy some data for more convenient access
+                            dublinCore = manifest?.dublin_core;
+                            console.log(`getResourceManifest - manifest.yaml cleaned yaml worked`)
+                        } catch (e) {
+                            console.error(`getResourceManifest - manifest.yaml invalid even without --- ${manifestPath}`, e)
+                        }
+                    }
+                    
+                    if (manifest && dublinCore) {
+                        manifest.language_id = dublinCore.language.identifier;
+                        manifest.language_name = dublinCore.language.title;
+                        manifest.direction = dublinCore.language.direction;
+                        manifest.subject = dublinCore.subject;
+                        manifest.resource_id = dublinCore.identifier;
+                        manifest.resource_title = dublinCore.title;
+                        const oldMainfestIdentifier = dublinCore.identifier.toLowerCase();
+                        const identifiers = ["ugnt", "ubh"];
+                        manifest.description = identifiers.includes(oldMainfestIdentifier) ?
+                          "Original Language" : "Gateway Language";
+                    } else {
+                        console.log(`getResourceManifest - falling back to default manifest`)
+                        manifest = generateDefaultManifest()
+                    }
                 }
             } catch (e) {
-                console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+                console.log(`getResourceManifest - manifest load failed ${manifestPath}`, e)
             }
+        }
+        else {
+            console.log(`getResourceManifest - falling back to default manifest`)
+            manifest = generateDefaultManifest()
         }
     }
     return manifest;
@@ -1366,22 +1407,24 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
     try {
         if (fs.existsSync(biblePath)) {
             const manifest = getResourceManifest(biblePath)
-            let bookPath = path.join(biblePath, bookId);
-            if (fs.existsSync(bookPath)) {
-                const bookData = readHelpsFolder(bookPath)
-                // @ts-ignore
-                bookData.manifest = manifest
-                return bookData
-            } else {
-                const books = getBibleFiles(biblePath)
-                for (const book of books) {
-                    const matchLowerCase = book.toLowerCase()
-                    if (matchLowerCase.includes(bookId)) {
-                        const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
-                        const json = getParsedUSFM(usfm)
-                        const bookData = json.chapters;
-                        bookData.manifest = manifest
-                        return bookData
+            if (manifest) {
+                let bookPath = path.join(biblePath, bookId);
+                if (fs.existsSync(bookPath)) {
+                    const bookData = readHelpsFolder(bookPath)
+                    // @ts-ignore
+                    bookData.manifest = manifest
+                    return bookData
+                } else {
+                    const books = getBibleFiles(biblePath)
+                    for (const book of books) {
+                        const matchLowerCase = book.toLowerCase()
+                        if (matchLowerCase.includes(bookId)) {
+                            const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
+                            const json = getParsedUSFM(usfm)
+                            const bookData = json.chapters;
+                            bookData.manifest = manifest
+                            return bookData
+                        }
                     }
                 }
             }
