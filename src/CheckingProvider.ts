@@ -25,13 +25,12 @@ import {
     getResourceIdsInCatalog,
     getSavedCatalog,
     initProject,
-    projectsBasePath,
+  isRepoInitialized,
     resourcesPath,
     saveCatalog,
 } from "./utilities/checkerFileUtils";
 import * as path from 'path';
 // @ts-ignore
-import * as ospath from 'ospath';
 import { loadResources } from "./utilities/checkingServerUtils";
 import * as vscode from "vscode";
 import {
@@ -84,29 +83,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
             async (verseRef: string) => {
                 window.showInformationMessage('initializing Checker');
 
-                let project;
-                let fileExists_ = false
+                let projectPath
+                let repoFolderExists_ = false
                 const workspaceFolder = vscode.workspace.workspaceFolders
                   ? vscode.workspace.workspaceFolders[0]
                   : undefined;
                 if (workspaceFolder) {
-                    const projectFilePath = vscode.Uri.joinPath(
-                      workspaceFolder.uri,
-                      "metadata.json"
-                    );
-                    fileExists_ = await vscode.workspace.fs.stat(projectFilePath).then(
+                    projectPath = workspaceFolder.uri.path
+                    repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
                       () => true,
                       () => false
                     );
-                    try {
-                        const projectFileData = await vscode.workspace.fs.readFile(projectFilePath);
-                        project = JSON.parse(projectFileData.toString());
-                    } catch (error) {
-                        console.warn("Metadata file does not exist.");
-                    }
                 }
                 
-                if (!fileExists_) {
+                if (!repoFolderExists_) {
                     const options = await CheckingProvider.getCheckingOptions();
                     if (options) {
                         const {
@@ -117,23 +107,48 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             targetOwnerPick: targetOwner,
                             targetBibleIdPick: targetBibleId,
                         } = options;
+                        let {
+                            repoInitSuccess,
+                            repoPath,
+                        } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
 
-                        const repoPath = getRepoPath(targetLanguageId, targetBibleId || '', glLanguageId)
-
-                        const repoExists = fileExists(repoPath)
-                        if (!repoExists) {
-                            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
-                            const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog);
-                            if (success) {
-                                window.showInformationMessage(`Created project at ${repoPath}`);
-                                const uri = vscode.Uri.file(repoPath);
-                                vscode.commands.executeCommand('vscode.openFolder', uri);
-                            } else {
-                                window.showInformationMessage(`Failed to initialize project at ${repoPath}`);
-                            }
-                        } else {
-                            window.showInformationMessage(`Cannot create project, folder already exists at ${repoPath}`);
+                        if (repoInitSuccess) {
+                            const uri = vscode.Uri.file(repoPath);
+                            vscode.commands.executeCommand('vscode.openFolder', uri);
                         }
+                    }
+                }
+                else {
+                    let results
+                    if (projectPath) {
+                        results = isRepoInitialized(projectPath, resourcesPath, null)
+                        // @ts-ignore
+                        const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
+                            && !results.checksInitialized && results.bibleBooksLoaded
+                        if (initBibleRepo) {
+                            // @ts-ignore
+                            const dublin_core = results.manifest?.dublin_core
+                            const targetLanguageId = dublin_core?.language?.identifier
+                            const targetBibleId = dublin_core?.identifier
+                            const targetOwner = ''
+
+                            const options = await CheckingProvider.getGatewayLangOptions();
+                            if (!options) {
+                                return null
+                            }
+
+                            const {
+                                catalog,
+                                gwLanguagePick: glLanguageId,
+                                gwOwnerPick: glOwner
+                            } = options;
+
+                            const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+                        } else if (results.repoExists) {
+                            window.showWarningMessage(`repo already has broken setup!`);
+                        }
+                    } else {
+                        window.showWarningMessage(`repo already exists!`);
                     }
                 }
 
@@ -153,7 +168,36 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         return { providerRegistration, commandRegistration };
     }
-    
+
+    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+        let repoInitSuccess = false;
+        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId);
+        const repoExists = fileExists(repoPath);
+        if (!repoExists) {
+            repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+        } else {
+            window.showWarningMessage(`Cannot create project, folder already exists at ${repoPath}`);
+        }
+        return { repoInitSuccess, repoPath };
+    }
+
+    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+        let repoInitSuccess = false;
+        window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
+        const {
+            success,
+            errorMsg,
+        } = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog);
+        if (success) {
+            window.showInformationMessage(`Initialized project at ${repoPath}`);
+            repoInitSuccess = true;
+        } else {
+            window.showWarningMessage(`Failed to initialize project at ${repoPath}`);
+            window.showWarningMessage(errorMsg);
+        }
+        return repoInitSuccess;
+    }
+
     private static readonly viewType = "checking-extension.translationChecker";
 
     constructor(private readonly context: ExtensionContext) {}

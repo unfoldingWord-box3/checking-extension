@@ -635,7 +635,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             item.bookRes = resource.bookRes
             found.push(item)
         } else {
-            console.error('getLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
+            console.error('getLatestLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
         }
     }
 
@@ -649,7 +649,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         const expectedRepo = path.join(resourcesPath, languageId_, apiHelpers.TRANSLATION_HELPS, resourceName, `v${version}_${resourcesHelpers.encodeOwnerStr(owner_)}`)
         const files = getFilesOfType(expectedRepo, ".json");
         if (files?.length) {
-            console.log('getLangHelpsResourcesFromCatalog - already have', item)
+            console.log('getLatestLangHelpsResourcesFromCatalog - already have', item)
             const resourceObject = {
                 id: item?.resourceId,
                 languageId: item?.languageId,
@@ -658,7 +658,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             // @ts-ignore
             foundResources[item.resourceId] = resourceObject
         } else {
-            console.log('getLangHelpsResourcesFromCatalog - downloading', item)
+            console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
             if (resource_) {
                 processed.push(resource_)
@@ -671,7 +671,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 foundResources[resource_.resource.resourceId] = resourceObject
             } else {
                 // @ts-ignore
-                console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {
+                console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
                     languageId,
                     owner,
                     resourceId: item.resourceId
@@ -866,6 +866,7 @@ function replaceHomePath(filePath:string) {
  * @param sourceResourceId - if null, then init both tn and twl
  */
 export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null) {
+    let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
     let hasCheckingFiles = true
@@ -900,37 +901,47 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                             break;
 
                         default:
-                            console.error(`initProject - unsupported source project ID: ${resourceId}`);
-                            return false;
+                            console.error(`initProject - Missing source project ID: ${gl_owner}/${gl_languageId}_${resourceId}`);
+                            return {
+                                success: false,
+                                errorMsg: `Missing source project ID: ${gl_owner}/${gl_languageId}_${resourceId}`
+                            };
                     }
 
-                    const checkingPath = path.join(repoPath, 'checking', resourceId)
-                    fs.ensureDirSync(checkingPath);
-                    fs.copySync(sourceTsvsPath, checkingPath);
+                    if (sourceTsvsPath) {
+                        const checkingPath = path.join(repoPath, 'checking', resourceId)
+                        fs.ensureDirSync(checkingPath);
+                        fs.copySync(sourceTsvsPath, checkingPath);
 
-                    // create check files from json files
-                    const files = getFilesOfType(checkingPath, ".json");
-                    if (files?.length) {
-                        for (const filename of files) {
-                            const bookId = getBookIdFromPath(filename);
-                            const newName = `${bookId}.${resourceId}_check`;
-                            if (newName !== filename) {
-                                fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
+                        // create check files from json files
+                        const files = getFilesOfType(checkingPath, ".json");
+                        if (files?.length) {
+                            for (const filename of files) {
+                                const bookId = getBookIdFromPath(filename);
+                                const newName = `${bookId}.${resourceId}_check`;
+                                if (newName !== filename) {
+                                    fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
+                                }
                             }
                         }
                     }
                 }
 
-                const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true)
-                if (foundPath) {
-                    fs.copySync(foundPath, repoPath)
-                } else {
-                    const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath)
-                    if (!results.destFolder) {
-                        console.error(`initProject - cannot copy target bible: ${repoPath}`)
-                        return false
+                if (!hasBibleFiles) {
+                    const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true);
+                    if (foundPath) {
+                        fs.copySync(foundPath, repoPath);
+                    } else {
+                        const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+                        if (!results.destFolder) {
+                            console.error(`initProject - cannot copy target bible from: ${repoPath}`);
+                            return {
+                                success: false,
+                                errorMsg: `cannot copy target bible from: ${repoPath}`,
+                            };
+                        }
+                        fs.copySync(results.destFolder, repoPath);
                     }
-                    fs.copySync(results.destFolder, repoPath)
                 }
                 
                 // replace home path with ~
@@ -986,14 +997,23 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 const outputPath = path.join(repoPath, `metadata.json`)
                 fs.outputJsonSync(outputPath, metadata, { spaces: 2 })
             }
-            return true
+            return {
+                success: true,
+                errorMsg: ''
+            };
         } catch (e) {
-            console.error(`initProject - error creating project: ${repoPath}`)
+            console.error(`initProject - error creating project: ${repoPath}`, e)
+            errorMsg = `error creating project: ${repoPath}`;
         }
     } else {
         console.error(`initProject - cannot initialize folder because it already exists: ${repoPath}`)
+        errorMsg = `cannot initialize folder because it already exists: ${repoPath}`;
     }
-    return false
+    return {
+        success: false,
+        errorMsg
+    };
+
 }
 
 function readJsonFileIfExists(jsonPath:string) {
@@ -1028,6 +1048,7 @@ export function fileExists(filePath:string) {
 export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sourceResourceId:string|null) {
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
     let error = false
+    let manifest = null
     let repoExists = false
     let metaDataInitialized = false
     let checksInitialized = false
@@ -1072,7 +1093,8 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
                 }
             }
         } else {
-            console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}`)
+            console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}, try manifest`)
+            manifest = getResourceManifest(repoPath)
         }
         
         const bibleBooks = getBibleFiles(repoPath)
@@ -1088,7 +1110,8 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
         metaDataInitialized,
         checksInitialized,
         translationHelpsLoaded,
-        bibleBooksLoaded
+        bibleBooksLoaded,
+        manifest
     }
 }
 
@@ -1359,7 +1382,7 @@ export function getResourceManifest(resourcePath:string):object|null {
                         dublinCore = manifest?.dublin_core;
                     } catch (e) {
                         console.error(`getResourceManifest - manifest.yaml invalid ${manifestPath}`, e)
-                        manifestYaml = manifestYaml.replace('---', '').trimLeft()
+                        manifestYaml = manifestYaml.replace('---', '').trimStart()
                         try {
                             manifest = YAML.parse(manifestYaml)
                             // copy some data for more convenient access
