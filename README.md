@@ -46,8 +46,10 @@ Follow the following steps to see the translation notes extension in action. Rep
 
 5. Press `F5` to open a new Extension Development Host window
 
-6. Create a new project.  First press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
+6. Initialize a project
+   a. Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
+   b. Add checking to an existing project (a folder that already has usfm files and manifest).  With vscode open to project folder, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to select gateway language.  It will create a checking folder and metadata.json.
 
-7. Click on any twl_check or tn_check file to see the checking tool in action!
+7. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
 
 
