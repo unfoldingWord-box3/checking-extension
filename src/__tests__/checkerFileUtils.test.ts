@@ -6,6 +6,7 @@ import * as ospath from 'ospath';
 import {
   getBookIdFromPath,
   getProjectIdFromPath,
+  getRepoPath,
   getResourcesForChecking,
   getSavedCatalog,
   initProject,
@@ -33,8 +34,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
-    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_twl`)
-    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
+    const { success, errorMsg } = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
 
@@ -47,8 +48,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
     const repoName = `${targetLanguageId}_${targetBibleId}_tn`;
-    const repoPath = path.join(projectsPath, repoName)
-    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
+    const { success, errorMsg } = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
 
@@ -61,8 +62,25 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetOwner = 'es-419_gl'
     const targetBibleId = 'glt'
     const repoName = `${targetLanguageId}_${targetBibleId}`;
-    const repoPath = path.join(projectsPath, repoName)
-    const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
+    const { success, errorMsg } = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
+    expect(success).toBeTruthy()
+  })
+
+  it('Test initProject bible repo without checks', async () => {
+    const gl_owner = 'unfoldingWord'
+    const gl_languageId = 'en'
+    const languageId = 'en'
+    const projectId = null
+    const targetLanguageId = 'es-419'
+    const targetOwner = null
+    const targetBibleId = 'glt'
+    const repoName = `${targetLanguageId}_${targetBibleId}`;
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
+    expect(fs.existsSync(repoPath)).toBeTruthy()
+    removeIfExists(path.join(repoPath, 'checking'));
+    removeIfExists(path.join(repoPath, 'metadata.json'))
+    const { success, errorMsg } = await initProject(repoPath, targetLanguageId, targetOwner || '', targetBibleId, gl_languageId, gl_owner, resourcesPath, projectId, resourcesList)
     expect(success).toBeTruthy()
   })
 
@@ -71,7 +89,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetLanguageId = 'es-419'
     const targetBibleId = 'glt'
     const bookId = 'tit'
-    const repoPath = path.join(projectsPath, `${targetLanguageId}_${targetBibleId}`)
+    const glLanguageId = 'en'
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, glLanguageId, projectsPath)
     const resources = getResourcesForChecking(repoPath, resourcesPath, projectId, bookId)
     // @ts-ignore
     expect(resources.validResources).toBeTruthy()
@@ -83,7 +102,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetBibleId = 'glt'
     const bookId = '3jn'
     const repoName = `${targetLanguageId}_${targetBibleId}`;
-    const repoPath = path.join(projectsPath, repoName)
+    const languageId = 'en'
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
     const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
     const resources = loadResourcesFromPath(checkingFile, resourcesPath)
     // @ts-ignore
@@ -96,7 +116,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetBibleId = 'glt'
     const bookId = '3jn'
     const repoName = `${targetLanguageId}_${targetBibleId}`;
-    const repoPath = path.join(projectsPath, repoName)
+    const languageId = 'en'
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
     const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
     const resources = loadResourcesFromPath(checkingFile, resourcesPath)
     // @ts-ignore
@@ -109,7 +130,8 @@ describe('Tests for resourcesDownloadHelpers.downloadAndProcessResource()', () =
     const targetBibleId = 'glt'
     const bookId = '3jn'
     const repoName = `${targetLanguageId}_${targetBibleId}`;
-    const repoPath = path.join(projectsPath, repoName)
+    const languageId = 'en'
+    const repoPath = getRepoPath(targetLanguageId, targetBibleId, languageId, projectsPath)
     const checkingFile = path.join (repoPath, `checking/${projectId}/${projectId}_${bookId}.${projectId}_check`)
     const results = isRepoInitialized(repoPath, resourcesPath, projectId)
     // @ts-ignore
@@ -172,3 +194,13 @@ describe('Tests for getProjectIdFromPath()', () => {
     expect(results).toEqual(expected);
   });
 })
+
+/////////////////////
+// Helpers
+/////////////////////
+
+function removeIfExists(filePath: string) {
+  if (fs.existsSync(filePath)) {
+    fs.removeSync(filePath);
+  }
+}

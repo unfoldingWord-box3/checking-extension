@@ -1,4 +1,4 @@
-# Translation Note Viewer
+# Checking Tool
 
 This is an implementation of the a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) webview extension.
 
@@ -18,42 +18,19 @@ For a deeper dive into how this sample works, read the guides below.
 ## Run The Sample
 Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm. 
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/unfoldingWord-box3/extension.git
-    ```
-
-2. Clone the translation-project repository to test the extension in:
+1. Clone the translation-project repository to test the extension in:
     ```bash
     git clone https://github.com/unfoldingWord-box3/checking-extension.git
     ```
 
-3. Change the `launch.json` file under the `.vscode` extension so that it opens this project on debugging:
-  a. Under the `configurations` property, change the `args` property to open to the path where you downloaded translation-project:
-      ```json
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "--folder-uri",
-        "file:///[INSERT PATH TO TRANSLATION-PROJECT HERE]"
-      ],
-      ```
-      For example:
-      ```json
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "--folder-uri",
-        "file:///home/john-doe/code/translation-project"
-      ],
-      ```
+2. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
 
-4. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
-
-    a. Install dependencies in root directory
+    a. Install dependencies in root directory (if pnpm is not found, do `sudo npm install --global pnpm` to install)
     ```bash
     pnpm run install:all
     ```
 
-5. Build the webview so that it renders on extension run
+3. Build the webview so that it renders on extension run
 
     a. If in the root directory, run:
     ```bash
@@ -65,12 +42,14 @@ Follow the following steps to see the translation notes extension in action. Rep
     pnpm run build
     ```
 
-6. Open vscode editor (using `code .` in the current directory or using the UI)
+4. Open vscode editor (using `code .` in the current directory or using the UI)
 
-7. Press `F5` to open a new Extension Development Host window
+5. Press `F5` to open a new Extension Development Host window
 
-8. In the translation-project file directory, navigate to `.project/resources/en_tn`
+6. Initialize a project
+   a. Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
+   b. Add checking to an existing project (a folder that already has usfm files and manifest).  With vscode open to project folder, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to select gateway language.  It will create a checking folder and metadata.json.
 
-9. Click on any TSV file to see the translation notes viewer in action!
+7. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
 
 

@@ -21,15 +21,16 @@ import {
     findResourcesForLangAndOwner,
     getLanguagesInCatalog,
     getLatestResources,
+    getRepoPath,
     getResourceIdsInCatalog,
     getSavedCatalog,
     initProject,
-    projectsBasePath,
+  isRepoInitialized,
     resourcesPath,
+    saveCatalog,
 } from "./utilities/checkerFileUtils";
 import * as path from 'path';
 // @ts-ignore
-import * as ospath from 'ospath';
 import { loadResources } from "./utilities/checkingServerUtils";
 import * as vscode from "vscode";
 import {
@@ -37,9 +38,11 @@ import {
     getLanguageCodeFromPrompts,
     getLanguagePrompts
 } from "./utilities/languages";
+// @ts-ignore
+var isEqual = require('deep-equal');
 
 
-type CommandToFunctionMap = Record<string, (text: string) => void>;
+type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
 // const getTnUri = (bookID: string): Uri => {
 //     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
@@ -80,56 +83,72 @@ export class CheckingProvider implements CustomTextEditorProvider {
             async (verseRef: string) => {
                 window.showInformationMessage('initializing Checker');
 
-                let project;
-                let fileExists_ = false
+                let projectPath
+                let repoFolderExists_ = false
                 const workspaceFolder = vscode.workspace.workspaceFolders
                   ? vscode.workspace.workspaceFolders[0]
                   : undefined;
                 if (workspaceFolder) {
-                    const projectFilePath = vscode.Uri.joinPath(
-                      workspaceFolder.uri,
-                      "metadata.json"
-                    );
-                    fileExists_ = await vscode.workspace.fs.stat(projectFilePath).then(
+                    projectPath = workspaceFolder.uri.path
+                    repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
                       () => true,
                       () => false
                     );
-                    try {
-                        const projectFileData = await vscode.workspace.fs.readFile(projectFilePath);
-                        project = JSON.parse(projectFileData.toString());
-                    } catch (error) {
-                        console.warn("Metadata file does not exist.");
-                    }
                 }
                 
-                if (!fileExists_) {
+                if (!repoFolderExists_) {
                     const options = await CheckingProvider.getCheckingOptions();
                     if (options) {
                         const {
                             catalog,
-                            gwLanguagePick: gl_languageId,
-                            gwOwnerPick: gl_owner,
+                            gwLanguagePick: glLanguageId,
+                            gwOwnerPick: glOwner,
                             targetLanguagePick: targetLanguageId,
                             targetOwnerPick: targetOwner,
                             targetBibleIdPick: targetBibleId,
                         } = options;
+                        let {
+                            repoInitSuccess,
+                            repoPath,
+                        } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
 
-                        const repoPath = path.join(projectsBasePath, `${targetLanguageId}_${targetBibleId}`)
-
-                        const repoExists = fileExists(repoPath)
-                        if (!repoExists) {
-                            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
-                            const success = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", gl_languageId, gl_owner || "", resourcesPath, null, catalog);
-                            if (success) {
-                                window.showInformationMessage(`Created project at ${repoPath}`);
-                                const uri = vscode.Uri.file(repoPath);
-                                vscode.commands.executeCommand('vscode.openFolder', uri);
-                            } else {
-                                window.showInformationMessage(`Failed to initialize project at ${repoPath}`);
-                            }
-                        } else {
-                            window.showInformationMessage(`Cannot create project, folder already exists at ${repoPath}`);
+                        if (repoInitSuccess) {
+                            const uri = vscode.Uri.file(repoPath);
+                            vscode.commands.executeCommand('vscode.openFolder', uri);
                         }
+                    }
+                }
+                else {
+                    let results
+                    if (projectPath) {
+                        results = isRepoInitialized(projectPath, resourcesPath, null)
+                        // @ts-ignore
+                        const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
+                            && !results.checksInitialized && results.bibleBooksLoaded
+                        if (initBibleRepo) {
+                            // @ts-ignore
+                            const dublin_core = results.manifest?.dublin_core
+                            const targetLanguageId = dublin_core?.language?.identifier
+                            const targetBibleId = dublin_core?.identifier
+                            const targetOwner = ''
+
+                            const options = await CheckingProvider.getGatewayLangOptions();
+                            if (!options) {
+                                return null
+                            }
+
+                            const {
+                                catalog,
+                                gwLanguagePick: glLanguageId,
+                                gwOwnerPick: glOwner
+                            } = options;
+
+                            const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+                        } else if (results.repoExists) {
+                            window.showWarningMessage(`repo already has broken setup!`);
+                        }
+                    } else {
+                        window.showWarningMessage(`repo already exists!`);
                     }
                 }
 
@@ -149,7 +168,36 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         return { providerRegistration, commandRegistration };
     }
-    
+
+    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+        let repoInitSuccess = false;
+        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId);
+        const repoExists = fileExists(repoPath);
+        if (!repoExists) {
+            repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+        } else {
+            window.showWarningMessage(`Cannot create project, folder already exists at ${repoPath}`);
+        }
+        return { repoInitSuccess, repoPath };
+    }
+
+    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+        let repoInitSuccess = false;
+        window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
+        const {
+            success,
+            errorMsg,
+        } = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog);
+        if (success) {
+            window.showInformationMessage(`Initialized project at ${repoPath}`);
+            repoInitSuccess = true;
+        } else {
+            window.showWarningMessage(`Failed to initialize project at ${repoPath}`);
+            window.showWarningMessage(errorMsg);
+        }
+        return repoInitSuccess;
+    }
+
     private static readonly viewType = "checking-extension.translationChecker";
 
     constructor(private readonly context: ExtensionContext) {}
@@ -175,14 +223,39 @@ export class CheckingProvider implements CustomTextEditorProvider {
             } as TranslationCheckingPostMessages);
         };
 
+        const saveSelection = (text:string, newState:{}) => {
+            // @ts-ignore
+            const selections = newState && newState.selections
+            console.log(`saveSelection - new selections`, selections)
+            // @ts-ignore
+            const currentContextId = newState && newState.currentContextId
+            console.log(`saveSelection - current context data`, currentContextId)
+            // @ts-ignore
+            const checkingData = newState && newState.currentCheckingData
+
+            let checks = document.getText();
+            if (checks.trim().length) {
+                const checkingData = JSON.parse(checks);
+                let foundCheck = this.findCheckToUpdate(currentContextId, checkingData);
+
+                if (foundCheck) {
+                    console.log(`saveSelection - found match`, foundCheck);
+                    // @ts-ignore
+                    foundCheck.selections = selections
+                    this.updateChecks(document, checkingData) // save with updated
+                }
+            }
+        };
+
         const messageEventHandlers = (message: any) => {
-            const { command, text } = message;
+            const { command, text, data } = message;
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: updateWebview,
+                ["saveSelection"]: saveSelection,
             };
 
-            commandToFunctionMapping[command](text);
+            commandToFunctionMapping[command](text, data);
         };
 
         new TranslationCheckingPanel(
@@ -214,6 +287,54 @@ export class CheckingProvider implements CustomTextEditorProvider {
         // TODO: Put Global BCV function here
     }
 
+    private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
+        let foundCheck;
+        if (currentContextId && checkingData) {
+            // @ts-ignore
+            const _checkId = currentContextId?.checkId;
+            // @ts-ignore
+            const _groupId = currentContextId?.groupId;
+            // @ts-ignore
+            const _quote = currentContextId?.quote;
+            // @ts-ignore
+            const _occurrence = currentContextId?.occurrence;
+            // @ts-ignore
+            const _reference = currentContextId?.reference;
+            for (const groupId of Object.keys(checkingData)) {
+                if (groupId === 'manifest') { // skip over manifest
+                    continue
+                }
+                // @ts-ignore
+                const groups = checkingData[groupId]?.groups || {};
+                for (const checkId of Object.keys(groups)) {
+                    const checks: object[] = groups[checkId];
+                    foundCheck = checks.find(item => {
+                        // @ts-ignore
+                        const contextId = item?.contextId;
+                        // @ts-ignore
+                        if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
+                            if (isEqual(_reference, contextId?.reference)) {
+                                if ((_quote === contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    });
+
+                    if (foundCheck) {
+                        break;
+                    }
+                }
+
+                if (foundCheck) {
+                    break;
+                }
+            }
+        }
+        return foundCheck;
+    }
+
     /**
      * Try to get a current document as a scripture TSV object
      *
@@ -242,6 +363,21 @@ export class CheckingProvider implements CustomTextEditorProvider {
             );
         }
         return { }
+    }
+
+    private updateChecks(document: TextDocument, checkingData:object) {
+        const newDocumentText = JSON.stringify(checkingData, null, 2)
+
+        const edit = new vscode.WorkspaceEdit();
+
+        // Just replace the entire document every time for this example extension.
+        // A more complete extension should compute minimal edits instead.
+        edit.replace(
+          document.uri,
+          new vscode.Range(0, 0, document.lineCount, 0),
+          newDocumentText);
+
+        return vscode.workspace.applyEdit(edit);
     }
 
     private static async getCheckingOptions() {
@@ -307,6 +443,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
             if (!catalog) {
                 window.showInformationMessage("Checking DCS for GLs - can take minutes");
                 catalog = await getLatestResources(resourcesPath);
+                // @ts-ignore
+                saveCatalog(catalog);
                 window.showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
             } else {
                 window.showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);

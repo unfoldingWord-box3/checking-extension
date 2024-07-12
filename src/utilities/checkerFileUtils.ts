@@ -7,7 +7,7 @@ import * as ospath from 'ospath';
 import * as usfmjs from "usfm-js";
 // @ts-ignore
 import * as YAML from 'yamljs';
-import { readHelpsFolder } from "./folderUtils";
+import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
@@ -65,11 +65,12 @@ function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:str
         const outputFolder = path.join(folderPath, '../temp')
         for (const bookId of bookIds) {
             const contents = readHelpsFolder(folderPath, bookId)
-            // fs.removeSync(folderPath) // remove unzipped files
-            // fs.ensureDirSync(folderPath)
-            const outputPath = path.join(outputFolder, `${resource.resourceId}_${bookId}.json`)
-            fs.outputJsonSync(outputPath, contents, { spaces: 2 })
-            resourceFiles.push(outputPath)
+            if (objectNotEmpty(contents)) {
+                fs.ensureDirSync(outputFolder);
+                const outputPath = path.join(outputFolder, `${resource.resourceId}_${bookId}.json`);
+                fs.outputJsonSync(outputPath, contents, { spaces: 2 });
+                resourceFiles.push(outputPath);
+            }
         }
         fs.removeSync(folderPath) // remove unzipped files
         fs.moveSync(outputFolder, folderPath)
@@ -86,7 +87,11 @@ function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:str
  */
 async function downloadAndProcessResource(resource:any, resourcesPath:string, byBook = false, combineHelps = false) {
     try {
-        const result = await resourcesDownloadHelpers.downloadAndProcessResource(resource, resourcesPath, [])
+        const errorsList:string[] = [];
+        const downloadErrorsList:string[] = [];
+        const importFolder = path.join(resourcesPath, 'imports')
+        fs.emptyDirSync(importFolder) // clear imports folder to remove leftover files
+        const result = await resourcesDownloadHelpers.downloadAndProcessResourceWithCatch(resource, resourcesPath, errorsList, downloadErrorsList)
         const resourceFiles:string[] = []
         // @ts-ignore
         const resourceName = RESOURCE_ID_MAP[resource.resourceId] || ''
@@ -630,25 +635,48 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             item.bookRes = resource.bookRes
             found.push(item)
         } else {
-            console.error('getLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
+            console.error('getLatestLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
         }
     }
 
     for (const item of found) {
-        console.log('getLangHelpsResourcesFromCatalog - downloading', item)
-        const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
-        if (resource_) {
-            processed.push(resource_)
+        const resourceId = item?.resourceId;
+        // @ts-ignore
+        const resourceName = RESOURCE_ID_MAP?.[resourceId]
+        const languageId_ = item?.languageId;
+        const version = item?.version;
+        const owner_ = item?.owner;
+        const expectedRepo = path.join(resourcesPath, languageId_, apiHelpers.TRANSLATION_HELPS, resourceName, `v${version}_${resourcesHelpers.encodeOwnerStr(owner_)}`)
+        const files = getFilesOfType(expectedRepo, ".json");
+        if (files?.length) {
+            console.log('getLatestLangHelpsResourcesFromCatalog - already have', item)
             const resourceObject = {
-                id: resource_?.resource?.resourceId,
-                languageId: resource_?.resource?.languageId,
-                path: resource_.resourcePath
+                id: item?.resourceId,
+                languageId: item?.languageId,
+                path: expectedRepo
             }
             // @ts-ignore
-            foundResources[resource_.resource.resourceId] = resourceObject
+            foundResources[item.resourceId] = resourceObject
         } else {
-            // @ts-ignore
-            console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {languageId, owner, resourceId: resource.id})
+            console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
+            const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
+            if (resource_) {
+                processed.push(resource_)
+                const resourceObject = {
+                    id: resource_?.resource?.resourceId,
+                    languageId: resource_?.resource?.languageId,
+                    path: resource_.resourcePath
+                }
+                // @ts-ignore
+                foundResources[resource_.resource.resourceId] = resourceObject
+            } else {
+                // @ts-ignore
+                console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
+                    languageId,
+                    owner,
+                    resourceId: item.resourceId
+                })
+            }
         }
     }
     for(const item of processed) {
@@ -757,6 +785,10 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath) {
+    return path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_${glLanguageId}`)
+}
+
 /**
  * copy bible USFM files
  * @param repoPath
@@ -834,6 +866,7 @@ function replaceHomePath(filePath:string) {
  * @param sourceResourceId - if null, then init both tn and twl
  */
 export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null) {
+    let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
     let hasCheckingFiles = true
@@ -868,37 +901,47 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                             break;
 
                         default:
-                            console.error(`initProject - unsupported source project ID: ${resourceId}`);
-                            return false;
+                            console.error(`initProject - Missing source project ID: ${gl_owner}/${gl_languageId}_${resourceId}`);
+                            return {
+                                success: false,
+                                errorMsg: `Missing source project ID: ${gl_owner}/${gl_languageId}_${resourceId}`
+                            };
                     }
 
-                    const checkingPath = path.join(repoPath, 'checking', resourceId)
-                    fs.ensureDirSync(checkingPath);
-                    fs.copySync(sourceTsvsPath, checkingPath);
+                    if (sourceTsvsPath) {
+                        const checkingPath = path.join(repoPath, 'checking', resourceId)
+                        fs.ensureDirSync(checkingPath);
+                        fs.copySync(sourceTsvsPath, checkingPath);
 
-                    // create check files from json files
-                    const files = getFilesOfType(checkingPath, ".json");
-                    if (files?.length) {
-                        for (const filename of files) {
-                            const bookId = getBookIdFromPath(filename);
-                            const newName = `${bookId}.${resourceId}_check`;
-                            if (newName !== filename) {
-                                fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
+                        // create check files from json files
+                        const files = getFilesOfType(checkingPath, ".json");
+                        if (files?.length) {
+                            for (const filename of files) {
+                                const bookId = getBookIdFromPath(filename);
+                                const newName = `${bookId}.${resourceId}_check`;
+                                if (newName !== filename) {
+                                    fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
+                                }
                             }
                         }
                     }
                 }
 
-                const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true)
-                if (foundPath) {
-                    fs.copySync(foundPath, repoPath)
-                } else {
-                    const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath)
-                    if (!results.destFolder) {
-                        console.error(`initProject - cannot copy target bible: ${repoPath}`)
-                        return false
+                if (!hasBibleFiles) {
+                    const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true);
+                    if (foundPath) {
+                        fs.copySync(foundPath, repoPath);
+                    } else {
+                        const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+                        if (!results.destFolder) {
+                            console.error(`initProject - cannot copy target bible from: ${repoPath}`);
+                            return {
+                                success: false,
+                                errorMsg: `cannot copy target bible from: ${repoPath}`,
+                            };
+                        }
+                        fs.copySync(results.destFolder, repoPath);
                     }
-                    fs.copySync(results.destFolder, repoPath)
                 }
                 
                 // replace home path with ~
@@ -954,14 +997,23 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 const outputPath = path.join(repoPath, `metadata.json`)
                 fs.outputJsonSync(outputPath, metadata, { spaces: 2 })
             }
-            return true
+            return {
+                success: true,
+                errorMsg: ''
+            };
         } catch (e) {
-            console.error(`initProject - error creating project: ${repoPath}`)
+            console.error(`initProject - error creating project: ${repoPath}`, e)
+            errorMsg = `error creating project: ${repoPath}`;
         }
     } else {
         console.error(`initProject - cannot initialize folder because it already exists: ${repoPath}`)
+        errorMsg = `cannot initialize folder because it already exists: ${repoPath}`;
     }
-    return false
+    return {
+        success: false,
+        errorMsg
+    };
+
 }
 
 function readJsonFileIfExists(jsonPath:string) {
@@ -996,6 +1048,7 @@ export function fileExists(filePath:string) {
 export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sourceResourceId:string|null) {
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
     let error = false
+    let manifest = null
     let repoExists = false
     let metaDataInitialized = false
     let checksInitialized = false
@@ -1040,7 +1093,8 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
                 }
             }
         } else {
-            console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}`)
+            console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}, try manifest`)
+            manifest = getResourceManifest(repoPath)
         }
         
         const bibleBooks = getBibleFiles(repoPath)
@@ -1056,7 +1110,8 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
         metaDataInitialized,
         checksInitialized,
         translationHelpsLoaded,
-        bibleBooksLoaded
+        bibleBooksLoaded,
+        manifest
     }
 }
 
@@ -1286,6 +1341,18 @@ export function getParsedUSFM(usfmData:string) {
     }
 }
 
+function generateDefaultManifest() {
+    return {
+        language_id: "unknown",
+        language_name: "unknown",
+        direction: "ltor",
+        subject: "Bible",
+        resource_id: "unknown",
+        resource_title: "unknown Bible",
+        description: "unknown Bible",
+    };
+}
+
 /**
  * @description - Turns a manifest.json file into an object and returns it, null if doesn't exist
  * @param {string} resourcePath - folder for manifest.json
@@ -1299,31 +1366,56 @@ export function getResourceManifest(resourcePath:string):object|null {
         try {
             manifest = fs.readJsonSync(manifestPath);
         } catch (e) {
-            console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+            console.log(`getResourceManifest - manifest load failed ${manifestPath}`)
         }
     } else {
         fileName = 'manifest.yaml';
         manifestPath = path.join(resourcePath, fileName);
         if (fs.existsSync(manifestPath)) {
             try {
-                const manifestYaml = fs.readFileSync(manifestPath, 'utf8');
+                let manifestYaml = fs.readFileSync(manifestPath, 'utf8');
                 if (manifestYaml) {
-                    manifest = YAML.parse(manifestYaml)
-                    // copy some data for more convenient access
-                    manifest.language_id = manifest.dublin_core.language.identifier;
-                    manifest.language_name = manifest.dublin_core.language.title;
-                    manifest.direction = manifest.dublin_core.language.direction;
-                    manifest.subject = manifest.dublin_core.subject;
-                    manifest.resource_id = manifest.dublin_core.identifier;
-                    manifest.resource_title = manifest.dublin_core.title;
-                    const oldMainfestIdentifier = manifest.dublin_core.identifier.toLowerCase();
-                    const identifiers = ['ugnt', 'ubh'];
-                    manifest.description = identifiers.includes(oldMainfestIdentifier) ?
-                      'Original Language' : 'Gateway Language';
+                    let dublinCore
+                    try {
+                        manifest = YAML.parse(manifestYaml)
+                        // copy some data for more convenient access
+                        dublinCore = manifest?.dublin_core;
+                    } catch (e) {
+                        console.error(`getResourceManifest - manifest.yaml invalid ${manifestPath}`, e)
+                        manifestYaml = manifestYaml.replace('---', '').trimStart()
+                        try {
+                            manifest = YAML.parse(manifestYaml)
+                            // copy some data for more convenient access
+                            dublinCore = manifest?.dublin_core;
+                            console.log(`getResourceManifest - manifest.yaml cleaned yaml worked`)
+                        } catch (e) {
+                            console.error(`getResourceManifest - manifest.yaml invalid even without --- ${manifestPath}`, e)
+                        }
+                    }
+                    
+                    if (manifest && dublinCore) {
+                        manifest.language_id = dublinCore.language.identifier;
+                        manifest.language_name = dublinCore.language.title;
+                        manifest.direction = dublinCore.language.direction;
+                        manifest.subject = dublinCore.subject;
+                        manifest.resource_id = dublinCore.identifier;
+                        manifest.resource_title = dublinCore.title;
+                        const oldMainfestIdentifier = dublinCore.identifier.toLowerCase();
+                        const identifiers = ["ugnt", "ubh"];
+                        manifest.description = identifiers.includes(oldMainfestIdentifier) ?
+                          "Original Language" : "Gateway Language";
+                    } else {
+                        console.log(`getResourceManifest - falling back to default manifest`)
+                        manifest = generateDefaultManifest()
+                    }
                 }
             } catch (e) {
-                console.log(`getResourceManifestFromJson - manifest load failed ${manifestPath}`)
+                console.log(`getResourceManifest - manifest load failed ${manifestPath}`, e)
             }
+        }
+        else {
+            console.log(`getResourceManifest - falling back to default manifest`)
+            manifest = generateDefaultManifest()
         }
     }
     return manifest;
@@ -1338,22 +1430,24 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
     try {
         if (fs.existsSync(biblePath)) {
             const manifest = getResourceManifest(biblePath)
-            let bookPath = path.join(biblePath, bookId);
-            if (fs.existsSync(bookPath)) {
-                const bookData = readHelpsFolder(bookPath)
-                // @ts-ignore
-                bookData.manifest = manifest
-                return bookData
-            } else {
-                const books = getBibleFiles(biblePath)
-                for (const book of books) {
-                    const matchLowerCase = book.toLowerCase()
-                    if (matchLowerCase.includes(bookId)) {
-                        const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
-                        const json = getParsedUSFM(usfm)
-                        const bookData = json.chapters;
-                        bookData.manifest = manifest
-                        return bookData
+            if (manifest) {
+                let bookPath = path.join(biblePath, bookId);
+                if (fs.existsSync(bookPath)) {
+                    const bookData = readHelpsFolder(bookPath)
+                    // @ts-ignore
+                    bookData.manifest = manifest
+                    return bookData
+                } else {
+                    const books = getBibleFiles(biblePath)
+                    for (const book of books) {
+                        const matchLowerCase = book.toLowerCase()
+                        if (matchLowerCase.includes(bookId)) {
+                            const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
+                            const json = getParsedUSFM(usfm)
+                            const bookData = json.chapters;
+                            bookData.manifest = manifest
+                            return bookData
+                        }
                     }
                 }
             }

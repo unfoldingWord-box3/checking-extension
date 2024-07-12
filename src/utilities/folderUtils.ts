@@ -24,9 +24,13 @@ function readTextFile(filePath:string) {
   return data
 }
 
+export function objectNotEmpty(data: {}) {
+  return data && Object.keys(data).length;
+}
+
 export function readHelpsFolder(folderPath:string, filterBook:string = '') {
   const contents = {}
-  const files = fs.readdirSync(folderPath)
+  const files = (fs.existsSync(folderPath) && isDirectory(folderPath)) ? fs.readdirSync(folderPath) : []
   for (const file of files) {
     const filePath = path.join(folderPath, file)
     const parsed = path.parse(file)
@@ -48,12 +52,16 @@ export function readHelpsFolder(folderPath:string, filterBook:string = '') {
       if ((key === 'groups') && filterBook) {
         const bookPath = path.join(filePath, filterBook)
         const data = readHelpsFolder(bookPath)
-        // @ts-ignore
-        contents[key] = data
+        if (objectNotEmpty(data)) {
+          // @ts-ignore
+          contents[key] = data;
+        }
       } else {
         const data = readHelpsFolder(filePath, filterBook)
-        // @ts-ignore
-        contents[key] = data
+        if (objectNotEmpty(data)) {
+          // @ts-ignore
+          contents[key] = data
+        }
       }
     }
   }

@@ -21,6 +21,8 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
+const showDocument = true // set to false to disable showing ta or tw document
+
 console.log("TranslationCheckingView.tsx")
 
 const loadLexiconEntry = (key:string) => {
@@ -68,6 +70,15 @@ function TranslationCheckingView() {
         return { [lexiconId]: { [entryId]: entryData } };
     };
 
+    const _saveSelection = (newState:object) => {
+        // @ts-ignore
+        const selections = newState && newState.selections
+        console.log(`_saveSelection - new selections`, selections)
+        // @ts-ignore
+        const currentContextId = newState && newState.currentContextId
+        console.log(`_saveSelection - current context data`, currentContextId)
+        saveSelectionMessage(newState)
+    }
 
     const contextId = {}
     const project = CheckingObj.project;
@@ -130,6 +141,14 @@ function TranslationCheckingView() {
         });
     }
 
+    function saveSelectionMessage(newState:{}) { // send message back to extension to save new selection to file
+        vscode.postMessage({
+            command: "saveSelection",
+            text: "Webview save selection",
+            data: newState,
+        });
+    }
+
     useEffect(() => {
         window.addEventListener("message", handleMessage);
         sendFirstLoadMessage();
@@ -172,6 +191,8 @@ function TranslationCheckingView() {
         contextId={contextId}
         getLexiconData={getLexiconData_}
         glWordsData={glWordsData}
+        saveSelection={_saveSelection}
+        showDocument={showDocument}
         targetBible={targetBible}
         targetLanguageDetails={targetLanguageDetails}
         translate={translate}
