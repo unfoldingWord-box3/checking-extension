@@ -18,12 +18,12 @@ For a deeper dive into how this sample works, read the guides below.
 ## Run The Sample
 Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm. 
 
-1. Clone the translation-project repository to test the extension in:
+1. Clone the checking-extension repository to test the extension in:
     ```bash
     git clone https://github.com/unfoldingWord-box3/checking-extension.git
     ```
 
-2. If you want to get the latest checking-extension, stash any local changes and do:
+2. After you have cloned checking-extension, to get the latest code for checking-extension stash any local changes and get latest by doing:
     ```bash
     git stash
     git pull
