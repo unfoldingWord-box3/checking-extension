@@ -182,21 +182,23 @@ function TranslationCheckingView() {
     }
 
     const content = haveResources ? (
-      <Checker
-        styles={{ maxHeight: '500px', overflowY: 'auto' }}
-        alignedGlBible={alignedGlBible}
-        bibles={bibles}
-        checkingData={checkingData}
-        checkType={checkType}
-        contextId={contextId}
-        getLexiconData={getLexiconData_}
-        glWordsData={glWordsData}
-        saveSelection={_saveSelection}
-        showDocument={showDocument}
-        targetBible={targetBible}
-        targetLanguageDetails={targetLanguageDetails}
-        translate={translate}
-      />
+      <div id="checker" style={{ height: "100%" }} >
+          <Checker
+            styles={{ maxHeight: '500px', overflowY: 'auto' }}
+            alignedGlBible={alignedGlBible}
+            bibles={bibles}
+            checkingData={checkingData}
+            checkType={checkType}
+            contextId={contextId}
+            getLexiconData={getLexiconData_}
+            glWordsData={glWordsData}
+            saveSelection={_saveSelection}
+            showDocument={showDocument}
+            targetBible={targetBible}
+            targetLanguageDetails={targetLanguageDetails}
+            translate={translate}
+          />
+      </div>
     ) : getResourceMissingErrorMsg(CheckingObj);
 
     return (

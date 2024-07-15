@@ -12,8 +12,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0(react@18.2.0)
       checking-tool-rcl:
-        specifier: 0.9.5-beta.8
-        version: 0.9.5-beta.8(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0)
+        specifier: 0.9.5-beta.10
+        version: 0.9.5-beta.10(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0(react@18.2.0))(react-redux@7.2.9(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0)(webpack@5.91.0)
       dompurify:
         specifier: ^3.0.9
         version: 3.0.11
@@ -41,7 +41,7 @@ importers:
         version: 1.57.5
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.12)
+        version: 4.2.1(vite@5.0.12(@types/node@20.14.1)(terser@5.31.0))
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -50,7 +50,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.12
-        version: 5.0.12
+        version: 5.0.12(@types/node@20.14.1)(terser@5.31.0)
 
 packages:
 
@@ -673,8 +673,8 @@ packages:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
     engines: {node: '>=4'}
 
-  checking-tool-rcl@0.9.5-beta.8:
-    resolution: {integrity: sha512-HovF1dw4MVTCmMM50sqmZsCPi/Vwv06EBh/V7x3tTrh+PCYc5Nnnhsl79BJmH8gt3UGmrjH2RkIPojQTP+DKqw==}
+  checking-tool-rcl@0.9.5-beta.10:
+    resolution: {integrity: sha512-NJhj95FMTi4JE+uB1Q8Rl6dBLmSTZnDSuTfsF/exvKlDeELzj0MeWOJJ32dUjk/p2SKNmsa4lQ6TO7k/5iNh4w==}
     peerDependencies:
       prop-types: ^15.x
       react: ^18.x
@@ -1808,14 +1808,13 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@material-ui/core@4.12.4(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)':
+  '@material-ui/core@4.12.4(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@babel/runtime': 7.24.6
-      '@material-ui/styles': 4.11.5(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
-      '@material-ui/system': 4.12.2(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
+      '@material-ui/styles': 4.11.5(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@material-ui/system': 4.12.2(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@material-ui/types': 5.1.0(@types/react@18.2.48)
-      '@material-ui/utils': 4.11.3(react-dom@18.2.0)(react@18.2.0)
-      '@types/react': 18.2.48
+      '@material-ui/utils': 4.11.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@types/react-transition-group': 4.4.10
       clsx: 1.2.1
       hoist-non-react-statics: 3.3.2
@@ -1824,23 +1823,25 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-is: 17.0.2
-      react-transition-group: 4.4.5(react-dom@18.2.0)(react@18.2.0)
+      react-transition-group: 4.4.5(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+    optionalDependencies:
+      '@types/react': 18.2.48
 
-  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)':
+  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@babel/runtime': 7.24.6
-      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
-      '@types/react': 18.2.48
+      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+    optionalDependencies:
+      '@types/react': 18.2.48
 
-  '@material-ui/styles@4.11.5(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)':
+  '@material-ui/styles@4.11.5(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@babel/runtime': 7.24.6
       '@emotion/hash': 0.8.0
       '@material-ui/types': 5.1.0(@types/react@18.2.48)
-      '@material-ui/utils': 4.11.3(react-dom@18.2.0)(react@18.2.0)
-      '@types/react': 18.2.48
+      '@material-ui/utils': 4.11.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       clsx: 1.2.1
       csstype: 2.6.21
       hoist-non-react-statics: 3.3.2
@@ -1855,22 +1856,25 @@ snapshots:
       prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+    optionalDependencies:
+      '@types/react': 18.2.48
 
-  '@material-ui/system@4.12.2(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)':
+  '@material-ui/system@4.12.2(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@babel/runtime': 7.24.6
-      '@material-ui/utils': 4.11.3(react-dom@18.2.0)(react@18.2.0)
-      '@types/react': 18.2.48
+      '@material-ui/utils': 4.11.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       csstype: 2.6.21
       prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-
-  '@material-ui/types@5.1.0(@types/react@18.2.48)':
-    dependencies:
+    optionalDependencies:
       '@types/react': 18.2.48
 
-  '@material-ui/utils@4.11.3(react-dom@18.2.0)(react@18.2.0)':
+  '@material-ui/types@5.1.0(@types/react@18.2.48)':
+    optionalDependencies:
+      '@types/react': 18.2.48
+
+  '@material-ui/utils@4.11.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
       '@babel/runtime': 7.24.6
       prop-types: 15.8.1
@@ -2013,14 +2017,14 @@ snapshots:
 
   '@types/vscode-webview@1.57.5': {}
 
-  '@vitejs/plugin-react@4.2.1(vite@5.0.12)':
+  '@vitejs/plugin-react@4.2.1(vite@5.0.12(@types/node@20.14.1)(terser@5.31.0))':
     dependencies:
       '@babel/core': 7.23.7
       '@babel/plugin-transform-react-jsx-self': 7.23.3(@babel/core@7.23.7)
       '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.23.7)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.0
-      vite: 5.0.12
+      vite: 5.0.12(@types/node@20.14.1)(terser@5.31.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -2185,10 +2189,10 @@ snapshots:
       escape-string-regexp: 1.0.5
       supports-color: 5.5.0
 
-  checking-tool-rcl@0.9.5-beta.8(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0)(react-redux@7.2.9)(react@18.2.0)(webpack@5.91.0):
+  checking-tool-rcl@0.9.5-beta.10(@types/react@18.2.48)(prop-types@15.8.1)(react-dom@18.2.0(react@18.2.0))(react-redux@7.2.9(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0)(webpack@5.91.0):
     dependencies:
-      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
-      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
+      '@material-ui/core': 4.12.4(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(@types/react@18.2.48)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       bible-reference-range: 1.1.1
       deep-equal: 1.0.1
       file-loader: 6.2.0(webpack@5.91.0)
@@ -2197,18 +2201,18 @@ snapshots:
       memoize-one: 5.2.1
       prop-types: 15.8.1
       react: 18.2.0
-      react-bootstrap: 0.33.1(react-dom@18.2.0)(react@18.2.0)
-      react-container-dimensions: 1.4.1(react-dom@18.2.0)(react@18.2.0)
+      react-bootstrap: 0.33.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      react-container-dimensions: 1.4.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-dom: 18.2.0(react@18.2.0)
-      react-draggable: 3.3.2(react-dom@18.2.0)(react@18.2.0)
+      react-draggable: 3.3.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-icons: 4.12.0(react@18.2.0)
-      react-redux: 7.2.9(react-dom@18.2.0)(react@18.2.0)
-      react-tooltip: 3.11.6(react-dom@18.2.0)(react@18.2.0)
+      react-redux: 7.2.9(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      react-tooltip: 3.11.6(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       string-punctuation-tokenizer: 2.2.0
       usfm-js: 3.4.2
       uw-tsv-parser: 1.0.3
       word-aligner: 1.0.2(usfm-js@3.4.2)
-      word-aligner-rcl: 1.1.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)(webpack@5.91.0)
+      word-aligner-rcl: 1.1.2(prop-types@15.8.1)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(webpack@5.91.0)
       wordmap-lexer: 0.3.6
     transitivePeerDependencies:
       - '@types/react'
@@ -2735,7 +2739,7 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  react-bootstrap@0.33.1(react-dom@18.2.0)(react@18.2.0):
+  react-bootstrap@0.33.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       '@babel/runtime-corejs2': 7.24.6
       classnames: 2.5.1
@@ -2746,13 +2750,13 @@ snapshots:
       prop-types-extra: 1.1.1(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      react-overlays: 0.9.3(react-dom@18.2.0)(react@18.2.0)
+      react-overlays: 0.9.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-prop-types: 0.4.0(react@18.2.0)
-      react-transition-group: 2.9.0(react-dom@18.2.0)(react@18.2.0)
+      react-transition-group: 2.9.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       uncontrollable: 7.2.1(react@18.2.0)
       warning: 3.0.0
 
-  react-container-dimensions@1.4.1(react-dom@18.2.0)(react@18.2.0):
+  react-container-dimensions@1.4.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       element-resize-detector: 1.2.4
       invariant: 2.2.4
@@ -2766,7 +2770,7 @@ snapshots:
       react: 18.2.0
       scheduler: 0.23.0
 
-  react-draggable@3.3.2(react-dom@18.2.0)(react@18.2.0):
+  react-draggable@3.3.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       classnames: 2.5.1
       prop-types: 15.8.1
@@ -2783,7 +2787,7 @@ snapshots:
 
   react-lifecycles-compat@3.0.4: {}
 
-  react-overlays@0.9.3(react-dom@18.2.0)(react@18.2.0):
+  react-overlays@0.9.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       classnames: 2.5.1
       dom-helpers: 3.4.0
@@ -2791,7 +2795,7 @@ snapshots:
       prop-types-extra: 1.1.1(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      react-transition-group: 2.9.0(react-dom@18.2.0)(react@18.2.0)
+      react-transition-group: 2.9.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       warning: 3.0.0
 
   react-prop-types@0.4.0(react@18.2.0):
@@ -2799,7 +2803,7 @@ snapshots:
       react: 18.2.0
       warning: 3.0.0
 
-  react-redux@7.2.9(react-dom@18.2.0)(react@18.2.0):
+  react-redux@7.2.9(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       '@babel/runtime': 7.24.6
       '@types/react-redux': 7.1.33
@@ -2807,18 +2811,19 @@ snapshots:
       loose-envify: 1.4.0
       prop-types: 15.8.1
       react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
       react-is: 17.0.2
+    optionalDependencies:
+      react-dom: 18.2.0(react@18.2.0)
 
   react-refresh@0.14.0: {}
 
-  react-tooltip@3.11.6(react-dom@18.2.0)(react@18.2.0):
+  react-tooltip@3.11.6(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
-  react-transition-group@2.9.0(react-dom@18.2.0)(react@18.2.0):
+  react-transition-group@2.9.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       dom-helpers: 3.4.0
       loose-envify: 1.4.0
@@ -2827,7 +2832,7 @@ snapshots:
       react-dom: 18.2.0(react@18.2.0)
       react-lifecycles-compat: 3.0.4
 
-  react-transition-group@4.4.5(react-dom@18.2.0)(react@18.2.0):
+  react-transition-group@4.4.5(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
       '@babel/runtime': 7.24.6
       dom-helpers: 5.2.1
@@ -3020,13 +3025,15 @@ snapshots:
 
   uw-tsv-parser@1.0.3: {}
 
-  vite@5.0.12:
+  vite@5.0.12(@types/node@20.14.1)(terser@5.31.0):
     dependencies:
       esbuild: 0.19.12
       postcss: 8.4.33
       rollup: 4.9.6
     optionalDependencies:
+      '@types/node': 20.14.1
       fsevents: 2.3.3
+      terser: 5.31.0
 
   warning@3.0.0:
     dependencies:
@@ -3101,7 +3108,7 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
-  word-aligner-rcl@1.1.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)(webpack@5.91.0):
+  word-aligner-rcl@1.1.2(prop-types@15.8.1)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(webpack@5.91.0):
     dependencies:
       bible-reference-range: 1.1.1
       deep-equal: 2.2.3
