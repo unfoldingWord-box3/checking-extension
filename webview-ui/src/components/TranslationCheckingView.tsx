@@ -182,9 +182,9 @@ function TranslationCheckingView() {
     }
 
     const content = haveResources ? (
-      <div id="checker" style={{ height: "100%" }} >
+      <div id="checkerWrapper" >
           <Checker
-            styles={{ maxHeight: '500px', overflowY: 'auto' }}
+            styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
             alignedGlBible={alignedGlBible}
             bibles={bibles}
             checkingData={checkingData}
