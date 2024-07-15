@@ -662,13 +662,17 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
             if (resource_) {
                 processed.push(resource_)
+                const resourcePath = resource_.resourcePath;
+                const glLanguageId = resource_?.resource?.languageId;
+                const resourceId = resource_?.resource?.resourceId;
                 const resourceObject = {
-                    id: resource_?.resource?.resourceId,
-                    languageId: resource_?.resource?.languageId,
-                    path: resource_.resourcePath
+                    id: resourceId,
+                    languageId: glLanguageId,
+                    path: resourcePath
                 }
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
+                processHelpsIntoJson(resource_, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
             } else {
                 // @ts-ignore
                 console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
@@ -678,11 +682,6 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 })
             }
         }
-    }
-    for(const item of processed) {
-        console.log(item)
-        // @ts-ignore
-        processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
     }
     return {
         processed,
@@ -932,8 +931,15 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     if (foundPath) {
                         fs.copySync(foundPath, repoPath);
                     } else {
+                        // if folder already exists, remove it first
+                        const folderPath = path.join(resourcesPath, targetLanguageId, 'bibles', targetBibleId) // , `v${resource.version}_${resource.owner}`)
+                        const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false)
+                        if (versionPath && fs.pathExistsSync(versionPath)) {
+                            fs.removeSync(versionPath)
+                        }
+
                         const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
-                        if (!results.destFolder) {
+                        if (!results?.destFolder) {
                             console.error(`initProject - cannot copy target bible from: ${repoPath}`);
                             return {
                                 success: false,

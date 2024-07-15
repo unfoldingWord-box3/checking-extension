@@ -28,7 +28,6 @@ Follow the following steps to see the translation notes extension in action. Rep
     git stash
     git pull
     ```
-   
 
 3. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
 
@@ -37,11 +36,11 @@ Follow the following steps to see the translation notes extension in action. Rep
     pnpm run install:all
     ```
 
-4. Build the webview so that it renders on extension run
+4. Build the webview and module so that they work on extension run
 
-    a. If in the root directory, run:
+    - If in the root directory, run:
     ```bash
-    pnpm run build:webview
+    pnpm run build:all
     ```
     
     b. If in the `webview-ui` directory, run:

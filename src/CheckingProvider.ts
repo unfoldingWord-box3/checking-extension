@@ -332,6 +332,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 }
             }
         }
+
+        if(!foundCheck) {
+            console.warn(`findCheckToUpdate - check not found`, currentContextId)
+        }
         return foundCheck;
     }
 
