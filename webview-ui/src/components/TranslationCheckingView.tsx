@@ -32,6 +32,7 @@ const loadLexiconEntry = (key:string) => {
 function TranslationCheckingView() {
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
+    const [currentContextId, setCurrentContextId] = useState<object>({});
     
     // TODO: Implement this if in Codex!
     // const changeChapterVerse = (ref: VerseRefGlobalState): void => {
@@ -77,10 +78,13 @@ function TranslationCheckingView() {
         // @ts-ignore
         const currentContextId = newState && newState.currentContextId
         console.log(`_saveSelection - current context data`, currentContextId)
+        // @ts-ignore
+        const nextContextId = newState && newState.nextContextId
+        currentContextId && setCurrentContextId(nextContextId)
         saveSelectionMessage(newState)
     }
 
-    const contextId = {}
+    const contextId = currentContextId || {}
     const project = CheckingObj.project;
     // @ts-ignore
     const bookId = project?.bookId

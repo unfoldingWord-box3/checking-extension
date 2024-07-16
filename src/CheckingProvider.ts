@@ -115,6 +115,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         if (repoInitSuccess) {
                             const uri = vscode.Uri.file(repoPath);
                             vscode.commands.executeCommand('vscode.openFolder', uri);
+                        } else {
+                            window.showWarningMessage(`repo init failed!`);
                         }
                     }
                 }
@@ -144,6 +146,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             } = options;
 
                             const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+                            if (repoInitSuccess) {
+                                window.showInformationMessage(`Checking has been set up in project`);
+                            } else {
+                                window.showWarningMessage(`repo init failed!`);
+                            }
                         } else if (results.repoExists) {
                             window.showWarningMessage(`repo already has broken setup!`);
                         }
@@ -314,7 +321,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         // @ts-ignore
                         if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
                             if (isEqual(_reference, contextId?.reference)) {
-                                if ((_quote === contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
                                     return true;
                                 }
                             }
@@ -331,6 +338,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     break;
                 }
             }
+        }
+
+        if(!foundCheck) {
+            console.warn(`findCheckToUpdate - check not found`, currentContextId)
         }
         return foundCheck;
     }
