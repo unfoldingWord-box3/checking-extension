@@ -101,9 +101,14 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         fs.emptyDirSync(importFolder) // clear imports folder to remove leftover files
         const result = await resourcesDownloadHelpers.downloadAndProcessResourceWithCatch(resource, resourcesPath, errorsList, downloadErrorsList)
         const resourceFiles:string[] = []
+        let folderPath:null|string = null
         // @ts-ignore
         const resourceName = RESOURCE_ID_MAP[resource.resourceId] || ''
-        const folderPath = path.join(resourcesPath, resource.languageId, 'translationHelps', resourceName, `v${resource.version}_${resourcesHelpers.encodeOwnerStr(resource.owner)}`)
+        if (resourceName) {
+            folderPath = path.join(resourcesPath, resource.languageId, "translationHelps", resourceName, `v${resource.version}_${resourcesHelpers.encodeOwnerStr(resource.owner)}`);
+        } else { // bibles
+            folderPath = path.join(resourcesPath, resource.languageId, "bibles", resource.resourceId, `v${resource.version}_${resourcesHelpers.encodeOwnerStr(resource.owner)}`);
+        }
         let success = true
         if (combineHelps) {
             success = processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
@@ -114,7 +119,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
             console.error(`downloadAndProcessResource - could not process resource`, folderPath)
         }
     } catch (e) {
-        const message = `Source Content Update Errors caught!!!\n${e}`;
+        const message = `downloadAndProcessResource - Source Content Update Errors caught!!!\n${e}`;
         console.error(message);
     }
 
@@ -1191,7 +1196,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           const origLangguageBibleId = isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const origLangBible = {
               languageId: origLangguageId,
-              bibleId: origLangguageBibleId,
+              id: origLangguageBibleId,
               owner: 'unfoldingWord'
           }
           biblesList.splice(1, 0, origLangBible); // insert into second position
@@ -1202,18 +1207,28 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
                   const biblePath = replaceHomePath(bible.path)
                   book = getBookOfTheBibleFromFolder(biblePath, bookId)
               } else {
-                  book = getBookOfTheBible(resourcesBasePath, bookId, bible.bibleId, bible.languageId, bible.owner);
+                  book = getBookOfTheBible(resourcesBasePath, bookId, bible.id, bible.languageId, bible.owner);
               }
 
+              const manifest = book?.manifest
               const bibleObject = {
                   book,
-                  languageId: bible.languageId,
-                  bibleId: bible.bibleId,
+                  languageId: manifest?.language_id,
+                  bibleId: bible.id,
                   owner: bible.owner
               };
+
+              if (!bible.owner) {// try to get info from folder name
+                const parts = path.basename(bible.path || '').split('_')
+                if (parts?.length === 2) {
+                    // @ts-ignore
+                    bibleObject.version = parts[0]
+                    bibleObject.owner = parts[1]
+                }
+              }
               bibles.push(bibleObject)
               // @ts-ignore
-              results[bible.bibleId] = bibleObject
+              results[bible.id] = bibleObject
           }
 
           // @ts-ignore
@@ -1309,10 +1324,10 @@ export function haveNeededResources(resources:object) {
                 return false
             }
 
-            if (!bible?.owner) {
-                console.warn(`haveNeededData - missing owner for bible`, bible)
-                return false
-            }
+            // if (!bible?.owner) {
+            //     console.warn(`haveNeededData - missing owner for bible`, bible)
+            //     return false
+            // }
 
             if (!bible?.book) {
                 console.warn(`haveNeededData - missing bible data for bible`, bible)
