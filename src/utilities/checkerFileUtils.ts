@@ -1203,18 +1203,22 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           let book;
 
           for (const bible of biblesList) {
+              const bibleId = bible.bibleId || bible.id
               if (bible.path) {
                   const biblePath = replaceHomePath(bible.path)
                   book = getBookOfTheBibleFromFolder(biblePath, bookId)
               } else {
-                  book = getBookOfTheBible(resourcesBasePath, bookId, bible.id, bible.languageId, bible.owner);
-              }
+                  book = getBookOfTheBible(resourcesBasePath, bookId, bibleId, bible.languageId, bible.owner);
 
+              }
               const manifest = book?.manifest
+              const dublin_core = manifest?.dublin_core
+              const languageId = manifest?.language_id || dublin_core?.language?.identifier;
+              const _bibleId = bibleId || manifest?.resource_id || dublin_core?.identifier;
               const bibleObject = {
                   book,
-                  languageId: manifest?.language_id,
-                  bibleId: bible.id ||  manifest?.resource_id,
+                  languageId: languageId,
+                  bibleId: _bibleId,
                   owner: bible.owner
               };
 
