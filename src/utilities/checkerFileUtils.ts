@@ -1232,7 +1232,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               }
               bibles.push(bibleObject)
               // @ts-ignore
-              results[bible.id] = bibleObject
+              results[_bibleId] = bibleObject
           }
 
           // @ts-ignore
