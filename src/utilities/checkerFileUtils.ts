@@ -54,27 +54,35 @@ const checkingHelpsResources = [
  */
 function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
     const bookIds = Object.keys(BooksOfTheBible.ALL_BIBLE_BOOKS)
-    if (!byBook) {
-        const contents = readHelpsFolder(folderPath)
-        fs.removeSync(folderPath) // remove unzipped files
-        fs.ensureDirSync(folderPath)
-        const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
-        fs.outputJsonSync(outputPath, contents, { spaces: 2 })
-        resourceFiles.push(outputPath)
-    } else {
-        const outputFolder = path.join(folderPath, '../temp')
-        for (const bookId of bookIds) {
-            const contents = readHelpsFolder(folderPath, bookId)
-            if (objectNotEmpty(contents)) {
-                fs.ensureDirSync(outputFolder);
-                const outputPath = path.join(outputFolder, `${resource.resourceId}_${bookId}.json`);
-                fs.outputJsonSync(outputPath, contents, { spaces: 2 });
-                resourceFiles.push(outputPath);
+    try {
+        const tempFolder = path.join(folderPath, '../temp')
+        fs.moveSync(folderPath, tempFolder)
+        if (!byBook) {
+            const contents = readHelpsFolder(tempFolder)
+            fs.ensureDirSync(folderPath)
+            const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
+            fs.outputJsonSync(outputPath, contents, { spaces: 2 })
+            resourceFiles.push(outputPath)
+        } else {
+            for (const bookId of bookIds) {
+                const contents = readHelpsFolder(tempFolder, bookId)
+                if (objectNotEmpty(contents)) {
+                    fs.ensureDirSync(folderPath);
+                    const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
+                    fs.outputJsonSync(outputPath, contents, { spaces: 2 });
+                    resourceFiles.push(outputPath);
+                }
             }
         }
-        fs.removeSync(folderPath) // remove unzipped files
-        fs.moveSync(outputFolder, folderPath)
+        fs.removeSync(tempFolder)
+        return true
+    } catch (e) {
+        console.error(`processHelpsIntoJson - failed to process folder`, folderPath, e)
+        return false
     }
+
+    console.error(`processHelpsIntoJson - failed to process folder`, folderPath)
+    return false
 }
 
 /**
@@ -96,10 +104,15 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         // @ts-ignore
         const resourceName = RESOURCE_ID_MAP[resource.resourceId] || ''
         const folderPath = path.join(resourcesPath, resource.languageId, 'translationHelps', resourceName, `v${resource.version}_${resourcesHelpers.encodeOwnerStr(resource.owner)}`)
+        let success = true
         if (combineHelps) {
-            processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
+            success = processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
         }
-        return { resourcePath: folderPath, resourceFiles, resource, byBook};
+        if (success) {
+            return { resourcePath: folderPath, resourceFiles, resource, byBook};
+        } else {
+            console.error(`downloadAndProcessResource - could not process resource`, folderPath)
+        }
     } catch (e) {
         const message = `Source Content Update Errors caught!!!\n${e}`;
         console.error(message);
@@ -250,14 +263,15 @@ async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string
         const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
         if (resource_) {
             processed.push(resource_)
+            const success = processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
+            if (!success) {
+                console.error('getLangHelpsResourcesFromCatalog - could not process', item)
+            }
         } else {
             console.error('getLangHelpsResourcesFromCatalog - could not download Resource item', {languageId, owner, resourceId: item.id})
         }
     }
-    for(const item of processed) {
-        console.log(item)
-        processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
-    }
+
     return { processed, updatedCatalogResources: catalog }
 }
 
@@ -672,7 +686,10 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 }
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
-                processHelpsIntoJson(resource_, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
+                const success = processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
+                if (!success) {
+                    console.error('getLangHelpsResourcesFromCatalog - could not process', item)
+                }
             } else {
                 // @ts-ignore
                 console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
@@ -1106,7 +1123,7 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
         const bibleBooks = getBibleFiles(repoPath)
         bibleBooksLoaded = !!bibleBooks?.length
     } catch (e) {
-        console.warn(`isRepoInitialized - error checking repo`, e)
+        console.error(`isRepoInitialized - error checking repo`, e)
         error = true
     }
 
@@ -1500,7 +1517,7 @@ export function getBookIdFromPath(filePath:string):null|string {
             }
         }
     }
-    console.warn(`getBookIdFromPath() - illegal path ${filePath}`)
+    console.error(`getBookIdFromPath() - illegal path ${filePath}`)
     return null
 }
 
@@ -1526,7 +1543,7 @@ export function getProjectIdFromPath(filePath:string):null|string {
             }
         }
     }
-    console.warn(`getBookIdFromPath() - illegal path ${filePath}`)
+    console.error(`getBookIdFromPath() - illegal path ${filePath}`)
     return null
 }
 
