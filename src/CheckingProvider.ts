@@ -98,7 +98,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 
                 if (!repoFolderExists_) {
                     const options = await CheckingProvider.getCheckingOptions();
-                    if (options) {
+                    if (options && options.gwLanguagePick && options.gwOwnerPick) {
                         const {
                             catalog,
                             gwLanguagePick: glLanguageId,
@@ -116,8 +116,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             const uri = vscode.Uri.file(repoPath);
                             vscode.commands.executeCommand('vscode.openFolder', uri);
                         } else {
-                            window.showWarningMessage(`repo init failed!`);
+                            window.showErrorMessage(`repo init failed!`);
                         }
+                    } else {
+                        window.showErrorMessage(`Options invalid: ${options}`);
                     }
                 }
                 else {
@@ -135,7 +137,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             const targetOwner = ''
 
                             const options = await CheckingProvider.getGatewayLangOptions();
-                            if (!options) {
+                            if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
+                                window.showErrorMessage(`Options invalid: ${options}`);
                                 return null
                             }
 
@@ -149,13 +152,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             if (repoInitSuccess) {
                                 window.showInformationMessage(`Checking has been set up in project`);
                             } else {
-                                window.showWarningMessage(`repo init failed!`);
+                                window.showErrorMessage(`repo init failed!`);
                             }
                         } else if (results.repoExists) {
-                            window.showWarningMessage(`repo already has broken setup!`);
+                            window.showErrorMessage(`repo already has broken setup!`);
                         }
                     } else {
-                        window.showWarningMessage(`repo already exists!`);
+                        window.showErrorMessage(`repo already exists!`);
                     }
                 }
 
@@ -183,7 +186,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         if (!repoExists) {
             repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
         } else {
-            window.showWarningMessage(`Cannot create project, folder already exists at ${repoPath}`);
+            window.showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`);
         }
         return { repoInitSuccess, repoPath };
     }
@@ -199,8 +202,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
             window.showInformationMessage(`Initialized project at ${repoPath}`);
             repoInitSuccess = true;
         } else {
-            window.showWarningMessage(`Failed to initialize project at ${repoPath}`);
-            window.showWarningMessage(errorMsg);
+            window.showErrorMessage(errorMsg);
+            window.showErrorMessage(`Failed to initialize project at ${repoPath}`);
         }
         return repoInitSuccess;
     }

@@ -904,6 +904,10 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     const shouldCreateProject = !projectExists
         || (hasBibleFiles && !hasCheckingFiles)
 
+    if (!gl_owner && gl_languageId) {
+        errorMsg = `Missing GL info`;
+        console.error(`initProject - Missing GL info:`, { gl_owner, gl_languageId});
+    } else
     if (shouldCreateProject) {
         const sourceTsvsPaths = {}
         try {
@@ -1037,6 +1041,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
         console.error(`initProject - cannot initialize folder because it already exists: ${repoPath}`)
         errorMsg = `cannot initialize folder because it already exists: ${repoPath}`;
     }
+
     return {
         success: false,
         errorMsg

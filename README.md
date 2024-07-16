@@ -36,24 +36,24 @@ Follow the following steps to see the translation notes extension in action. Rep
     pnpm run install:all
     ```
 
-4. Build the webview and module so that they work on extension run
+4. Build the webview so that it renders on extension run
 
     - If in the root directory, run:
     ```bash
-    pnpm run build:all
+    pnpm run build:webview
     ```
     
-    b. If in the `webview-ui` directory, run:
-    ```bash
-    pnpm run build
-    ```
-
 5. Open vscode editor (using `code .` in the current directory or using the UI)
 
 6. Press `F5` to open a new Extension Development Host window
 
+   - If you get error that the module could not be installed, try:
+    ```bash
+    pnpm run build:all
+    ```
+
 7. Initialize a project
-   a. Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
+   a. Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or Control-Shift-P on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
    b. Add checking to an existing project (a folder that already has usfm files and manifest).  With vscode open to project folder, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to select gateway language.  It will create a checking folder and metadata.json.
 
 8. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
