@@ -1214,7 +1214,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               const bibleObject = {
                   book,
                   languageId: manifest?.language_id,
-                  bibleId: bible.id,
+                  bibleId: bible.id ||  manifest?.resource_id,
                   owner: bible.owner
               };
 
