@@ -52,33 +52,45 @@ const checkingHelpsResources = [
  * @param {string[]} resourceFiles - destination for list of resources paths found
  * @param {boolean} byBook - if true then separate resources by book
  */
-function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
+async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
     const bookIds = Object.keys(BooksOfTheBible.ALL_BIBLE_BOOKS)
-    try {
-        const tempFolder = path.join(folderPath, '../temp')
-        fs.moveSync(folderPath, tempFolder)
-        if (!byBook) {
-            const contents = readHelpsFolder(tempFolder)
-            fs.ensureDirSync(folderPath)
-            const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
-            fs.outputJsonSync(outputPath, contents, { spaces: 2 })
-            resourceFiles.push(outputPath)
-        } else {
-            for (const bookId of bookIds) {
-                const contents = readHelpsFolder(tempFolder, bookId)
-                if (objectNotEmpty(contents)) {
-                    fs.ensureDirSync(folderPath);
-                    const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
-                    fs.outputJsonSync(outputPath, contents, { spaces: 2 });
-                    resourceFiles.push(outputPath);
+    const tempFolder = path.join(folderPath, '../temp')
+    let moveSuccess = false
+    for (let i = 0; i < 3; i++) {
+        try {
+            fs.moveSync(folderPath, tempFolder);
+            moveSuccess = true
+            break
+        } catch (e) {
+            await delay(500);
+            console.warn(`processHelpsIntoJson - could not move folder ${folderPath}`, e)
+        }
+    }
+    if (moveSuccess) {
+        try {
+            if (!byBook) {
+                const contents = readHelpsFolder(tempFolder)
+                fs.ensureDirSync(folderPath)
+                const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
+                fs.outputJsonSync(outputPath, contents, { spaces: 2 })
+                resourceFiles.push(outputPath)
+            } else {
+                for (const bookId of bookIds) {
+                    const contents = readHelpsFolder(tempFolder, bookId)
+                    if (objectNotEmpty(contents)) {
+                        fs.ensureDirSync(folderPath);
+                        const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
+                        fs.outputJsonSync(outputPath, contents, { spaces: 2 });
+                        resourceFiles.push(outputPath);
+                    }
                 }
             }
+            fs.removeSync(tempFolder)
+            return true
+        } catch (e) {
+            console.error(`processHelpsIntoJson - failed to process folder`, folderPath, e)
+            return false
         }
-        fs.removeSync(tempFolder)
-        return true
-    } catch (e) {
-        console.error(`processHelpsIntoJson - failed to process folder`, folderPath, e)
-        return false
     }
 
     console.error(`processHelpsIntoJson - failed to process folder`, folderPath)
@@ -111,7 +123,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         }
         let success = true
         if (combineHelps) {
-            success = processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
+            success = await processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
         }
         if (success) {
             return { resourcePath: folderPath, resourceFiles, resource, byBook};
@@ -268,7 +280,7 @@ async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string
         const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
         if (resource_) {
             processed.push(resource_)
-            const success = processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
+            const success = await processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
             if (!success) {
                 console.error('getLangHelpsResourcesFromCatalog - could not process', item)
             }
@@ -691,7 +703,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 }
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
-                const success = processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
+                const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
                 if (!success) {
                     console.error('getLangHelpsResourcesFromCatalog - could not process', item)
                 }
@@ -1587,4 +1599,15 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
         return resources
     }
     return null
+}
+
+/**
+ * wraps timer in a Promise to make an async function that continues after a specific number of milliseconds.
+ * @param {number} ms
+ * @returns {Promise<unknown>}
+ */
+export default function delay(ms:number) {
+    return new Promise((resolve) =>
+      setTimeout(resolve, ms)
+    );
 }
