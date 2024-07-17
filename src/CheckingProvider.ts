@@ -97,30 +97,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 }
                 
                 if (!repoFolderExists_) {
-                    const options = await CheckingProvider.getCheckingOptions();
-                    if (options && options.gwLanguagePick && options.gwOwnerPick) {
-                        const {
-                            catalog,
-                            gwLanguagePick: glLanguageId,
-                            gwOwnerPick: glOwner,
-                            targetLanguagePick: targetLanguageId,
-                            targetOwnerPick: targetOwner,
-                            targetBibleIdPick: targetBibleId,
-                        } = options;
-                        let {
-                            repoInitSuccess,
-                            repoPath,
-                        } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
-
-                        if (repoInitSuccess) {
-                            const uri = vscode.Uri.file(repoPath);
-                            vscode.commands.executeCommand('vscode.openFolder', uri);
-                        } else {
-                            window.showErrorMessage(`repo init failed!`);
-                        }
-                    } else {
-                        window.showErrorMessage(`Options invalid: ${options}`);
-                    }
+                    await this.initializeEmptyFolder();
                 }
                 else {
                     let results
@@ -130,53 +107,72 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
                             && !results.checksInitialized && results.bibleBooksLoaded
                         if (initBibleRepo) {
-                            // @ts-ignore
-                            const dublin_core = results.manifest?.dublin_core
-                            const targetLanguageId = dublin_core?.language?.identifier
-                            const targetBibleId = dublin_core?.identifier
-                            const targetOwner = ''
-
-                            const options = await CheckingProvider.getGatewayLangOptions();
-                            if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
-                                window.showErrorMessage(`Options invalid: ${options}`);
-                                return null
-                            }
-
-                            const {
-                                catalog,
-                                gwLanguagePick: glLanguageId,
-                                gwOwnerPick: glOwner
-                            } = options;
-
-                            const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
-                            if (repoInitSuccess) {
-                                window.showInformationMessage(`Checking has been set up in project`);
-                            } else {
-                                window.showErrorMessage(`repo init failed!`);
-                            }
+                            return await this.initializeBibleFolder(results, projectPath);
                         } else if (results.repoExists) {
-                            window.showErrorMessage(`repo already has broken setup!`);
+                            window.showErrorMessage(`repo already has checking setup!`);
                         }
                     } else {
                         window.showErrorMessage(`repo already exists!`);
                     }
                 }
-
-                // const gl_owner = 'unfoldingWord'
-                // const gl_languageId = 'en'
-                // const targetLanguageId = 'es-419'
-                // const targetOwner = 'es-419_gl'
-                // const targetBibleId = 'glt'
-                // const projectId = 'tn'
-                // const repoPath = path.join(resourcesBasePath, '../projects', `${targetLanguageId}_${projectId}_checks`)
-                // const success = await initProject(repoPath, targetLanguageId, targetOwner, targetBibleId, gl_languageId, gl_owner, resourcesBasePath, projectId)
-                // if (!success) {
-                //     console.error(`checking-extension.initTranslationChecker - failed to init folder ${repoPath}`)
-                // }
             },
         );
 
         return { providerRegistration, commandRegistration };
+    }
+
+    private static async initializeBibleFolder(results:object, projectPath:string) {
+        // @ts-ignore
+        const dublin_core = results.manifest?.dublin_core;
+        const targetLanguageId = dublin_core?.language?.identifier;
+        const targetBibleId = dublin_core?.identifier;
+        const targetOwner = "";
+
+        const options = await CheckingProvider.getGatewayLangOptions();
+        if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
+            window.showErrorMessage(`Options invalid: ${options}`);
+            return null;
+        }
+
+        const {
+            catalog,
+            gwLanguagePick: glLanguageId,
+            gwOwnerPick: glOwner,
+        } = options;
+
+        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+        if (repoInitSuccess) {
+            window.showInformationMessage(`Checking has been set up in project`);
+        } else {
+            window.showErrorMessage(`repo init failed!`);
+        }
+    }
+
+    private static async initializeEmptyFolder() {
+        const options = await CheckingProvider.getCheckingOptions();
+        if (options && options.gwLanguagePick && options.gwOwnerPick) {
+            const {
+                catalog,
+                gwLanguagePick: glLanguageId,
+                gwOwnerPick: glOwner,
+                targetLanguagePick: targetLanguageId,
+                targetOwnerPick: targetOwner,
+                targetBibleIdPick: targetBibleId,
+            } = options;
+            let {
+                repoInitSuccess,
+                repoPath,
+            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+
+            if (repoInitSuccess) {
+                const uri = vscode.Uri.file(repoPath);
+                vscode.commands.executeCommand("vscode.openFolder", uri);
+            } else {
+                window.showErrorMessage(`repo init failed!`);
+            }
+        } else {
+            window.showErrorMessage(`Options invalid: ${options}`);
+        }
     }
 
     private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
@@ -193,19 +189,42 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
         let repoInitSuccess = false;
+
         window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
-        const {
-            success,
-            errorMsg,
-        } = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog);
-        if (success) {
+        // @ts-ignore
+        const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
+        // @ts-ignore
+        if (results.success) {
             window.showInformationMessage(`Initialized project at ${repoPath}`);
             repoInitSuccess = true;
         } else {
-            window.showErrorMessage(errorMsg);
+            // @ts-ignore
+            window.showErrorMessage(results.errorMsg);
             window.showErrorMessage(`Failed to initialize project at ${repoPath}`);
         }
         return repoInitSuccess;
+    }
+
+    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
+        const promise = new Promise<object>((resolve) => {
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Window,
+                title: 'Downloading GL resources...',
+                cancellable: false
+            }, async (progressTracker) => {
+                function updateProgress(message:string) {
+                    console.log(`updateProgress - ${message}`)
+                    window.showInformationMessage(message);
+                    progressTracker.report({  increment: 10 });
+                }
+
+                progressTracker.report({ increment: 10 });
+                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
+                progressTracker.report({ increment: 10 });
+                resolve(results)
+            })
+        })
+        return promise
     }
 
     private static readonly viewType = "checking-extension.translationChecker";
@@ -451,12 +470,34 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    private static getDoor43ResourcesWithProgress(resourcesPath:string) {
+        return new Promise((resolve) => {
+            window.showInformationMessage("Checking DCS for GLs - can take minutes");
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Window,
+                title: 'Downloading Catalog...',
+                cancellable: false
+            }, async (progressTracker) => {
+                function updateProgress(message: string) {
+                    console.log(`updateProgress - ${message}`)
+                    progressTracker.report({ increment: 50 });
+                }
+
+                progressTracker.report({ increment: 25 });
+                const catalog = await getLatestResources(resourcesPath)
+                progressTracker.report({ increment: 10 });
+                resolve(catalog)
+            })
+       });
+    }
+
     private static async getGatewayLangOptions() {
         let catalog = getSavedCatalog();
         try {
             if (!catalog) {
                 window.showInformationMessage("Checking DCS for GLs - can take minutes");
-                catalog = await getLatestResources(resourcesPath);
+                // @ts-ignore
+                catalog = await this.getDoor43ResourcesWithProgress(resourcesPath);
                 // @ts-ignore
                 saveCatalog(catalog);
                 window.showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);

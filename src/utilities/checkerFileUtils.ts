@@ -643,10 +643,11 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
+async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
     if (!catalog?.length) {
         catalog = await getLatestResources(resourcesPath)
     }
+    callback && callback('downloaded catalog')
 
     const processed:any[] = []
     let foundResources = verifyHaveGlHelpsResources(languageId, owner, resourcesPath)
@@ -691,6 +692,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
+            callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
                 processed.push(resource_)
                 const resourcePath = resource_.resourcePath;
@@ -752,8 +754,8 @@ function getLanguageAndOwnerForBible(languageId:string, owner:string, bibleId:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
-    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath)
+export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
+    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
 
     // @ts-ignore
     foundResources.bibles = []
@@ -802,6 +804,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
+                    callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
                 }
             }
         }
@@ -898,7 +901,7 @@ function replaceHomePath(filePath:string) {
  * @param resourcesBasePath
  * @param sourceResourceId - if null, then init both tn and twl
  */
-export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null) {
     let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
@@ -923,7 +926,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     if (shouldCreateProject) {
         const sourceTsvsPaths = {}
         try {
-            const { processed, updatedCatalogResources, foundResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath)
+            const { processed, updatedCatalogResources, foundResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath, callback)
             if (updatedCatalogResources) {
                 for (const resourceId of resourceIds) {
                     let sourceTsvsPath;
@@ -986,6 +989,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         }
                         fs.copySync(results.destFolder, repoPath);
                     }
+                    callback && callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }
                 
                 // replace home path with ~
