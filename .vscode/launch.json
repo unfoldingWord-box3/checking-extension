@@ -10,9 +10,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "--folder-uri",
-        "file:///home/kintsoogi/code/vscode_extensions/translation-project"
+        "--extensionDevelopmentPath=${workspaceFolder}"
       ],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"

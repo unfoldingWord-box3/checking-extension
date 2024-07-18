@@ -919,7 +919,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     const shouldCreateProject = !projectExists
         || (hasBibleFiles && !hasCheckingFiles)
 
-    if (!gl_owner && gl_languageId) {
+    if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
         console.error(`initProject - Missing GL info:`, { gl_owner, gl_languageId});
     } else

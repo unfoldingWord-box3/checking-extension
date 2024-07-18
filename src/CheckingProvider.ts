@@ -23,9 +23,10 @@ import {
     getLatestResources,
     getRepoPath,
     getResourceIdsInCatalog,
+    getResourcesForChecking,
     getSavedCatalog,
     initProject,
-  isRepoInitialized,
+    isRepoInitialized,
     resourcesPath,
     saveCatalog,
 } from "./utilities/checkerFileUtils";
@@ -180,7 +181,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId);
         const repoExists = fileExists(repoPath);
         if (!repoExists) {
-            repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+            if (targetLanguageId && targetBibleId && targetOwner) {
+                repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+            } else {
+                window.showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`);
+            }
         } else {
             window.showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`);
         }
@@ -190,17 +195,39 @@ export class CheckingProvider implements CustomTextEditorProvider {
     private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
         let repoInitSuccess = false;
 
-        window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
-        // @ts-ignore
-        const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
-        // @ts-ignore
-        if (results.success) {
-            window.showInformationMessage(`Initialized project at ${repoPath}`);
-            repoInitSuccess = true;
-        } else {
+        if (glLanguageId && glOwner) {
+            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
             // @ts-ignore
-            window.showErrorMessage(results.errorMsg);
-            window.showErrorMessage(`Failed to initialize project at ${repoPath}`);
+            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
+            // @ts-ignore
+            if (results.success) {
+                let validResources = true
+
+                // verify that we have the necessary resources
+                const resourcesOT = getResourcesForChecking(repoPath, resourcesPath, '', 'gen')
+                // @ts-ignore
+                if (!resourcesOT.validResources) {
+                    window.showErrorMessage(`Missing needed OT resources at ${repoPath}`);
+                    validResources = false
+                    const resourcesNT = getResourcesForChecking(repoPath, resourcesPath, '', 'mat')
+                    // @ts-ignore
+                    if (!resourcesNT.validResources) {
+                        window.showErrorMessage(`Missing needed NT resources at ${repoPath}`);
+                        validResources = false
+                    }
+                }
+
+                if (validResources) {
+                    window.showInformationMessage(`Initialized project at ${repoPath}`);
+                    repoInitSuccess = true;
+                }
+            } else {
+                // @ts-ignore
+                window.showErrorMessage(results.errorMsg);
+                window.showErrorMessage(`Failed to initialize project at ${repoPath}`);
+            }
+        } else {
+            window.showErrorMessage(`Cannot create project, gateway language not selected ${{ glLanguageId, glOwner }}`);
         }
         return repoInitSuccess;
     }
