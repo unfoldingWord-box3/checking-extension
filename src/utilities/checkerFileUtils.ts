@@ -11,6 +11,7 @@ import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
+import { BIBLE_BOOKS } from "./BooksOfTheBible";
 // helpers
 const {
     apiHelpers,
@@ -52,33 +53,45 @@ const checkingHelpsResources = [
  * @param {string[]} resourceFiles - destination for list of resources paths found
  * @param {boolean} byBook - if true then separate resources by book
  */
-function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
+async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
     const bookIds = Object.keys(BooksOfTheBible.ALL_BIBLE_BOOKS)
-    try {
-        const tempFolder = path.join(folderPath, '../temp')
-        fs.moveSync(folderPath, tempFolder)
-        if (!byBook) {
-            const contents = readHelpsFolder(tempFolder)
-            fs.ensureDirSync(folderPath)
-            const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
-            fs.outputJsonSync(outputPath, contents, { spaces: 2 })
-            resourceFiles.push(outputPath)
-        } else {
-            for (const bookId of bookIds) {
-                const contents = readHelpsFolder(tempFolder, bookId)
-                if (objectNotEmpty(contents)) {
-                    fs.ensureDirSync(folderPath);
-                    const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
-                    fs.outputJsonSync(outputPath, contents, { spaces: 2 });
-                    resourceFiles.push(outputPath);
+    const tempFolder = path.join(folderPath, '../temp')
+    let moveSuccess = false
+    for (let i = 0; i < 3; i++) {
+        try {
+            fs.moveSync(folderPath, tempFolder);
+            moveSuccess = true
+            break
+        } catch (e) {
+            await delay(500);
+            console.warn(`processHelpsIntoJson - could not move folder ${folderPath}`, e)
+        }
+    }
+    if (moveSuccess) {
+        try {
+            if (!byBook) {
+                const contents = readHelpsFolder(tempFolder)
+                fs.ensureDirSync(folderPath)
+                const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
+                fs.outputJsonSync(outputPath, contents, { spaces: 2 })
+                resourceFiles.push(outputPath)
+            } else {
+                for (const bookId of bookIds) {
+                    const contents = readHelpsFolder(tempFolder, bookId)
+                    if (objectNotEmpty(contents)) {
+                        fs.ensureDirSync(folderPath);
+                        const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
+                        fs.outputJsonSync(outputPath, contents, { spaces: 2 });
+                        resourceFiles.push(outputPath);
+                    }
                 }
             }
+            fs.removeSync(tempFolder)
+            return true
+        } catch (e) {
+            console.error(`processHelpsIntoJson - failed to process folder`, folderPath, e)
+            return false
         }
-        fs.removeSync(tempFolder)
-        return true
-    } catch (e) {
-        console.error(`processHelpsIntoJson - failed to process folder`, folderPath, e)
-        return false
     }
 
     console.error(`processHelpsIntoJson - failed to process folder`, folderPath)
@@ -111,7 +124,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         }
         let success = true
         if (combineHelps) {
-            success = processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
+            success = await processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
         }
         if (success) {
             return { resourcePath: folderPath, resourceFiles, resource, byBook};
@@ -268,7 +281,7 @@ async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string
         const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
         if (resource_) {
             processed.push(resource_)
-            const success = processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
+            const success = await processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
             if (!success) {
                 console.error('getLangHelpsResourcesFromCatalog - could not process', item)
             }
@@ -631,10 +644,11 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
+async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
     if (!catalog?.length) {
         catalog = await getLatestResources(resourcesPath)
     }
+    callback && callback('downloaded catalog')
 
     const processed:any[] = []
     let foundResources = verifyHaveGlHelpsResources(languageId, owner, resourcesPath)
@@ -679,6 +693,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
+            callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
                 processed.push(resource_)
                 const resourcePath = resource_.resourcePath;
@@ -691,7 +706,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 }
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
-                const success = processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
+                const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
                 if (!success) {
                     console.error('getLangHelpsResourcesFromCatalog - could not process', item)
                 }
@@ -740,8 +755,8 @@ function getLanguageAndOwnerForBible(languageId:string, owner:string, bibleId:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string) {
-    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath)
+export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
+    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
 
     // @ts-ignore
     foundResources.bibles = []
@@ -790,6 +805,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
+                    callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
                 }
             }
         }
@@ -886,7 +902,7 @@ function replaceHomePath(filePath:string) {
  * @param resourcesBasePath
  * @param sourceResourceId - if null, then init both tn and twl
  */
-export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null) {
     let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
@@ -904,14 +920,14 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     const shouldCreateProject = !projectExists
         || (hasBibleFiles && !hasCheckingFiles)
 
-    if (!gl_owner && gl_languageId) {
+    if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
         console.error(`initProject - Missing GL info:`, { gl_owner, gl_languageId});
     } else
     if (shouldCreateProject) {
         const sourceTsvsPaths = {}
         try {
-            const { processed, updatedCatalogResources, foundResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath)
+            const { processed, updatedCatalogResources, foundResources } = await getLatestLangGlResourcesFromCatalog(catalog, gl_languageId, gl_owner, resourcesBasePath, callback)
             if (updatedCatalogResources) {
                 for (const resourceId of resourceIds) {
                     let sourceTsvsPath;
@@ -974,6 +990,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         }
                         fs.copySync(results.destFolder, repoPath);
                     }
+                    callback && callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }
                 
                 // replace home path with ~
@@ -1197,7 +1214,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           const biblesList = metadata.otherResources.bibles
           const bibles = []
           const isNT = BooksOfTheBible.isNT(bookId)
-          const origLangguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.NT_ORIG_LANG
+          const origLangguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
           const origLangguageBibleId = isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const origLangBible = {
               languageId: origLangguageId,
@@ -1585,6 +1602,32 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
         const repoPath = path.join(path.dirname(filePath), '../..')
         const resources = getResourcesForChecking(repoPath, resourcesBasePath, projectId, bookId)
         return resources
+    }
+    return null
+}
+
+/**
+ * wraps timer in a Promise to make an async function that continues after a specific number of milliseconds.
+ * @param {number} ms
+ * @returns {Promise<unknown>}
+ */
+export default function delay(ms:number) {
+    return new Promise((resolve) =>
+      setTimeout(resolve, ms)
+    );
+}
+
+export function getBookForTestament(repoPath: string, isNT = true):string | null {
+    // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
+    const testamentBooks = Object.keys(isNT ? BIBLE_BOOKS.newTestament : BIBLE_BOOKS.oldTestament)
+    const files = getBibleFiles(repoPath)
+    for (const file of files) {
+        const name = path.parse(file).name || ''
+        for (const bookId of testamentBooks) {
+            if (name.toLowerCase().includes(bookId)) {
+                return bookId
+            }
+        }
     }
     return null
 }
