@@ -11,6 +11,7 @@ import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
+import { BIBLE_BOOKS } from "./BooksOfTheBible";
 // helpers
 const {
     apiHelpers,
@@ -1213,7 +1214,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           const biblesList = metadata.otherResources.bibles
           const bibles = []
           const isNT = BooksOfTheBible.isNT(bookId)
-          const origLangguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.NT_ORIG_LANG
+          const origLangguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
           const origLangguageBibleId = isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const origLangBible = {
               languageId: origLangguageId,
@@ -1614,4 +1615,19 @@ export default function delay(ms:number) {
     return new Promise((resolve) =>
       setTimeout(resolve, ms)
     );
+}
+
+export function getBookForTestament(repoPath: string, isNT = true):string | null {
+    // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
+    const testamentBooks = Object.keys(isNT ? BIBLE_BOOKS.newTestament : BIBLE_BOOKS.oldTestament)
+    const files = getBibleFiles(repoPath)
+    for (const file of files) {
+        const name = path.parse(file).name || ''
+        for (const bookId of testamentBooks) {
+            if (name.toLowerCase().includes(bookId)) {
+                return bookId
+            }
+        }
+    }
+    return null
 }

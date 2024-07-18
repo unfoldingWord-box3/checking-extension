@@ -19,6 +19,7 @@ import {
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
+    getBookForTestament,
     getLanguagesInCatalog,
     getLatestResources,
     getRepoPath,
@@ -204,16 +205,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 let validResources = true
 
                 // verify that we have the necessary resources
-                const resourcesOT = getResourcesForChecking(repoPath, resourcesPath, '', 'gen')
-                // @ts-ignore
-                if (!resourcesOT.validResources) {
-                    window.showErrorMessage(`Missing needed OT resources at ${repoPath}`);
-                    validResources = false
-                    const resourcesNT = getResourcesForChecking(repoPath, resourcesPath, '', 'mat')
-                    // @ts-ignore
-                    if (!resourcesNT.validResources) {
-                        window.showErrorMessage(`Missing needed NT resources at ${repoPath}`);
-                        validResources = false
+                for (const projectId of ['twl', 'tn']) {
+                    for (const isNT of [false, true]) {
+                        const _bookId = getBookForTestament(repoPath, isNT);
+                        if (_bookId) {
+                            const _resources = getResourcesForChecking(repoPath, resourcesPath, projectId, _bookId);
+                            // @ts-ignore
+                            if (!_resources.validResources) {
+                                window.showErrorMessage(`Missing ${projectId} needed OT resources at ${repoPath}`);
+                                validResources = false;
+                            }
+                        }
                     }
                 }
 
