@@ -648,7 +648,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
     if (!catalog?.length) {
         catalog = await getLatestResources(resourcesPath)
     }
-    callback && callback('downloaded catalog')
+    callback && await callback('downloaded catalog')
 
     const processed:any[] = []
     let foundResources = verifyHaveGlHelpsResources(languageId, owner, resourcesPath)
@@ -693,7 +693,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
-            callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
+            callback && await callback(`downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
                 processed.push(resource_)
                 const resourcePath = resource_.resourcePath;
@@ -805,7 +805,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
-                    callback && callback(`downloaded ${item.languageId}/${item.resourceId}`)
+                    callback && await callback(`downloaded ${item.languageId}/${item.resourceId}`)
                 }
             }
         }
@@ -990,7 +990,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         }
                         fs.copySync(results.destFolder, repoPath);
                     }
-                    callback && callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
+                    callback && await callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }
                 
                 // replace home path with ~
@@ -1189,9 +1189,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               results.twl = readJsonFileIfExists(twlPath)
               const twResource = metadata.otherResources['tw']
               let twPath = replaceHomePath(twResource?.path)
-              twPath = path.join(twPath, 'tw.json')
+              twPath = twPath && path.join(twPath, 'tw.json')
               // @ts-ignore
-              results.tw = readJsonFileIfExists(twPath)
+              results.tw = twPath && readJsonFileIfExists(twPath)
           } else
           if (resourceId === 'tn') {
               const tnPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
@@ -1199,9 +1199,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               results.tn = readJsonFileIfExists(tnPath)
               const taResource = metadata.otherResources['ta']
               let taPath = replaceHomePath(taResource?.path)
-              taPath = path.join(taPath, 'ta.json')
+              taPath = taPath && path.join(taPath, 'ta.json')
               // @ts-ignore
-              results.ta = readJsonFileIfExists(taPath)
+              results.ta = taPath && readJsonFileIfExists(taPath)
           }
 
           // @ts-ignore
@@ -1611,7 +1611,7 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
  * @param {number} ms
  * @returns {Promise<unknown>}
  */
-export default function delay(ms:number) {
+export function delay(ms:number) {
     return new Promise((resolve) =>
       setTimeout(resolve, ms)
     );
@@ -1630,4 +1630,32 @@ export function getBookForTestament(repoPath: string, isNT = true):string | null
         }
     }
     return null
+}
+
+export function cleanUpFailedCheck(repoPath:string) {
+    const CHECKING_NAME = 'checking';
+    const METADATA_NAME = 'metadata.json';
+    
+    const checkingPath = path.join(repoPath, CHECKING_NAME);
+    const metadataPath = path.join(repoPath, METADATA_NAME);
+    const failedPath = path.join(repoPath, 'FAILED')
+    
+    const hasChecks = fs.existsSync(checkingPath)
+    const hasMetadata = fs.existsSync(metadataPath)
+    if (hasChecks || hasMetadata) {
+        try {
+            if (fs.existsSync(failedPath)) {
+                fs.removeSync(failedPath)
+            }
+            fs.ensureDirSync(failedPath)
+            if (hasChecks) {
+                fs.moveSync(checkingPath, path.join(failedPath, CHECKING_NAME))
+            }
+            if (hasMetadata) {
+                fs.moveSync(metadataPath, path.join(failedPath,METADATA_NAME))
+            }
+        } catch(e) {
+            console.warn(`cleanUpFailedCheck - failed ${repoPath}`, e)
+        }
+    }
 }
