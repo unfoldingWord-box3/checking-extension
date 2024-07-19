@@ -102,7 +102,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   ? vscode.workspace.workspaceFolders[0]
                   : undefined;
                 if (workspaceFolder) {
-                    projectPath = workspaceFolder.uri.path
+                    projectPath = workspaceFolder.uri.fsPath
                     repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
                       () => true,
                       () => false
