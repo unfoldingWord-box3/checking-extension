@@ -1,20 +1,21 @@
+import * as vscode from "vscode";
 import {
+    CancellationToken,
+    commands,
     CustomTextEditorProvider,
-    ExtensionContext,
     Disposable,
+    ExtensionContext,
+    TextDocument,
     WebviewPanel,
     window,
     workspace,
-    TextDocument,
-    CancellationToken,
-    commands,
-    Uri,
-    ViewColumn,
 } from "vscode";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
+    cleanUpFailedCheck,
+    delay,
     fileExists,
     findBibleResources,
     findOwnersForLang,
@@ -31,10 +32,8 @@ import {
     resourcesPath,
     saveCatalog,
 } from "./utilities/checkerFileUtils";
-import * as path from 'path';
 // @ts-ignore
 import { loadResources } from "./utilities/checkingServerUtils";
-import * as vscode from "vscode";
 import {
     getGatewayLanguages,
     getLanguageCodeFromPrompts,
@@ -62,6 +61,18 @@ type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 //     );
 // };
 
+async function showInformationMessage(message: string) {
+    window.showInformationMessage(message);
+    console.log(message)
+    await delay(100); // TRICKY: allows UI to update before moving on
+}
+
+async function showErrorMessage(message: string) {
+    await showErrorMessage(message);
+    console.error(message)
+    await delay(100); // TRICKY: allows UI to update before moving on
+}
+
 /**
  * Provider for tsv editors.
  *
@@ -83,7 +94,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const commandRegistration = commands.registerCommand(
             "checking-extension.initTranslationChecker",
             async (verseRef: string) => {
-                window.showInformationMessage('initializing Checker');
+                await showInformationMessage('initializing Checker');
 
                 let projectPath
                 let repoFolderExists_ = false
@@ -111,10 +122,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         if (initBibleRepo) {
                             return await this.initializeBibleFolder(results, projectPath);
                         } else if (results.repoExists) {
-                            window.showErrorMessage(`repo already has checking setup!`);
+                            await showErrorMessage(`repo already has checking setup!`);
                         }
                     } else {
-                        window.showErrorMessage(`repo already exists!`);
+                        await showErrorMessage(`repo already exists!`);
                     }
                 }
             },
@@ -132,7 +143,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         const options = await CheckingProvider.getGatewayLangOptions();
         if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
-            window.showErrorMessage(`Options invalid: ${options}`);
+            await showErrorMessage(`Options invalid: ${options}`);
             return null;
         }
 
@@ -144,9 +155,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
         if (repoInitSuccess) {
-            window.showInformationMessage(`Checking has been set up in project`);
+            await showInformationMessage(`Checking has been set up in project`);
         } else {
-            window.showErrorMessage(`repo init failed!`);
+            await showErrorMessage(`repo init failed!`);
         }
     }
 
@@ -170,10 +181,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const uri = vscode.Uri.file(repoPath);
                 vscode.commands.executeCommand("vscode.openFolder", uri);
             } else {
-                window.showErrorMessage(`repo init failed!`);
+                await showErrorMessage(`repo init failed!`);
             }
         } else {
-            window.showErrorMessage(`Options invalid: ${options}`);
+            await showErrorMessage(`Options invalid: ${options}`);
         }
     }
 
@@ -185,10 +196,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
             if (targetLanguageId && targetBibleId && targetOwner) {
                 repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
             } else {
-                window.showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`);
+                await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`);
             }
         } else {
-            window.showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`);
+            await showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`);
         }
         return { repoInitSuccess, repoPath };
     }
@@ -197,7 +208,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let repoInitSuccess = false;
 
         if (glLanguageId && glOwner) {
-            window.showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
+            await showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
             // @ts-ignore
             const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
             // @ts-ignore
@@ -212,7 +223,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             const _resources = getResourcesForChecking(repoPath, resourcesPath, projectId, _bookId);
                             // @ts-ignore
                             if (!_resources.validResources) {
-                                window.showErrorMessage(`Missing ${projectId} needed OT resources at ${repoPath}`);
+                                await showErrorMessage(`Missing ${projectId} needed OT resources at ${repoPath}`);
                                 validResources = false;
                             }
                         }
@@ -220,16 +231,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 }
 
                 if (validResources) {
-                    window.showInformationMessage(`Initialized project at ${repoPath}`);
                     repoInitSuccess = true;
+                    await showInformationMessage(`Initialized project at ${repoPath}`);
                 }
             } else {
                 // @ts-ignore
-                window.showErrorMessage(results.errorMsg);
-                window.showErrorMessage(`Failed to initialize project at ${repoPath}`);
+                await showErrorMessage(results.errorMsg);
+                await showErrorMessage(`Failed to initialize project at ${repoPath}`);
+            }
+            if (!repoInitSuccess) {
+                console.log(`updateProgress - initialization failed - cleaning up`)
+                cleanUpFailedCheck(repoPath)
             }
         } else {
-            window.showErrorMessage(`Cannot create project, gateway language not selected ${{ glLanguageId, glOwner }}`);
+            await showErrorMessage(`Cannot create project, gateway language not selected ${{ glLanguageId, glOwner }}`);
         }
         return repoInitSuccess;
     }
@@ -241,15 +256,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 title: 'Downloading GL resources...',
                 cancellable: false
             }, async (progressTracker) => {
-                function updateProgress(message:string) {
+                async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
-                    window.showInformationMessage(message);
                     progressTracker.report({  increment: 10 });
+                    await showInformationMessage(message);
                 }
 
                 progressTracker.report({ increment: 10 });
+                await delay(100)
                 const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
                 progressTracker.report({ increment: 10 });
+                await delay(100)
                 resolve(results)
             })
         })
@@ -467,7 +484,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         // @ts-ignore
         targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
-        window.showInformationMessage(`Target language selected ${targetLanguagePick}`);
+        await showInformationMessage(`Target language selected ${targetLanguagePick}`);
 
         const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
         const targetOwnerPick = await vscode.window.showQuickPick(
@@ -476,7 +493,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               placeHolder: "Select the target organization",
           }
         );
-        window.showInformationMessage(`Target owner selected ${targetOwnerPick}`);
+        await showInformationMessage(`Target owner selected ${targetOwnerPick}`);
 
         const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
         const bibles = findBibleResources(resources || [])
@@ -487,7 +504,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               placeHolder: "Select the bibleId",
           }
         );
-        window.showInformationMessage(`Bible selected ${targetBibleIdPick}`);
+        await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
 
         return {
             catalog,
@@ -507,14 +524,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 title: 'Downloading Catalog...',
                 cancellable: false
             }, async (progressTracker) => {
-                function updateProgress(message: string) {
+                async function updateProgress(message: string) {
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({ increment: 50 });
+                    await delay(100)
                 }
 
                 progressTracker.report({ increment: 25 });
+                await delay(100)
                 const catalog = await getLatestResources(resourcesPath)
                 progressTracker.report({ increment: 10 });
+                await delay(100)
                 resolve(catalog)
             })
        });
@@ -524,17 +544,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let catalog = getSavedCatalog();
         try {
             if (!catalog) {
-                window.showInformationMessage("Checking DCS for GLs - can take minutes");
+                await showInformationMessage("Checking DCS for GLs - can take minutes");
                 // @ts-ignore
                 catalog = await this.getDoor43ResourcesWithProgress(resourcesPath);
                 // @ts-ignore
                 saveCatalog(catalog);
-                window.showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
+                await showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
             } else {
-                window.showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
+                await showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
             }
         } catch (e) {
-            window.showInformationMessage("failed to retrieve DCS catalog");
+            await showInformationMessage("failed to retrieve DCS catalog");
         }
 
         //////////////////////////////////
@@ -550,7 +570,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         // @ts-ignore
         gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || "en";
-        window.showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
+        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
 
         const owners = findOwnersForLang(catalog || [], gwLanguagePick);
         const gwOwnerPick = await vscode.window.showQuickPick(
@@ -559,7 +579,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               placeHolder: "Select the gateway checking organization",
           },
         );
-        window.showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);
+        await showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);
         return {
             catalog,
             gwLanguagePick,
