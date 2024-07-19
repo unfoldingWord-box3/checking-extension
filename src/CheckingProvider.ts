@@ -68,7 +68,7 @@ async function showInformationMessage(message: string) {
 }
 
 async function showErrorMessage(message: string) {
-    await showErrorMessage(message);
+    window.showErrorMessage(message);
     console.error(message)
     await delay(100); // TRICKY: allows UI to update before moving on
 }
