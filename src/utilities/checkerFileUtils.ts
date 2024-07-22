@@ -758,6 +758,11 @@ function getLanguageForBible(languageId: string, bibleId: string) {
     return langId;
 }
 
+function isOriginalBible(bibleId: string) {
+    const isOriginal = bibleId === BooksOfTheBible.NT_ORIG_LANG_BIBLE || bibleId === BooksOfTheBible.OT_ORIG_LANG_BIBLE;
+    return isOriginal;
+}
+
 /**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies and aligned bibles
  * @param {object[]} catalog - list of items in catalog
@@ -789,8 +794,11 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     owner: owner_,
                     path: foundPath
                 };
-                // @ts-ignore
-                foundResources.bibles.push(bible)
+                // if not original bibles add to list
+                if (!isOriginalBible(bibleId)) {
+                    // @ts-ignore
+                    foundResources.bibles.push(bible)
+                }
                 // @ts-ignore
                 foundResources[bibleId] = bible
                 break
@@ -810,11 +818,14 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                         fetched = true
                         // @ts-ignore
                         foundResources[bibleId] = resource.resourcePath
-                        // @ts-ignore
-                        foundResources.bibles.push({
-                            id: bibleId,
-                            path: resource.resourcePath
-                        })
+
+                        if (!isOriginalBible(bibleId)) {
+                            // @ts-ignore
+                            foundResources.bibles.push({
+                                id: bibleId,
+                                path: resource.resourcePath
+                            })
+                        }
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
