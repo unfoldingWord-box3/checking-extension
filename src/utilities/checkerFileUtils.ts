@@ -9,9 +9,9 @@ import * as usfmjs from "usfm-js";
 import * as YAML from 'yamljs';
 import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
+import { BIBLE_BOOKS } from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
-import { BIBLE_BOOKS } from "./BooksOfTheBible";
 // helpers
 const {
     apiHelpers,
@@ -758,6 +758,11 @@ function getLanguageForBible(languageId: string, bibleId: string) {
     return langId;
 }
 
+function isOriginalBible(bibleId: string) {
+    const isOriginal = bibleId === BooksOfTheBible.NT_ORIG_LANG_BIBLE || bibleId === BooksOfTheBible.OT_ORIG_LANG_BIBLE;
+    return isOriginal;
+}
+
 /**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies and aligned bibles
  * @param {object[]} catalog - list of items in catalog
@@ -789,8 +794,11 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     owner: owner_,
                     path: foundPath
                 };
-                // @ts-ignore
-                foundResources.bibles.push(bible)
+                // if not original bibles add to list
+                if (!isOriginalBible(bibleId)) {
+                    // @ts-ignore
+                    foundResources.bibles.push(bible)
+                }
                 // @ts-ignore
                 foundResources[bibleId] = bible
                 break
@@ -810,11 +818,14 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                         fetched = true
                         // @ts-ignore
                         foundResources[bibleId] = resource.resourcePath
-                        // @ts-ignore
-                        foundResources.bibles.push({
-                            id: bibleId,
-                            path: resource.resourcePath
-                        })
+
+                        if (!isOriginalBible(bibleId)) {
+                            // @ts-ignore
+                            foundResources.bibles.push({
+                                id: bibleId,
+                                path: resource.resourcePath
+                            })
+                        }
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
@@ -1200,6 +1211,7 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
  * @param repoPath
  */
 export function getResourcesForChecking(repoPath:string, resourcesBasePath:string, resourceId:string, bookId:string) {
+  let missing = ''
   try {
     const pathToMetaData = path.join(repoPath, 'metadata.json')
     const metaDataExists = fs.existsSync(pathToMetaData);
@@ -1302,19 +1314,30 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.isNt = BooksOfTheBible.isNT(bookId)
           // @ts-ignore
           results.origBibleId = results.isNt ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
-          const validResources = haveNeededResources(results)
+          const { success: validResources, error } = haveNeededResources(results)
           // @ts-ignore
           results.validResources = validResources 
           if (!validResources) {
+              missing = `needed resources missing: ${error}`
+              // @ts-ignore
+              results.errorMessage = missing
               console.error(`getResourcesForChecking (${repoPath}) - needed resources missing`)
+          }
+          else {
+              // @ts-ignore
+              results.success = true
           }
           return results
       }
     }
   } catch (error) {
-    console.error(`getResourcesForChecking (${repoPath}) - error getting metadata`, error);
+    console.error(`getResourcesForChecking (${repoPath}) - exception getting metadata`, error);
+    missing = `exception getting metadata or resources: ${error}`
   }
-  return null
+  return { 
+      errorMessage: missing,
+      success: false
+  }
 }
 
 /**
@@ -1322,69 +1345,66 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
  * @param resources
  */
 export function haveNeededResources(resources:object) {
+    function generateError(message: string) {
+        console.warn(`haveNeededData - ${message}`);
+        return {
+            success: false,
+            error: message
+        }
+    }
+
     if (resources) {
         // @ts-ignore
         const project = resources.project;
         const resourceId = project?.resourceId;
         const bookId = project?.bookId;
         if (!(bookId && project?.languageId && resourceId)) {
-            console.warn(`haveNeededData - missing project data`)
-            return false
+            return generateError(`missing project data`);
         }
         // @ts-ignore
         if (!(resources?.lexicons)) {
-            console.warn(`haveNeededData - missing lexicon data`)
-            return false
+            return generateError(`missing lexicon data`);
         }
         // @ts-ignore
         if (!(resources?.locales)) {
-            console.warn(`haveNeededData - missing locales data`)
-            return false
+            return generateError(`missing locales data`);
         }
         
         if (resourceId === 'twl') {
             // @ts-ignore
             if (!(resources?.hasTwls)) {
-                console.warn(`haveNeededData - missing gl twl data`);
-                return false;
+                return generateError(`missing GL twl data`);
             }
             // @ts-ignore
             if (!(resources?.tw)) {
-                console.warn(`haveNeededData - missing gl tw data`);
-                return false;
+                return generateError(`missing GL tw data`);
             }
         } else if (resourceId === 'tn') {
             // @ts-ignore
             if (!(resources?.hasTns)) {
-                console.warn(`haveNeededData - missing gl tn data`);
-                return false;
+                return generateError(`missing GL tn data`);
             }
             // @ts-ignore
             if (!(resources?.ta)) {
-                console.warn(`haveNeededData - missing gl ta data`);
-                return false;
+                return generateError(`missing GL ta data`);
             }
         } else {
-            console.warn(`haveNeededData - unsupported resourceId ${resourceId}`);
-            return false;
+            return generateError(`unsupported resourceId ${resourceId}`);
         }
 
         // @ts-ignore
         let bibles = resources?.bibles;
         if (!(bibles?.length > 1)) {
-            console.warn(`haveNeededData - missing bibles should at least be two but only have ${bibles?.length}`)
-            return false
+            return generateError(`should have at least two bibles but only have ${bibles?.length}`);
         }
         
         for (const bible of bibles) {
             if (!bible?.bibleId) {
-                console.warn(`haveNeededData - missing bibleId for bible`, bible)
-                return false
+                return generateError(`missing bibleId for bible ${bible?.owner}/${bible?.languageId}`);
             }
 
             if (!bible?.languageId) {
-                console.warn(`haveNeededData - missing languageId for bible`, bible)
-                return false
+                return generateError(` missing languageId for bible ${bible?.owner}/${bible?.bibleId}`);
             }
 
             // if (!bible?.owner) {
@@ -1393,39 +1413,36 @@ export function haveNeededResources(resources:object) {
             // }
 
             if (!bible?.book) {
-                console.warn(`haveNeededData - missing bible data for bible`, bible)
-                return false
+                return generateError(` missing bible data for bible ${bible?.owner}/${bible?.languageId}/${bible?.bibleId}`);
             } else if (!bible?.book?.manifest) {
-                console.warn(`haveNeededData - missing bible manifest`, bible)
-                return false
+                return generateError(`missing bible manifest ${bible?.owner}/${bible?.languageId}/${bible?.bibleId}`);
             }
 
         }
 
         // @ts-ignore
         if (!resources?.targetBible) {
-            console.warn(`haveNeededData - missing targetBible`)
-            return false
+            return generateError(`missing targetBible`);
         } else
         // @ts-ignore
         if (!resources?.targetBible?.manifest) {
-            // @ts-ignore
-            console.warn(`haveNeededData - missing targetBible manifest`, resources?.targetBible)
-            return false
+            return generateError(`missing targetBible manifest`);
         }
         // @ts-ignore
         if (!(resources?.glt || resources?.ult)) {
-            console.warn(`haveNeededData - missing aligned literal translation`)
-            return false
+            return generateError(`missing aligned literal translation`);
         }
         // @ts-ignore
         const haveOriginalLangBible = resources?.[resources.origBibleId]
         if (!haveOriginalLangBible) {
-            console.warn(`haveNeededData - missing aligned original language bible`)
-            return false
+            // @ts-ignore
+            return generateError(`missing aligned original language bible ${resources?.origBibleId}`);
         }
     }
-    return true
+    return {
+        success: true,
+        error: ''
+    }
 }
 
 /**
