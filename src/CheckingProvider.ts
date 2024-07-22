@@ -61,14 +61,32 @@ type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 //     );
 // };
 
-async function showInformationMessage(message: string) {
-    window.showInformationMessage(message);
+async function showInformationMessage(message: string, modal: boolean = false, detail: null|string = null) {
+    if (modal) {
+        const options = { modal: true };
+        if (detail) {
+            // @ts-ignore
+            options.detail = detail;
+        }
+        window.showInformationMessage(message, options);
+    } else {
+        window.showInformationMessage(message);
+    }
     console.log(message)
     await delay(200); // TRICKY: allows UI to update before moving on
 }
 
-async function showErrorMessage(message: string) {
-    window.showErrorMessage(message);
+async function showErrorMessage(message: string, modal: boolean = false, detail: null|string = null) {
+    if (modal) {
+        const options = { modal: true };
+        if (detail) {
+            // @ts-ignore
+            options.detail = detail;
+        }
+        window.showErrorMessage(message, options);
+    } else {
+        window.showErrorMessage(message);
+    }
     console.error(message)
     await delay(200); // TRICKY: allows UI to update before moving on
 }
@@ -122,10 +140,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         if (initBibleRepo) {
                             return await this.initializeBibleFolder(results, projectPath);
                         } else if (results.repoExists) {
-                            await showErrorMessage(`repo already has checking setup!`);
+                            await showErrorMessage(`repo already has checking setup!`, true);
                         }
                     } else {
-                        await showErrorMessage(`repo already exists!`);
+                        await showErrorMessage(`repo already exists!`, true);
                     }
                 }
             },
@@ -143,7 +161,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         const options = await CheckingProvider.getGatewayLangOptions();
         if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
-            await showErrorMessage(`Options invalid: ${options}`);
+            await showErrorMessage(`Options invalid: ${options}`, true);
             return null;
         }
 
@@ -157,7 +175,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         if (repoInitSuccess) {
             await showInformationMessage(`Checking has been set up in project`);
         } else {
-            await showErrorMessage(`repo init failed!`);
+            await showErrorMessage(`repo init failed!`, true);
         }
     }
 
@@ -179,7 +197,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
             let navigateToFolder = repoInitSuccess;
             if (!repoInitSuccess) {
-                await showErrorMessage(`repo init failed!`);
+                await showErrorMessage(`repo init failed!`, true);
                 // const repoExists = fileExists(repoPath)
                 // if (repoExists) {
                 //     navigateToFolder = true // if we created the folder, even if it failed to add checks, navigate to it
@@ -191,7 +209,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 vscode.commands.executeCommand("vscode.openFolder", uri);
             }
         } else {
-            await showErrorMessage(`Options invalid: ${options}`);
+            await showErrorMessage(`Options invalid: ${options}`, true);
         }
     }
 
@@ -203,10 +221,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
             if (targetLanguageId && targetBibleId && targetOwner) {
                 repoInitSuccess = await CheckingProvider.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
             } else {
-                await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`);
+                await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`, true);
             }
         } else {
-            await showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`);
+            await showErrorMessage(`Cannot create project, folder already exists at ${repoPath}`, true);
         }
         return { repoInitSuccess, repoPath };
     }
@@ -230,7 +248,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             const _resources = getResourcesForChecking(repoPath, resourcesPath, projectId, _bookId);
                             // @ts-ignore
                             if (!_resources.validResources) {
-                                await showErrorMessage(`Missing ${projectId} needed OT resources at ${repoPath}`);
+                                const testament = isNT ? 'NT' : 'OT'
+                                const message = `Missing ${projectId} needed ${testament} resources at ${repoPath}`;
+                                // @ts-ignore
+                                let detail = `${message}: ${_resources.errorMessage}`
+                                await showErrorMessage(message, true, detail );
+                                // @ts-ignore
                                 validResources = false;
                             }
                         }
@@ -244,14 +267,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
             } else {
                 // @ts-ignore
                 await showErrorMessage(results.errorMsg);
-                await showErrorMessage(`Failed to initialize project at ${repoPath}`);
+                await showErrorMessage(`Failed to initialize project at ${repoPath}`, true);
             }
             if (!repoInitSuccess) {
                 console.log(`updateProgress - initialization failed - cleaning up`)
                 cleanUpFailedCheck(repoPath)
             }
         } else {
-            await showErrorMessage(`Cannot create project, gateway language not selected ${{ glLanguageId, glOwner }}`);
+            await showErrorMessage(`Cannot create project, gateway language not selected ${{ glLanguageId, glOwner }}`, true);
         }
         return repoInitSuccess;
     }
