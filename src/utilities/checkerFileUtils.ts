@@ -1165,6 +1165,23 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
     }
 }
 
+function getCheckingResource(repoPath: string, metadata: object, resourceId: string, bookId: string) {
+    // @ts-ignore
+    const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
+    const checkType = `.${resourceId}_check`;
+    const twlPath = path.join(checksPath, `${bookId}${checkType}`);
+    let resource = readJsonFileIfExists(twlPath);
+
+    // @ts-ignore
+    let hasResourceFiles = !!resource;
+    if (!hasResourceFiles) { // if we don't have checking the specific book, check to see if we have checks for other books at least
+        const files = getFilesOfType(checksPath, checkType);
+        hasResourceFiles = !!files.length;
+        resource = {}
+    }
+    return { resource, hasResourceFiles };
+}
+
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -1184,9 +1201,11 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.locales = locales
           if (resourceId === 'twl') {
-              const twlPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
+              let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               // @ts-ignore
-              results.twl = readJsonFileIfExists(twlPath)
+              results.twl = resource
+              // @ts-ignore
+              results.hasTwls = !! hasResourceFiles
               const twResource = metadata.otherResources['tw']
               let twPath = replaceHomePath(twResource?.path)
               twPath = twPath && path.join(twPath, 'tw.json')
@@ -1194,7 +1213,12 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               results.tw = twPath && readJsonFileIfExists(twPath)
           } else
           if (resourceId === 'tn') {
+              let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               const tnPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
+              // @ts-ignore
+              results.tn = resource
+              // @ts-ignore
+              results.hasTns = !! hasResourceFiles
               // @ts-ignore
               results.tn = readJsonFileIfExists(tnPath)
               const taResource = metadata.otherResources['ta']
@@ -1307,7 +1331,7 @@ export function haveNeededResources(resources:object) {
         
         if (resourceId === 'twl') {
             // @ts-ignore
-            if (!(resources?.twl)) {
+            if (!(resources?.hasTwls)) {
                 console.warn(`haveNeededData - missing gl twl data`);
                 return false;
             }
@@ -1318,7 +1342,7 @@ export function haveNeededResources(resources:object) {
             }
         } else if (resourceId === 'tn') {
             // @ts-ignore
-            if (!(resources?.tn)) {
+            if (!(resources?.hasTns)) {
                 console.warn(`haveNeededData - missing gl tn data`);
                 return false;
             }
