@@ -180,10 +180,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
             let navigateToFolder = repoInitSuccess;
             if (!repoInitSuccess) {
                 await showErrorMessage(`repo init failed!`);
-                const repoExists = fileExists(repoPath)
-                if (repoExists) {
-                    navigateToFolder = true // if we created the folder, even if it failed to add checks, navigate to it
-                }
+                // const repoExists = fileExists(repoPath)
+                // if (repoExists) {
+                //     navigateToFolder = true // if we created the folder, even if it failed to add checks, navigate to it
+                // }
             }
 
             if (navigateToFolder) {
