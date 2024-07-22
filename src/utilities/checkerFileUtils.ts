@@ -747,6 +747,17 @@ function getLanguageAndOwnerForBible(languageId:string, owner:string, bibleId:st
     return { languageId_, owner_ }
 }
 
+function getLanguageForBible(languageId: string, bibleId: string) {
+    let langId = languageId;
+    if (bibleId === BooksOfTheBible.NT_ORIG_LANG_BIBLE) {
+        langId = BooksOfTheBible.NT_ORIG_LANG;
+    }
+    else if (bibleId === BooksOfTheBible.OT_ORIG_LANG_BIBLE) {
+        langId = BooksOfTheBible.OT_ORIG_LANG;
+    }
+    return langId;
+}
+
 /**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies and aligned bibles
  * @param {object[]} catalog - list of items in catalog
@@ -762,11 +773,12 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     foundResources.bibles = []
 
     // get aligned bibles
-    const alignedBiblesList = [['glt', 'ult'], ['gst', 'ust']]
+    const alignedBiblesList = [['glt', 'ult'], ['gst', 'ust'], [BooksOfTheBible.NT_ORIG_LANG_BIBLE], [BooksOfTheBible.OT_ORIG_LANG_BIBLE]]
     for (const alignedBibles of alignedBiblesList) {
         let fetched = false
         for (const bibleId of alignedBibles) {
-            const { languageId_, owner_ } = getLanguageAndOwnerForBible(languageId, owner, bibleId)
+            const langId = getLanguageForBible(languageId, bibleId);
+            const { languageId_, owner_ } = getLanguageAndOwnerForBible(langId, owner, bibleId)
 
             const foundPath = verifyHaveBibleResource(bibleId, resourcesPath, languageId_, owner_, catalog)
             if (foundPath) {
@@ -787,7 +799,8 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
 
         if (!fetched) {
             for (const bibleId of alignedBibles) {
-                const { languageId_, owner_ } = getLanguageAndOwnerForBible(languageId, owner, bibleId)
+                const langId = getLanguageForBible(languageId, bibleId);
+                const { languageId_, owner_ } = getLanguageAndOwnerForBible(langId, owner, bibleId)
                 const item = findResource(updatedCatalogResources || [], languageId_, owner_, bibleId)
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
@@ -1165,6 +1178,23 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
     }
 }
 
+function getCheckingResource(repoPath: string, metadata: object, resourceId: string, bookId: string) {
+    // @ts-ignore
+    const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
+    const checkType = `.${resourceId}_check`;
+    const twlPath = path.join(checksPath, `${bookId}${checkType}`);
+    let resource = readJsonFileIfExists(twlPath);
+
+    // @ts-ignore
+    let hasResourceFiles = !!resource;
+    if (!hasResourceFiles) { // if we don't have checking the specific book, check to see if we have checks for other books at least
+        const files = getFilesOfType(checksPath, checkType);
+        hasResourceFiles = !!files.length;
+        resource = {}
+    }
+    return { resource, hasResourceFiles };
+}
+
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -1184,9 +1214,11 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.locales = locales
           if (resourceId === 'twl') {
-              const twlPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
+              let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               // @ts-ignore
-              results.twl = readJsonFileIfExists(twlPath)
+              results.twl = resource
+              // @ts-ignore
+              results.hasTwls = !! hasResourceFiles
               const twResource = metadata.otherResources['tw']
               let twPath = replaceHomePath(twResource?.path)
               twPath = twPath && path.join(twPath, 'tw.json')
@@ -1194,7 +1226,12 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               results.tw = twPath && readJsonFileIfExists(twPath)
           } else
           if (resourceId === 'tn') {
+              let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               const tnPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
+              // @ts-ignore
+              results.tn = resource
+              // @ts-ignore
+              results.hasTns = !! hasResourceFiles
               // @ts-ignore
               results.tn = readJsonFileIfExists(tnPath)
               const taResource = metadata.otherResources['ta']
@@ -1235,7 +1272,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               }
               const manifest = book?.manifest
               const dublin_core = manifest?.dublin_core
-              const languageId = manifest?.language_id || dublin_core?.language?.identifier;
+              const languageId = manifest?.language_id || dublin_core?.language?.identifier || bible?.languageId;
               const _bibleId = bibleId || manifest?.resource_id || dublin_core?.identifier;
               const bibleObject = {
                   book,
@@ -1307,7 +1344,7 @@ export function haveNeededResources(resources:object) {
         
         if (resourceId === 'twl') {
             // @ts-ignore
-            if (!(resources?.twl)) {
+            if (!(resources?.hasTwls)) {
                 console.warn(`haveNeededData - missing gl twl data`);
                 return false;
             }
@@ -1318,7 +1355,7 @@ export function haveNeededResources(resources:object) {
             }
         } else if (resourceId === 'tn') {
             // @ts-ignore
-            if (!(resources?.tn)) {
+            if (!(resources?.hasTns)) {
                 console.warn(`haveNeededData - missing gl tn data`);
                 return false;
             }

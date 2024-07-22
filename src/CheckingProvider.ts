@@ -64,13 +64,13 @@ type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 async function showInformationMessage(message: string) {
     window.showInformationMessage(message);
     console.log(message)
-    await delay(100); // TRICKY: allows UI to update before moving on
+    await delay(200); // TRICKY: allows UI to update before moving on
 }
 
 async function showErrorMessage(message: string) {
     window.showErrorMessage(message);
     console.error(message)
-    await delay(100); // TRICKY: allows UI to update before moving on
+    await delay(200); // TRICKY: allows UI to update before moving on
 }
 
 /**
@@ -177,11 +177,18 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 repoPath,
             } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
 
-            if (repoInitSuccess) {
+            let navigateToFolder = repoInitSuccess;
+            if (!repoInitSuccess) {
+                await showErrorMessage(`repo init failed!`);
+                // const repoExists = fileExists(repoPath)
+                // if (repoExists) {
+                //     navigateToFolder = true // if we created the folder, even if it failed to add checks, navigate to it
+                // }
+            }
+
+            if (navigateToFolder) {
                 const uri = vscode.Uri.file(repoPath);
                 vscode.commands.executeCommand("vscode.openFolder", uri);
-            } else {
-                await showErrorMessage(`repo init failed!`);
             }
         } else {
             await showErrorMessage(`Options invalid: ${options}`);
