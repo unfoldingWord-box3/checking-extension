@@ -239,6 +239,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             // @ts-ignore
             if (results.success) {
                 let validResources = true
+                let missingMessage = ''
 
                 // verify that we have the necessary resources
                 for (const projectId of ['twl', 'tn']) {
@@ -249,11 +250,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
                             // @ts-ignore
                             if (!_resources.validResources) {
                                 const testament = isNT ? 'NT' : 'OT'
-                                const message = `Missing ${projectId} needed ${testament} resources at ${repoPath}`;
+                                const message = `Missing ${projectId} needed ${testament} resources`;
                                 // @ts-ignore
-                                let detail = `${message}: ${_resources.errorMessage}`
-                                await showErrorMessage(message, true, detail );
-                                // @ts-ignore
+                                missingMessage = missingMessage + `${message}\n${_resources.errorMessage}\n`
                                 validResources = false;
                             }
                         }
@@ -263,6 +262,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 if (validResources) {
                     repoInitSuccess = true;
                     await showInformationMessage(`Initialized project at ${repoPath}`);
+                } else {
+                    await showErrorMessage(`Missing resources resources at ${repoPath}`, true, missingMessage );
                 }
             } else {
                 // @ts-ignore
