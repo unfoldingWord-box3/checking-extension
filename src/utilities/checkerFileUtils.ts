@@ -1259,7 +1259,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               }
               const manifest = book?.manifest
               const dublin_core = manifest?.dublin_core
-              const languageId = manifest?.language_id || dublin_core?.language?.identifier;
+              const languageId = manifest?.language_id || dublin_core?.language?.identifier || bible?.languageId;
               const _bibleId = bibleId || manifest?.resource_id || dublin_core?.identifier;
               const bibleObject = {
                   book,
