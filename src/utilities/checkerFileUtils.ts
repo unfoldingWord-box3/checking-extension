@@ -1282,28 +1282,31 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
                   book = getBookOfTheBible(resourcesBasePath, bookId, bibleId, bible.languageId, bible.owner);
 
               }
-              const manifest = book?.manifest
-              const dublin_core = manifest?.dublin_core
-              const languageId = manifest?.language_id || dublin_core?.language?.identifier || bible?.languageId;
-              const _bibleId = bibleId || manifest?.resource_id || dublin_core?.identifier;
-              const bibleObject = {
-                  book,
-                  languageId: languageId,
-                  bibleId: _bibleId,
-                  owner: bible.owner
-              };
 
-              if (!bible.owner) {// try to get info from folder name
-                const parts = path.basename(bible.path || '').split('_')
-                if (parts?.length === 2) {
-                    // @ts-ignore
-                    bibleObject.version = parts[0]
-                    bibleObject.owner = parts[1]
-                }
+              if (book) {
+                  const manifest = book?.manifest;
+                  const dublin_core = manifest?.dublin_core;
+                  const languageId = manifest?.language_id || dublin_core?.language?.identifier || bible?.languageId;
+                  const _bibleId = bibleId || manifest?.resource_id || dublin_core?.identifier;
+                  const bibleObject = {
+                      book,
+                      languageId: languageId,
+                      bibleId: _bibleId,
+                      owner: bible.owner,
+                  };
+
+                  if (!bible.owner) {// try to get info from folder name
+                      const parts = path.basename(bible.path || "").split("_");
+                      if (parts?.length === 2) {
+                          // @ts-ignore
+                          bibleObject.version = parts[0];
+                          bibleObject.owner = parts[1];
+                      }
+                  }
+                  bibles.push(bibleObject);
+                  // @ts-ignore
+                  results[_bibleId] = bibleObject;
               }
-              bibles.push(bibleObject)
-              // @ts-ignore
-              results[_bibleId] = bibleObject
           }
 
           // @ts-ignore
@@ -1549,6 +1552,7 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
         if (fs.existsSync(biblePath)) {
             const manifest = getResourceManifest(biblePath)
             if (manifest) {
+                const books = getBibleFiles(biblePath)
                 let bookPath = path.join(biblePath, bookId);
                 if (fs.existsSync(bookPath)) {
                     const bookData = readHelpsFolder(bookPath)
@@ -1556,7 +1560,6 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
                     bookData.manifest = manifest
                     return bookData
                 } else {
-                    const books = getBibleFiles(biblePath)
                     for (const book of books) {
                         const matchLowerCase = book.toLowerCase()
                         if (matchLowerCase.includes(bookId)) {
@@ -1568,8 +1571,15 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
                         }
                     }
                 }
+                if (books.length) {
+                    // book not found, but the bible has files
+                    return {
+                        manifest,
+                    };
+                }
             }
         }
+        console.warn(`getBookOfTheBibleFromFolder(${biblePath}, ${bookId}) - missing`)
     } catch (e) {
         console.error(`getBookOfTheBibleFromFolder(${biblePath}, ${bookId}) - failed`, e)
     }
