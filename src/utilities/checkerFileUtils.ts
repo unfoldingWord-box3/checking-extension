@@ -747,6 +747,17 @@ function getLanguageAndOwnerForBible(languageId:string, owner:string, bibleId:st
     return { languageId_, owner_ }
 }
 
+function getLanguageForBible(languageId: string, bibleId: string) {
+    let langId = languageId;
+    if (bibleId === BooksOfTheBible.NT_ORIG_LANG_BIBLE) {
+        langId = BooksOfTheBible.NT_ORIG_LANG;
+    }
+    else if (bibleId === BooksOfTheBible.OT_ORIG_LANG_BIBLE) {
+        langId = BooksOfTheBible.OT_ORIG_LANG;
+    }
+    return langId;
+}
+
 /**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies and aligned bibles
  * @param {object[]} catalog - list of items in catalog
@@ -762,11 +773,12 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     foundResources.bibles = []
 
     // get aligned bibles
-    const alignedBiblesList = [['glt', 'ult'], ['gst', 'ust']]
+    const alignedBiblesList = [['glt', 'ult'], ['gst', 'ust'], [BooksOfTheBible.NT_ORIG_LANG_BIBLE], [BooksOfTheBible.OT_ORIG_LANG_BIBLE]]
     for (const alignedBibles of alignedBiblesList) {
         let fetched = false
         for (const bibleId of alignedBibles) {
-            const { languageId_, owner_ } = getLanguageAndOwnerForBible(languageId, owner, bibleId)
+            const langId = getLanguageForBible(languageId, bibleId);
+            const { languageId_, owner_ } = getLanguageAndOwnerForBible(langId, owner, bibleId)
 
             const foundPath = verifyHaveBibleResource(bibleId, resourcesPath, languageId_, owner_, catalog)
             if (foundPath) {
@@ -787,7 +799,8 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
 
         if (!fetched) {
             for (const bibleId of alignedBibles) {
-                const { languageId_, owner_ } = getLanguageAndOwnerForBible(languageId, owner, bibleId)
+                const langId = getLanguageForBible(languageId, bibleId);
+                const { languageId_, owner_ } = getLanguageAndOwnerForBible(langId, owner, bibleId)
                 const item = findResource(updatedCatalogResources || [], languageId_, owner_, bibleId)
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
