@@ -283,7 +283,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
-                location: vscode.ProgressLocation.Window,
+                location: vscode.ProgressLocation.Notification,
                 title: 'Downloading GL resources...',
                 cancellable: false
             }, async (progressTracker) => {
@@ -552,7 +552,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return new Promise((resolve) => {
             window.showInformationMessage("Checking DCS for GLs - can take minutes");
             vscode.window.withProgress({
-                location: vscode.ProgressLocation.Window,
+                location: vscode.ProgressLocation.Notification,
                 title: 'Downloading Catalog...',
                 cancellable: false
             }, async (progressTracker) => {
