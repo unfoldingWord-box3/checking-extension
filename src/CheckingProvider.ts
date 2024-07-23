@@ -261,7 +261,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 if (validResources) {
                     repoInitSuccess = true;
-                    await showInformationMessage(`Initialized project at ${repoPath}`);
+                    await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                 } else {
                     await showErrorMessage(`Missing resources resources at ${repoPath}`, true, missingMessage );
                 }
@@ -290,7 +290,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment: 10 });
-                    await showInformationMessage(message);
+                    // await showInformationMessage(message);
+                    await delay(200)
                 }
 
                 progressTracker.report({ increment: 10 });
