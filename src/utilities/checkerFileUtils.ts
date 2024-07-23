@@ -692,6 +692,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             foundResources[item.resourceId] = resourceObject
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
+            callback && await callback(`downloading ${item.languageId}/${item.resourceId}`)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
             callback && await callback(`downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
@@ -812,6 +813,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                 const item = findResource(updatedCatalogResources || [], languageId_, owner_, bibleId)
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
+                    callback && await callback(`downloading ${item.languageId}/${item.resourceId}`)
                     const resource = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
                     if (resource) {
                         processed.push(resource)
@@ -993,6 +995,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 }
 
                 if (!hasBibleFiles) {
+                    callback && await callback(`verifying target ${targetLanguageId}/${targetBibleId}`)
                     const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true);
                     if (foundPath) {
                         fs.copySync(foundPath, repoPath);
