@@ -20,8 +20,10 @@ jobs:
       - name: Install pnpm
         run: npm install --global pnpm
       - run: pnpm --version
-      - run: pnpm run install:all
-      - run: pnpm run build:webview
+      - name: Install dependencies
+        run: pnpm run install:all
+      - name: Build Extension
+        run: pnpm run build:webview
       - name: Install vsce
         run: npm install -g vsce
       - name: Package Extension
