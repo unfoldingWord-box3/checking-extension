@@ -290,7 +290,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment: 10 });
-                    await showInformationMessage(message);
+                    // await showInformationMessage(message);
+                    await delay(200)
                 }
 
                 progressTracker.report({ increment: 10 });
