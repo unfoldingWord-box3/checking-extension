@@ -25,6 +25,6 @@ jobs:
       - name: Build Extension
         run: pnpm run build:webview
       - name: Install vsce
-        run: npm install -g vsce
+        run: npm install -g  @vscode/vsce
       - name: Package Extension
         run: vsce package
