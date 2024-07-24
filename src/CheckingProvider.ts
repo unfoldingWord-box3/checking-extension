@@ -281,23 +281,26 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
+        const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
                 location: vscode.ProgressLocation.Window,
+                // this will show progress bar, but times out
+                // location: vscode.ProgressLocation.Notification,
                 title: 'Downloading GL resources...',
                 cancellable: false
             }, async (progressTracker) => {
                 async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
-                    progressTracker.report({  increment: 10 });
+                    progressTracker.report({  increment });
                     // await showInformationMessage(message);
                     await delay(200)
                 }
 
-                progressTracker.report({ increment: 10 });
+                progressTracker.report({ increment });
                 await delay(100)
                 const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
-                progressTracker.report({ increment: 10 });
+                progressTracker.report({ increment });
                 await delay(100)
                 resolve(results)
             })
@@ -552,7 +555,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return new Promise((resolve) => {
             window.showInformationMessage("Checking DCS for GLs - can take minutes");
             vscode.window.withProgress({
-                location: vscode.ProgressLocation.Window,
+                location: vscode.ProgressLocation.Notification,
                 title: 'Downloading Catalog...',
                 cancellable: false
             }, async (progressTracker) => {

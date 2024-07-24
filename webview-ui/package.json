@@ -5,13 +5,13 @@
   "scripts": {
     "start": "vite",
     "build": "cross-env MINIFY=true npm run buildSub",
-    "build:dev": "cross-env MINIFY=true npm run buildSub",
+    "build:dev": "cross-env MINIFY=false npm run buildSub",
     "buildSub": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "checking-tool-rcl": "0.9.5",
+    "checking-tool-rcl": "0.9.6",
     "dompurify": "^3.0.9",
     "marked": "^12.0.0",
     "react": "^18.2.0",
