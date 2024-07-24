@@ -1,8 +1,8 @@
 {
   "name": "checking-extension",
   "displayName": "checking-extension",
-  "description": "",
-  "version": "0.0.1",
+  "description": "A vscode extension to open translation note tsv files and display them for a specific verse",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -14,12 +14,32 @@
   "contributes": {
     "commands": [
       {
-        "command": "checking-extension.helloWorld",
-        "title": "Hello World"
+        "command": "checking-extension.initTranslationChecker",
+        "title": "Translation Checking Tool: Initialize Project"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "checking-extension.translationChecker",
+        "displayName": "Translation Checking Tool: Make Selections for Translation Words and Notes",
+        "selector": [
+          {
+            "filenamePattern": "*.twl_check"
+          },
+          {
+            "filenamePattern": "*.tn_check"
+          }
+        ],
+        "priority": "default"
       }
     ]
   },
   "scripts": {
+    "install:all": "pnpm install && cd webview-ui && pnpm install",
+    "build:all": "pnpm run build:webview && pnpm run compile",
+    "start:webview": "cd webview-ui && pnpm run start",
+    "build:webview": "cd webview-ui && pnpm run build",
+    "build:webview-debug": "cd webview-ui && pnpm run build:dev",
     "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -33,9 +53,17 @@
     "@types/node": "20.x",
     "@typescript-eslint/eslint-plugin": "^7.14.1",
     "@typescript-eslint/parser": "^7.11.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.4.5",
     "@vscode/test-cli": "^0.0.9",
-    "@vscode/test-electron": "^2.4.0"
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/codicons": "^0.0.35",
+    "bible-reference-range": "^1.1.1",
+    "deep-equal": "1.0.1",
+    "eslint": "^8.57.0",
+    "fs-extra": "^11.2.0",
+    "ospath": "^1.2.2",
+    "tc-source-content-updater": "^1.4.25",
+    "typescript": "^5.4.5",
+    "usfm-js": "^3.4.2",
+    "yamljs": "^0.3.0"
   }
 }
