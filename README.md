@@ -1,61 +1,71 @@
-# Checking Tool
+# checking-extension README
 
-This is an implementation of the a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) webview extension.
+This is the README for your extension "checking-extension". After writing up a brief description, we recommend including the following sections.
 
-This extension will use a custom editor to open and display files with the `.tsv` extension and look at translation notes at the current
-book, chapter, and verse.
+## Features
 
-<!-- ![A screenshot of the sample extension.](TODO: Screenshot) -->
+Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
-## Documentation
+For example if there is an image subfolder under your extension project workspace:
 
-For a deeper dive into how this sample works, read the guides below.
+\!\[feature X\]\(images/feature-x.png\)
 
-- [Extension structure](./docs/extension-structure.md)
-- [Extension commands](./docs/extension-commands.md)
-- [Extension development cycle](./docs/extension-development-cycle.md)
+> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
 
-## Run The Sample
-Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm. 
+## Requirements
 
-1. Clone the checking-extension repository to test the extension in:
-    ```bash
-    git clone https://github.com/unfoldingWord-box3/checking-extension.git
-    ```
+If you have any requirements or dependencies, add a section describing those and how to install and configure them.
 
-2. After you have cloned checking-extension, to get the latest code for checking-extension stash any local changes and get latest by doing:
-    ```bash
-    git stash
-    git pull
-    ```
+## Extension Settings
 
-3. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
+Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
 
-    - Install dependencies in root directory (if pnpm is not found, do `sudo npm install --global pnpm` to install)
-    ```bash
-    pnpm run install:all
-    ```
+For example:
 
-4. Build the webview so that it renders on extension run
+This extension contributes the following settings:
 
-    - If in the root directory, run:
-    ```bash
-    pnpm run build:webview
-    ```
-    
-5. Open vscode editor (using `code .` in the current directory or using the UI)
+* `myExtension.enable`: Enable/disable this extension.
+* `myExtension.thing`: Set to `blah` to do something.
 
-6. Press `F5` to open a new Extension Development Host window
+## Known Issues
 
-   - If you get error that the module could not be installed, try:
-    ```bash
-    pnpm run build:all
-    ```
+Calling out known issues can help limit users opening duplicate issues against your extension.
 
-7. Initialize a project
-   a. Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or Control-Shift-P on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
-   b. Add checking to an existing project (a folder that already has usfm files and manifest).  With vscode open to project folder, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to select gateway language.  It will create a checking folder and metadata.json.
+## Release Notes
 
-8. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
+Users appreciate release notes as you update your extension.
 
+### 1.0.0
 
+Initial release of ...
+
+### 1.0.1
+
+Fixed issue #.
+
+### 1.1.0
+
+Added features X, Y, and Z.
+
+---
+
+## Following extension guidelines
+
+Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+
+* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+
+## Working with Markdown
+
+You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+
+* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
+* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
+* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+
+## For more information
+
+* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
+* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+
+**Enjoy!**
