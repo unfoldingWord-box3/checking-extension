@@ -10,6 +10,8 @@ import {
     window,
     workspace,
 } from "vscode";
+// @ts-ignore
+import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
@@ -321,9 +323,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         _token: CancellationToken,
     ): Promise<void> {
         // Setup initial content for the webview
+        const assetsPath = vscode.Uri.joinPath(this.context.extensionUri, 'webview-ui/build/assets');
+        this.fixCSS(assetsPath);
+
         webviewPanel.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this.context.extensionUri],
+            localResourceRoots: [
+              this.context.extensionUri,
+              assetsPath,
+            ],
         };
 
         const updateWebview = () => {
@@ -395,6 +403,45 @@ export class CheckingProvider implements CustomTextEditorProvider {
         });
 
         // TODO: Put Global BCV function here
+    }
+
+    private fixCSS(assetsPath: vscode.Uri) {
+        console.log(`fixCSS - assetsPath`, assetsPath.fsPath);
+        const buildPath = vscode.Uri.joinPath(assetsPath, '..')
+        const cssPath = vscode.Uri.joinPath(assetsPath, "index.css");
+        console.log(`fixCSS - cssPath.path`, cssPath.path);
+        console.log(`fixCSS - cssPath.fsPath`, cssPath.fsPath);
+        try {
+            let count = 0
+            const data = fs.readFileSync(cssPath.fsPath, "UTF-8")?.toString() || '';
+            console.log(`data.length`, data?.length);
+            const parts = data.split('url(')
+            if (parts.length > 1) {
+                for (let i = 1; i < parts.length; i++) {
+                    let part = parts[i]
+                    const pathParts = part.split(')')
+                    if (pathParts[0].substring(0, 7) === "/assets") {
+                        count++
+                        console.log(`fixCSS - found ${pathParts[0]}`);
+                        let newUrlPath = vscode.Uri.joinPath(buildPath, pathParts[0]);
+                        let newUrlFsPath = newUrlPath.fsPath.replaceAll('\\', '/')
+                        console.log(`fixCSS - new newUrlFsPath - ${newUrlFsPath}`);
+                        pathParts[0] = newUrlFsPath
+                        const joinedStr = pathParts.join(')')
+                        parts[i] = joinedStr
+                    } else {
+                        console.log(`fixCSS - not 'url(/assets' to convert ${pathParts}`);
+                    }
+                }
+            }
+            
+            if (count) {
+                const newCss = parts.join('url(')
+                fs.outputFileSync(cssPath.fsPath, newCss, 'UTF-8');
+            }
+        } catch (e) {
+            console.error(`fixCSS - cannot fix index.css at ${cssPath}`, e)
+        }
     }
 
     private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
