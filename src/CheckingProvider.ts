@@ -405,6 +405,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         // TODO: Put Global BCV function here
     }
 
+    /**
+     * open.css file and fix paths to assets.
+     * @param assetsPath
+     * @private
+     */
     private fixCSS(assetsPath: vscode.Uri) {
         console.log(`fixCSS - assetsPath`, assetsPath.fsPath);
         const buildPath = vscode.Uri.joinPath(assetsPath, '..')
@@ -425,7 +430,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         console.log(`fixCSS - found ${pathParts[0]}`);
                         let newUrlPath = vscode.Uri.joinPath(buildPath, pathParts[0]);
                         let newUrlFsPath = newUrlPath.fsPath.replaceAll('\\', '/')
-                        console.log(`fixCSS - new newUrlFsPath - ${newUrlFsPath}`);
+                        console.log(`fixCSS - found ${pathParts[0]} and changed to new newUrlFsPath - ${newUrlFsPath}`);
                         pathParts[0] = newUrlFsPath
                         const joinedStr = pathParts.join(')')
                         parts[i] = joinedStr
