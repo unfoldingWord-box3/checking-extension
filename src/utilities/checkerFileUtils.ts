@@ -1316,6 +1316,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.bibles = bibles
           // @ts-ignore
           results.targetBible = getBookOfTheBibleFromFolder(repoPath, bookId)
+          // add target bible to start of bibles list
           const targetBible = {
               // @ts-ignore
               book: results.targetBible,

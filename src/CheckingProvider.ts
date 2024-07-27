@@ -422,15 +422,18 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.log(`data.length`, data?.length);
             const parts = data.split('url(')
             if (parts.length > 1) {
+                // iterate through each URL
                 for (let i = 1; i < parts.length; i++) {
                     let part = parts[i]
                     const pathParts = part.split(')')
+                    // for asset times replay with absolute path to work with vscode
                     if (pathParts[0].substring(0, 7) === "/assets") {
                         count++
                         console.log(`fixCSS - found ${pathParts[0]}`);
                         let newUrlPath = vscode.Uri.joinPath(buildPath, pathParts[0]);
                         let newUrlFsPath = newUrlPath.fsPath.replaceAll('\\', '/')
                         console.log(`fixCSS - found ${pathParts[0]} and changed to new newUrlFsPath - ${newUrlFsPath}`);
+                        // replace asset path with absolute path
                         pathParts[0] = newUrlFsPath
                         const joinedStr = pathParts.join(')')
                         parts[i] = joinedStr
