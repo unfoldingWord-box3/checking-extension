@@ -1273,7 +1273,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               id: origLangguageBibleId,
               owner: 'unfoldingWord'
           }
-          biblesList.splice(1, 0, origLangBible); // insert into second position
+          biblesList.unshift(origLangBible); // insert into first position
           let book;
 
           for (const bible of biblesList) {
@@ -1316,6 +1316,16 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.bibles = bibles
           // @ts-ignore
           results.targetBible = getBookOfTheBibleFromFolder(repoPath, bookId)
+          // add target bible to start of bibles list
+          const targetBible = {
+              // @ts-ignore
+              book: results.targetBible,
+              languageId: 'targetLanguage',
+              bibleId: 'targetBible',
+              owner: 'unfoldingWord'
+          }
+          bibles.unshift(targetBible)
+
           // @ts-ignore
           results.isNt = BooksOfTheBible.isNT(bookId)
           // @ts-ignore

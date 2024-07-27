@@ -1,9 +1,8 @@
 # Checking Tool
 
-This is an implementation of the a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) webview extension.
+This is an implementation of a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) webview extension.
 
-This extension will use a custom editor to open and display files with the `.tsv` extension and look at translation notes at the current
-book, chapter, and verse.
+This extension will use a custom editor to open files with the `twl_check` or `tn_check` extension and display a UI to do checking for book 
 
 <!-- ![A screenshot of the sample extension.](TODO: Screenshot) -->
 
@@ -16,7 +15,7 @@ For a deeper dive into how this sample works, read the guides below.
 - [Extension development cycle](./docs/extension-development-cycle.md)
 
 ## Run The Sample
-Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm. 
+Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm.
 
 1. Clone the checking-extension repository to test the extension in:
     ```bash
@@ -42,7 +41,7 @@ Follow the following steps to see the translation notes extension in action. Rep
     ```bash
     pnpm run build:webview
     ```
-    
+
 5. Open vscode editor (using `code .` in the current directory or using the UI)
 
 6. Press `F5` to open a new Extension Development Host window
