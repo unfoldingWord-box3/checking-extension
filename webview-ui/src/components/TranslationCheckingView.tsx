@@ -187,6 +187,11 @@ function TranslationCheckingView() {
 
     function saveSettings(_settings: {}) {
         console.log(`saveSettings`, _settings)
+        vscode.postMessage({
+            command: "saveSettings",
+            text: "Webview save settings",
+            data: _settings,
+        });
     }
 
     // @ts-ignore

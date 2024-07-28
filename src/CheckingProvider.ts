@@ -41,6 +41,7 @@ import {
     getLanguageCodeFromPrompts,
     getLanguagePrompts
 } from "./utilities/languages";
+import path from "path";
 // @ts-ignore
 var isEqual = require('deep-equal');
 
@@ -365,12 +366,51 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         };
 
+        const saveSettings = (text:string, newSettings:{}) => {
+            console.log(`saveSettings - new settings`, newSettings)
+            if (newSettings) {
+                let projectPath:string = ''
+                let repoFolderExists_ = false
+                let metaDataExists = false
+                const workspaceFolder = vscode.workspace.workspaceFolders
+                  ? vscode.workspace.workspaceFolders[0]
+                  : undefined;
+                if (workspaceFolder) {
+                    projectPath = workspaceFolder.uri.fsPath || ''
+                    repoFolderExists_ = fs.existsSync(projectPath)
+                }
+                if (repoFolderExists_) {
+                    let pathToMetaData = ''
+                    try {
+                        pathToMetaData = path.join(projectPath, "metadata.json");
+                        metaDataExists = fs.existsSync(pathToMetaData);
+                        const metadata = metaDataExists ? fs.readJsonSync(pathToMetaData) : null;
+                        if (metadata) {
+                            const appConfig = metadata?.['translation.checker']
+                            if (appConfig) {
+                                appConfig.settings
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`saveSettings - failed to update settings in ${pathToMetaData}`, e)
+                    }
+                } 
+                
+                if (!repoFolderExists_ || !metaDataExists) {
+                    console.error(`saveSettings - project folder not found in ${projectPath}`)
+                } else if (!metaDataExists) {
+                    console.error(`saveSettings - metadata not found in ${projectPath}`)
+                }
+            }
+        };
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: updateWebview,
                 ["saveSelection"]: saveSelection,
+                ["saveSettings"]: saveSettings,
             };
 
             commandToFunctionMapping[command](text, data);
