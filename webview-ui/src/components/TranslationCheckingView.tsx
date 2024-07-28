@@ -185,6 +185,13 @@ function TranslationCheckingView() {
         return message;
     }
 
+    function saveSettings(_settings: {}) {
+        console.log(`saveSettings`, _settings)
+    }
+
+    // @ts-ignore
+    const settings = CheckingObj?.metadata?.['translation.checker']?.settings
+
     const content = haveResources ? (
       <div id="checkerWrapper" >
           <Checker
@@ -196,7 +203,9 @@ function TranslationCheckingView() {
             contextId={contextId}
             getLexiconData={getLexiconData_}
             glWordsData={glWordsData}
+            initialSettings={settings}
             saveSelection={_saveSelection}
+            saveSettings={saveSettings}
             showDocument={showDocument}
             targetBible={targetBible}
             targetLanguageDetails={targetLanguageDetails}
