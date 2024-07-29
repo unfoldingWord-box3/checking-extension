@@ -195,7 +195,7 @@ function TranslationCheckingView() {
     }
 
     // @ts-ignore
-    const settings = CheckingObj?.metadata?.['translation.checker']?.settings
+    const settings = CheckingObj?.metadata?.settings
 
     const content = haveResources ? (
       <div id="checkerWrapper" >

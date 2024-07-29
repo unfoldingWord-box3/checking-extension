@@ -386,10 +386,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         metaDataExists = fs.existsSync(pathToMetaData);
                         const metadata = metaDataExists ? fs.readJsonSync(pathToMetaData) : null;
                         if (metadata) {
-                            const appConfig = metadata?.['translation.checker']
-                            if (appConfig) {
-                                appConfig.settings
+                            let appConfig = metadata['translation.checker']
+                            if (!appConfig) {
+                                appConfig = {}
+                                metadata['translation.checker'] = appConfig
                             }
+                            appConfig.settings = newSettings
+                            fs.outputJsonSync(pathToMetaData, metadata, { spaces: 2 })
                         }
                     } catch (e) {
                         console.error(`saveSettings - failed to update settings in ${pathToMetaData}`, e)

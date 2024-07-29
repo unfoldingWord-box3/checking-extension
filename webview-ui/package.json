@@ -1,6 +1,6 @@
 {
   "name": "checking-extension-webview",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "start": "vite",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "checking-tool-rcl": "0.9.8-beta",
+    "checking-tool-rcl": "0.9.8",
     "dompurify": "^3.0.9",
     "marked": "^12.0.0",
     "react": "^18.2.0",
