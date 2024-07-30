@@ -53,7 +53,7 @@ const checkingHelpsResources = [
  * @param {string[]} resourceFiles - destination for list of resources paths found
  * @param {boolean} byBook - if true then separate resources by book
  */
-async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean) {
+async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPath:string, resourceFiles:string[], byBook:boolean, ignoreIndex = false) {
     const bookIds = Object.keys(BooksOfTheBible.ALL_BIBLE_BOOKS)
     const tempFolder = path.join(folderPath, '../temp')
     let moveSuccess = false
@@ -70,14 +70,14 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
     if (moveSuccess) {
         try {
             if (!byBook) {
-                const contents = readHelpsFolder(tempFolder, '', true)
+                const contents = readHelpsFolder(tempFolder, '', ignoreIndex)
                 fs.ensureDirSync(folderPath)
                 const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
                 fs.outputJsonSync(outputPath, contents, { spaces: 2 })
                 resourceFiles.push(outputPath)
             } else {
                 for (const bookId of bookIds) {
-                    const contents = readHelpsFolder(tempFolder, bookId, true)
+                    const contents = readHelpsFolder(tempFolder, bookId, ignoreIndex)
                     if (objectNotEmpty(contents)) {
                         fs.ensureDirSync(folderPath);
                         const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
@@ -124,7 +124,8 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
         }
         let success = true
         if (combineHelps) {
-            success = await processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook)
+            const ignoreIndex = resource.resourceId === 'tn'
+            success = await processHelpsIntoJson(resource, resourcesPath, folderPath, resourceFiles, byBook, ignoreIndex)
         }
         if (success) {
             return { resourcePath: folderPath, resourceFiles, resource, byBook};
@@ -281,7 +282,8 @@ async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string
         const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
         if (resource_) {
             processed.push(resource_)
-            const success = await processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook)
+            const ignoreIndex = item.resourceId === 'tn'
+            const success = await processHelpsIntoJson(item.resource, resourcesPath, item.resourcePath, item.resourceFiles, item.byBook, ignoreIndex)
             if (!success) {
                 console.error('getLangHelpsResourcesFromCatalog - could not process', item)
             }
@@ -707,7 +709,8 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 }
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
-                const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook)
+                const ignoreIndex = resource_.resource.resourceId === 'tn'
+                const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook, ignoreIndex)
                 if (!success) {
                     console.error('getLangHelpsResourcesFromCatalog - could not process', item)
                 }
