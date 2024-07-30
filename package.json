@@ -52,7 +52,7 @@
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
-    "prepackage:extension": "pnpm run install:webview && pnpm run build:webview",
+    "pre-package:extension": "pnpm run install:webview && pnpm run build:webview",
     "package:extension": "npm install && vsce package"
   },
   "devDependencies": {

@@ -22,7 +22,7 @@ jobs:
       - run: pnpm --version
 
       - name: Install and build webview
-        run: npm run prepackage:extension
+        run: npm run pre-package:extension
 
       - name: Install vsce
         run: npm install -g  @vscode/vsce
