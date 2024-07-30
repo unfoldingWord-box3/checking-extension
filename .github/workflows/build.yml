@@ -22,7 +22,7 @@ jobs:
         run: |
           echo "HASH=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
           echo "APP_VERSION=$(node -p -e "require('./package.json').version")" >> $GITHUB_ENV
-          echo "APP_NANE=$(node -p -e "require('./package.json').name")" >> $GITHUB_ENV
+          echo "APP_NAME=$(node -p -e "require('./package.json').name")" >> $GITHUB_ENV
 
       - name: Install pnpm
         run: npm install --global pnpm
