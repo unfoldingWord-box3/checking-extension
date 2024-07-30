@@ -51,4 +51,3 @@ Follow the following steps to see the translation notes extension in action. Rep
 
 8. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
 
-
