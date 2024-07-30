@@ -30,9 +30,12 @@ jobs:
       - name: Package Extension
         run: npm run package:extension
 
+      - name: Set artifact name
+        run: echo "ARTIFACT_NAME=$(echo "$APP_NAME-$APP_VERSION.vsix")" >> $GITHUB_ENV
+        
       - uses: actions/upload-artifact@v3
         name: Upload Package
         with:
-          name: extension-package
+          name: ${{ env.ARTIFACT_NAME }}
           path: ./checking-extension-*.vsix
 
