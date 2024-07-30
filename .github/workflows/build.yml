@@ -17,6 +17,13 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+
+      - name: Read version and commit sha
+        run: |
+          echo "HASH=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+          echo "APP_VERSION=$(node -p -e "require('./package.json').version")" >> $GITHUB_ENV
+          echo "APP_NANE=$(node -p -e "require('./package.json').name")" >> $GITHUB_ENV
+
       - name: Install pnpm
         run: npm install --global pnpm
       - run: pnpm --version
@@ -31,7 +38,7 @@ jobs:
         run: npm run package:extension
 
       - name: Set artifact name
-        run: echo "ARTIFACT_NAME=$(echo "$APP_NAME-$APP_VERSION.vsix")" >> $GITHUB_ENV
+        run: echo "ARTIFACT_NAME=$(echo "$APP_NAME-$APP_VERSION-$HASH.vsix")" >> $GITHUB_ENV
         
       - uses: actions/upload-artifact@v3
         name: Upload Package
