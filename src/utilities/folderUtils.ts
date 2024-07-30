@@ -28,7 +28,7 @@ export function objectNotEmpty(data: {}) {
   return data && Object.keys(data).length;
 }
 
-export function readHelpsFolder(folderPath:string, filterBook:string = '') {
+export function readHelpsFolder(folderPath:string, filterBook:string = '', ignoreIndex = false) {
   const contents = {}
   const files = (fs.existsSync(folderPath) && isDirectory(folderPath)) ? fs.readdirSync(folderPath) : []
   for (const file of files) {
@@ -36,7 +36,8 @@ export function readHelpsFolder(folderPath:string, filterBook:string = '') {
     const parsed = path.parse(file)
     const key = parsed.name
     const type = parsed.ext
-    if (type === '.json') {
+    const skipIndex = ignoreIndex && (key === 'index')
+    if (type === '.json' && !skipIndex) {
       const data = readJsonFile(filePath)
       if (data) {
         // @ts-ignore
@@ -51,13 +52,13 @@ export function readHelpsFolder(folderPath:string, filterBook:string = '') {
     } else if (isDirectory(filePath)) {
       if ((key === 'groups') && filterBook) {
         const bookPath = path.join(filePath, filterBook)
-        const data = readHelpsFolder(bookPath)
+        const data = readHelpsFolder(bookPath, '', ignoreIndex)
         if (objectNotEmpty(data)) {
           // @ts-ignore
           contents[key] = data;
         }
       } else {
-        const data = readHelpsFolder(filePath, filterBook)
+        const data = readHelpsFolder(filePath, filterBook, ignoreIndex)
         if (objectNotEmpty(data)) {
           // @ts-ignore
           contents[key] = data

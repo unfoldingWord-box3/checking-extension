@@ -70,14 +70,14 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
     if (moveSuccess) {
         try {
             if (!byBook) {
-                const contents = readHelpsFolder(tempFolder)
+                const contents = readHelpsFolder(tempFolder, '', true)
                 fs.ensureDirSync(folderPath)
                 const outputPath = path.join(folderPath, `${resource.resourceId}.json`)
                 fs.outputJsonSync(outputPath, contents, { spaces: 2 })
                 resourceFiles.push(outputPath)
             } else {
                 for (const bookId of bookIds) {
-                    const contents = readHelpsFolder(tempFolder, bookId)
+                    const contents = readHelpsFolder(tempFolder, bookId, true)
                     if (objectNotEmpty(contents)) {
                         fs.ensureDirSync(folderPath);
                         const outputPath = path.join(folderPath, `${resource.resourceId}_${bookId}.json`);
@@ -1192,15 +1192,28 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
     }
 }
 
+/**
+ * make sure resource has content has data other than manifest
+ * @param resource
+ */
+function hasResourceData(resource:object) {
+    if (resource) {
+        // @ts-ignore
+        const minCount = resource?.manifest ? 2 : 1;
+        // @ts-ignore
+        let hasResourceFiles = Object.keys(resource).length >= minCount; // need more that just manifest
+        return hasResourceFiles;
+    }
+    return false
+}
+
 function getCheckingResource(repoPath: string, metadata: object, resourceId: string, bookId: string) {
     // @ts-ignore
     const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
     const checkType = `.${resourceId}_check`;
     const twlPath = path.join(checksPath, `${bookId}${checkType}`);
     let resource = readJsonFileIfExists(twlPath);
-
-    // @ts-ignore
-    let hasResourceFiles = !!resource;
+    let hasResourceFiles = hasResourceData(resource);
     if (!hasResourceFiles) { // if we don't have checking the specific book, check to see if we have checks for other books at least
         const files = getFilesOfType(checksPath, checkType);
         hasResourceFiles = !!files.length;

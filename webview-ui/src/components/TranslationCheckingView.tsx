@@ -29,21 +29,25 @@ const loadLexiconEntry = (key:string) => {
     console.log(`loadLexiconEntry(${key})`)
 };
 
+/**
+ * make sure resource has content has data other than manifest
+ * @param resource
+ */
+function hasResourceData(resource:object) {
+    if (resource) {
+        // @ts-ignore
+        const minCount = resource?.manifest ? 2 : 1;
+        // @ts-ignore
+        let hasResourceFiles = Object.keys(resource).length >= minCount; // need more that just manifest
+        return hasResourceFiles;
+    }
+    return false
+}
+
 function TranslationCheckingView() {
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
     const [currentContextId, setCurrentContextId] = useState<object>({});
-    
-    // TODO: Implement this if in Codex!
-    // const changeChapterVerse = (ref: VerseRefGlobalState): void => {
-    //     const { verseRef } = ref;
-    //     const { chapter: newChapter, verse: newVerse } =
-    //         extractBookChapterVerse(verseRef);
-
-    //     setChapter(newChapter);
-    //     setVerse(newVerse);
-    //     setNoteIndex(0);
-    // };
 
     const LexiconData:object = CheckingObj.lexicons;
     const translations:object = CheckingObj.locales
@@ -56,7 +60,7 @@ function TranslationCheckingView() {
     const alignedGlBible = alignedGlBible_?.book
     const checks:object = CheckingObj.checks
     // @ts-ignore
-    const haveCheckingData = checks && Object.keys(checks).length
+    const haveChecks = hasResourceData(checks)
     const targetBible = CheckingObj.targetBible
 
     const translate = (key:string) => {
@@ -103,12 +107,12 @@ function TranslationCheckingView() {
     if (resourceId === 'twl') {
         const glTwData: object = CheckingObj.tw;
         glWordsData = glTwData
-        checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
         checkType = 'translationWords'
     } else if (resourceId === 'tn') {
         const glTaData: object = CheckingObj.ta;
         glWordsData = glTaData
-        checkingData = haveCheckingData && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
         checkType = 'translationNotes'
     }
 
@@ -173,14 +177,22 @@ function TranslationCheckingView() {
         setNoteIndex((prevIndex) =>
             prevIndex > 0 ? prevIndex - 1 : prevIndex,
         );
-    
-    const haveResources = CheckingObj.validResources && checkingData
-    console.log(`TranslationNotesView - redraw`, CheckingObj, haveResources)
 
+    const haveCheckingData = hasResourceData(checkingData);
+    const hasTargetBibleBook = hasResourceData(CheckingObj?.targetBible);
+    const haveResources = hasTargetBibleBook && CheckingObj.validResources && haveCheckingData
+
+    console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`, CheckingObj)
     function getResourceMissingErrorMsg(CheckingObj:any) {
         let message = "Checking resources missing.";
-        if (!CheckingObj?.targetBible) {
+        if (!hasTargetBibleBook) {
             message = `Target bible missing for ${bookId}.`
+        } else if (CheckingObj.validResources) {
+            if (!haveCheckingData) {
+                message = `Empty checks file: './checking/${CheckingObj?.project?.resourceId}/${bookId}.${CheckingObj?.project?.resourceId}_check'`
+            }
+        } else {
+            message = "Checking resources missing.";
         }
         return message;
     }
