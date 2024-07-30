@@ -29,3 +29,10 @@ jobs:
 
       - name: Package Extension
         run: npm run package:extension
+
+      - uses: actions/upload-artifact@v3
+        name: Upload Package
+        with:
+          name: checking-extension-*.vsix
+          path: .
+
