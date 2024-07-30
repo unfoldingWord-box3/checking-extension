@@ -33,6 +33,6 @@ jobs:
       - uses: actions/upload-artifact@v3
         name: Upload Package
         with:
-          name: checking-extension-*.vsix
-          path: .
+          name: extension-package
+          path: ./checking-extension-*.vsix
 
