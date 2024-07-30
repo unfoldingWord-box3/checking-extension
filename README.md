@@ -4,15 +4,9 @@ This is an implementation of a [React](https://reactjs.org/) + [Vite](https://vi
 
 This extension will use a custom editor to open files with the `twl_check` or `tn_check` extension and display a UI to do checking for book 
 
-<!-- ![A screenshot of the sample extension.](TODO: Screenshot) -->
-
 ## Documentation
 
-For a deeper dive into how this sample works, read the guides below.
-
-- [Extension structure](./docs/extension-structure.md)
-- [Extension commands](./docs/extension-commands.md)
-- [Extension development cycle](./docs/extension-development-cycle.md)
+TODO
 
 ## Run The Sample
 Follow the following steps to see the translation notes extension in action. Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm.
