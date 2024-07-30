@@ -41,7 +41,7 @@
   },
   "scripts": {
     "install:all": "pnpm run install:webview && pnpm install",
-    "install:webview": "pnpm install && cd webview-ui",
+    "install:webview": "cd webview-ui && pnpm install",
     "build:all": "pnpm run build:webview && pnpm run compile",
     "start:webview": "cd webview-ui && pnpm run start",
     "build:webview": "cd webview-ui && pnpm run build",
