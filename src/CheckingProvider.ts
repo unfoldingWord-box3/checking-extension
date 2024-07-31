@@ -113,56 +113,68 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        let commandRegistration = commands.registerCommand(
+        const commandRegistration = commands.registerCommand(
           "checking-extension.initTranslationChecker",
-          async (verseRef: string) => {
+          async () => {
               return await CheckingProvider.initializeChecker();
           },
         );
         subscriptions.push(commandRegistration)
 
-        commandRegistration = commands.registerCommand(
+        const commandRegistration2 = commands.registerCommand(
           "checking-extension.launchWorkflow",
-          async (verseRef: string) => {
-              vscode.window.showInformationMessage('Launching Checking Workflow');
-              const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
-              if (repoFolderExists) {
-                  await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              } else {
-                  CheckingProvider.createNewFolder = true
-                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
-              }
+          async () => {
+            console.log(`starting "checking-extension.launchWorkflow"`)
+              await delay(1000)
+              await vscode.window.showInformationMessage('Launching Checking Workflow');
+              await delay(1000)
+              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+              await delay(1000)
+              // const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+              // if (repoFolderExists) {
+              //     CheckingProvider.createNewFolder = false
+              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              // } else {
+              //     CheckingProvider.createNewFolder = true
+              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              // }
           },
         );
-        subscriptions.push(commandRegistration)
+        subscriptions.push(commandRegistration2)
 
-        commandRegistration = commands.registerCommand(
+        const commandRegistration3 = commands.registerCommand(
           "checking-extension.createNewFolder",
-          async (verseRef: string) => {
+          () => {
               CheckingProvider.createNewFolder = true
-              await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord3.checking-extension#initChecking`, false);
+              console.log("checking-extension.createNewFolder")
+
+            //   await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
           },
         );
-        subscriptions.push(commandRegistration)
+        subscriptions.push(commandRegistration3)
 
-        commandRegistration = commands.registerCommand(
+        const commandRegistration4 = commands.registerCommand(
           "checking-extension.selectFolder",
-          async (verseRef: string) => {
+          async () => {
+              await delay(1000)
               CheckingProvider.createNewFolder = false
               await CheckingProvider.openWorkspace()
               await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
           },
         );
-        subscriptions.push(commandRegistration)
+        subscriptions.push(commandRegistration4)
 
         return subscriptions;
     }
 
     private static async gotoWorkFlow(step:string) {
+        await delay(1000)
+        const _step = `unfoldingWord.checking-extension#${step}`;
         await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, 
           {
               category: `unfoldingWord.checking-extension#initChecking`,
-              step: `unfoldingWord.checking-extension#initChecking#${step}`,
+              step: _step,
           },
           false
         );
