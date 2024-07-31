@@ -124,16 +124,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const commandRegistration2 = commands.registerCommand(
           "checking-extension.launchWorkflow",
           async () => {
+              console.log(`starting "checking-extension.launchWorkflow"`)
               vscode.window.showInformationMessage('Launching Checking Workflow');
-              const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
-              //   if (repoFolderExists) {
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              //   }
-              //    else {
-              //       CheckingProvider.createNewFolder = true
-              //       await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
-              //   }
-
+              // const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+              // if (repoFolderExists) {
+              //     CheckingProvider.createNewFolder = false
+              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              // } else {
+              //     CheckingProvider.createNewFolder = true
+              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              // }
           },
         );
         subscriptions.push(commandRegistration2)

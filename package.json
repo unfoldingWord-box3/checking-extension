@@ -25,22 +25,22 @@
       {
         "title": "Translation Checking Tool: Initialize Checking Workflow",
         "command": "checking-extension.launchWorkflow",
-        "category": "Checking Tool Project Management"
+        "category": "Project Management"
       },
       {
         "title": "Translation Checking Tool: Create New Folder",
         "command": "checking-extension.createNewFolder",
-        "category": "Checking Tool Project Management"
+        "category": "Project Management"
       },
       {
         "title": "Translation Checking Tool: Select Folder",
         "command": "checking-extension.selectFolder",
-        "category": "Checking Tool Project Management"
+        "category": "Project Management"
       },
       {
         "title": "Translation Checking Tool: Select Gateway Language",
         "command": "checking-extension.selectGL",
-        "category": "Checking Tool Project Management"
+        "category": "Project Management"
       }
     ],
     "customEditors": [
