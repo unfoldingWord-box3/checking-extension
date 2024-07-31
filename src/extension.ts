@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "checking-extension" is now active!');
 
-	// vscode.window.showInformationMessage('Loaded checking-extension!');
+	vscode.window.showInformationMessage('Loaded checking-extension!');
 	
 	// Register the custom checker provider
 	const subscriptions =
