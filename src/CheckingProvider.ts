@@ -47,22 +47,6 @@ var isEqual = require('deep-equal');
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
-// const getTnUri = (bookID: string): Uri => {
-//     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
-//     return Uri.joinPath(
-//       workspaceRootUri,
-//       `tn_${bookID}.check`,
-//     );
-// };
-//
-// const getTwlUri = (bookID: string): Uri => {
-//     const workspaceRootUri = workspace.workspaceFolders?.[0].uri as Uri;
-//     return Uri.joinPath(
-//       workspaceRootUri,
-//       `twl_${bookID}.check`,
-//     );
-// };
-
 async function showInformationMessage(message: string, modal: boolean = false, detail: null|string = null) {
     if (modal) {
         const options = { modal: true };
@@ -127,14 +111,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
               console.log(`starting "checking-extension.launchWorkflow"`)
               vscode.window.showInformationMessage('Launching Checking Workflow');
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              // const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
-              // if (repoFolderExists) {
-              //     CheckingProvider.createNewFolder = false
-              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
-              // } else {
-              //     CheckingProvider.createNewFolder = true
-              //     await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
-              // }
+              const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+              if (repoFolderExists) {
+                  console.log(`Folder Exists`)
+                  CheckingProvider.createNewFolder = false
+                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              } else {
+                  CheckingProvider.createNewFolder = true
+                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              }
           },
         );
         subscriptions.push(commandRegistration2)
@@ -166,12 +151,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static async gotoWorkFlow(step:string) {
-        await delay(1000)
-        const _step = `unfoldingWord.checking-extension#${step}`;
+        await delay(500)
+        // const _step = `unfoldingWord.checking-extension#${step}`;
         await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, 
           {
               category: `unfoldingWord.checking-extension#initChecking`,
-              step: _step,
+              step,
           },
           false
         );
