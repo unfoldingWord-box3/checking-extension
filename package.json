@@ -1,8 +1,8 @@
 {
   "name": "checking-extension",
   "displayName": "checking-extension",
-  "description": "A vscode extension to open translation note tsv files and display them for a specific verse",
-  "version": "0.0.4",
+  "description": "A vscode extension to open tn_check and twl_check files for checking verses",
+  "version": "0.0.6-beta.3",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -37,11 +37,17 @@
         ],
         "priority": "default"
       }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "workbench.explorer.emptyView",
+        "contents": "==================\nTo Create a new checking project, click on the 'Create Checking Project' button below:\n[Create Checking Project](command:checking-extension.initTranslationChecker)"
+      }
     ]
   },
   "scripts": {
     "install:all": "pnpm run install:webview && pnpm install",
-    "install:webview": "pnpm install && cd webview-ui",
+    "install:webview": "cd webview-ui && pnpm install",
     "build:all": "pnpm run build:webview && pnpm run compile",
     "start:webview": "cd webview-ui && pnpm run start",
     "build:webview": "cd webview-ui && pnpm run build",
@@ -52,10 +58,10 @@
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
-    "prepackage:extension": "pnpm run install:webview && pnpm run build:webview",
+    "pre-package:extension": "pnpm run install:webview && pnpm run build:webview",
     "package:extension": "npm install && vsce package"
   },
-  "devDependencies": {
+  "dependencies": {
     "@types/vscode": "^1.91.0",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
