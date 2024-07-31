@@ -101,57 +101,61 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
  *
  */
 export class CheckingProvider implements CustomTextEditorProvider {
-    public static register(context: ExtensionContext): {
-        providerRegistration: Disposable;
-        commandRegistration: Disposable;
-    } {
+    public static register(context: ExtensionContext):Disposable[]
+    {
+        const subscriptions = []
         const provider = new CheckingProvider(context);
         const providerRegistration = window.registerCustomEditorProvider(
             CheckingProvider.viewType,
             provider,
         );
+        subscriptions.push(providerRegistration)
 
         const commandRegistration = commands.registerCommand(
             "checking-extension.initTranslationChecker",
             async (verseRef: string) => {
-                await showInformationMessage('initializing Checker');
-
-                let projectPath
-                let repoFolderExists_ = false
-                const workspaceFolder = vscode.workspace.workspaceFolders
-                  ? vscode.workspace.workspaceFolders[0]
-                  : undefined;
-                if (workspaceFolder) {
-                    projectPath = workspaceFolder.uri.fsPath
-                    repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
-                      () => true,
-                      () => false
-                    );
-                }
-                
-                if (!repoFolderExists_) {
-                    await this.initializeEmptyFolder();
-                }
-                else {
-                    let results
-                    if (projectPath) {
-                        results = isRepoInitialized(projectPath, resourcesPath, null)
-                        // @ts-ignore
-                        const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
-                            && !results.checksInitialized && results.bibleBooksLoaded
-                        if (initBibleRepo) {
-                            return await this.initializeBibleFolder(results, projectPath);
-                        } else if (results.repoExists) {
-                            await showErrorMessage(`repo already has checking setup!`, true);
-                        }
-                    } else {
-                        await showErrorMessage(`repo already exists!`, true);
-                    }
-                }
+                return await CheckingProvider.initializeChecker();
             },
         );
+        subscriptions.push(commandRegistration)
 
-        return { providerRegistration, commandRegistration };
+        return subscriptions;
+    }
+
+    private static async initializeChecker(navigateToFolder = false) {
+        await showInformationMessage("initializing Checker");
+
+        let projectPath;
+        let repoFolderExists_ = false;
+        const workspaceFolder = vscode.workspace.workspaceFolders
+          ? vscode.workspace.workspaceFolders[0]
+          : undefined;
+        if (workspaceFolder) {
+            projectPath = workspaceFolder.uri.fsPath;
+            repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
+              () => true,
+              () => false,
+            );
+        }
+
+        if (!repoFolderExists_) {
+            await this.initializeEmptyFolder();
+        } else {
+            let results;
+            if (projectPath) {
+                results = isRepoInitialized(projectPath, resourcesPath, null);
+                // @ts-ignore
+                const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
+                  && !results.checksInitialized && results.bibleBooksLoaded;
+                if (initBibleRepo) {
+                    return await this.initializeBibleFolder(results, projectPath);
+                } else if (results.repoExists) {
+                    await showErrorMessage(`repo already has checking setup!`, true);
+                }
+            } else {
+                await showErrorMessage(`repo already exists!`, true);
+            }
+        }
     }
 
     private static async initializeBibleFolder(results:object, projectPath:string) {

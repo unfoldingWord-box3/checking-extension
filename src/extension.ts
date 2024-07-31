@@ -14,10 +14,12 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.showInformationMessage('Loaded checking-extension!');
 	
 	// Register the custom checker provider
-	const { providerRegistration, commandRegistration } =
+	const subscriptions =
 		CheckingProvider.register(context);
-	context.subscriptions.push(providerRegistration);
-	context.subscriptions.push(commandRegistration);
+
+	subscriptions.forEach(subscription => {
+		context.subscriptions.push(subscription);
+	})
 }
 
 // This method is called when your extension is deactivated
