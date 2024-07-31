@@ -101,6 +101,8 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
  *
  */
 export class CheckingProvider implements CustomTextEditorProvider {
+    public static createNewFolder = false
+
     public static register(context: ExtensionContext):Disposable[]
     {
         const subscriptions = []
@@ -111,51 +113,128 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        const commandRegistration = commands.registerCommand(
-            "checking-extension.initTranslationChecker",
-            async (verseRef: string) => {
-                return await CheckingProvider.initializeChecker();
-            },
+        let commandRegistration = commands.registerCommand(
+          "checking-extension.initTranslationChecker",
+          async (verseRef: string) => {
+              return await CheckingProvider.initializeChecker();
+          },
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.launchWorkflow",
+          async (verseRef: string) => {
+              vscode.window.showInformationMessage('Launching Checking Workflow');
+              const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+              if (repoFolderExists) {
+                  await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+              } else {
+                  CheckingProvider.createNewFolder = true
+                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+              }
+          },
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.createNewFolder",
+          async (verseRef: string) => {
+              CheckingProvider.createNewFolder = true
+              await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+          },
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.selectFolder",
+          async (verseRef: string) => {
+              CheckingProvider.createNewFolder = false
+              await CheckingProvider.openWorkspace()
+              await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+          },
         );
         subscriptions.push(commandRegistration)
 
         return subscriptions;
     }
 
+    private static async gotoWorkFlow(step:string) {
+        await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, 
+          {
+              category: `unfoldingWord.checking-extension#initChecking`,
+              step: `unfoldingWord.checking-extension#initChecking#${step}`,
+          },
+          false
+        );
+    }
+
+    private static async openWorkspace() {
+        let workspaceFolder;
+        const openFolder = await vscode.window.showOpenDialog({
+            canSelectFolders: true,
+            canSelectFiles: false,
+            canSelectMany: false,
+            openLabel: "Choose project folder",
+        });
+        if (openFolder && openFolder.length > 0) {
+            await vscode.commands.executeCommand(
+              "vscode.openFolder",
+              openFolder[0],
+              false
+            );
+            workspaceFolder = vscode.workspace.workspaceFolders
+              ? vscode.workspace.workspaceFolders[0]
+              : undefined;
+        }
+        if (!workspaceFolder) {
+            return;
+        }
+    }
+    
     private static async initializeChecker(navigateToFolder = false) {
         await showInformationMessage("initializing Checker");
+        const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
 
-        let projectPath;
-        let repoFolderExists_ = false;
-        const workspaceFolder = vscode.workspace.workspaceFolders
-          ? vscode.workspace.workspaceFolders[0]
-          : undefined;
-        if (workspaceFolder) {
-            projectPath = workspaceFolder.uri.fsPath;
-            repoFolderExists_ = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
-              () => true,
-              () => false,
-            );
-        }
-
-        if (!repoFolderExists_) {
+        if (!repoFolderExists) {
             await this.initializeEmptyFolder();
         } else {
             let results;
             if (projectPath) {
                 results = isRepoInitialized(projectPath, resourcesPath, null);
                 // @ts-ignore
-                const initBibleRepo = results.repoExists && results.manifest?.dublin_core && !results.metaDataInitialized
+                const isValidBible = results.repoExists && results.manifest?.dublin_core;
+                const initBibleRepo = isValidBible && !results.metaDataInitialized
                   && !results.checksInitialized && results.bibleBooksLoaded;
                 if (initBibleRepo) {
                     return await this.initializeBibleFolder(results, projectPath);
                 } else if (results.repoExists) {
-                    await showErrorMessage(`repo already has checking setup!`, true);
+                    if (results.metaDataInitialized && results.checksInitialized) {
+                        return await showErrorMessage(`repo already has checking setup!`, true);
+                    } else {
+                        
+                    }
                 }
             } else {
                 await showErrorMessage(`repo already exists!`, true);
             }
         }
+        await showErrorMessage(`repo already exists - but not valid!`, true);
+    }
+
+    private static async getWorkSpaceFolder() {
+        let projectPath;
+        let repoFolderExists = false;
+        const workspaceFolder = vscode.workspace.workspaceFolders
+          ? vscode.workspace.workspaceFolders[0]
+          : undefined;
+        if (workspaceFolder) {
+            projectPath = workspaceFolder.uri.fsPath;
+            repoFolderExists = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
+              () => true,
+              () => false,
+            );
+        }
+        return { projectPath, repoFolderExists };
     }
 
     private static async initializeBibleFolder(results:object, projectPath:string) {

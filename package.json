@@ -21,6 +21,26 @@
       {
         "command": "checking-extension.initTranslationChecker",
         "title": "Translation Checking Tool: Initialize Project"
+      },
+      {
+        "title": "Translation Checking Tool: Initialize Checking Workflow",
+        "command": "checking-extension.launchWorkflow",
+        "category": "Checking Tool Project Management"
+      },
+      {
+        "title": "Translation Checking Tool: Create New Folder",
+        "command": "checking-extension.createNewFolder",
+        "category": "Checking Tool Project Management"
+      },
+      {
+        "title": "Translation Checking Tool: Select Folder",
+        "command": "checking-extension.selectFolder",
+        "category": "Checking Tool Project Management"
+      },
+      {
+        "title": "Translation Checking Tool: Select Gateway Language",
+        "command": "checking-extension.selectGL",
+        "category": "Checking Tool Project Management"
       }
     ],
     "customEditors": [
@@ -42,6 +62,53 @@
       {
         "view": "workbench.explorer.emptyView",
         "contents": "==================\nTo Create a new checking project, click on the 'Create Checking Project' button below:\n[Create Checking Project](command:checking-extension.initTranslationChecker)"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "initChecking",
+        "title": "Initialize Checking",
+        "description": "A checking workflow",
+        "steps": [
+          {
+            "id": "openFolder",
+            "title": "Open Project Folder",
+            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Open Project Folder](command:checking-extension.selectFolder)\n[Create New Project Folder](checking-extension.createNewFolder)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Open Project Folder"
+            },
+            "completionEvents": [
+              "onFolderSelected"
+            ],
+            "when": "workbenchState == empty"
+          },
+          {
+            "id": "selectNewFolder",
+            "title": "Select New Project Folder",
+            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Open Project Folder](command:checking-extension.selectFolder)\n[Create New Project Folder](checking-extension.createNewFolder)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Open Project Folder"
+            },
+            "completionEvents": [
+              "onFolderSelected"
+            ],
+            "when": "workbenchState != empty"
+          },
+          {
+            "id": "selectGatewayLanguage",
+            "title": "Select gateway Language",
+            "description": "Now that we have a folder, let's choose the Gateway Language project.\n[Select gateway Language](command:codex-project-manager.nameProject)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Name Project"
+            },
+            "completionEvents": [
+              "onCommand:codex-project-manager.nameProject"
+            ],
+          }
+        ]
       }
     ]
   },
