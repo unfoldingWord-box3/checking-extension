@@ -652,6 +652,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
     }
     callback && await callback('downloaded catalog')
 
+    let error = false
     const processed:any[] = []
     let foundResources = verifyHaveGlHelpsResources(languageId, owner, resourcesPath)
     if (Object.keys(foundResources)?.length) {
@@ -671,6 +672,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             found.push(item)
         } else {
             console.error('getLatestLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
+            error = true
         }
     }
 
@@ -713,8 +715,10 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook, ignoreIndex)
                 if (!success) {
                     console.error('getLangHelpsResourcesFromCatalog - could not process', item)
+                    error = true
                 }
             } else {
+                error = true
                 // @ts-ignore
                 console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
                     languageId,
@@ -728,6 +732,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         processed,
         updatedCatalogResources: catalog,
         foundResources,
+        error
     }
 }
 

@@ -85,10 +85,30 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
  *
  */
 export class CheckingProvider implements CustomTextEditorProvider {
-    public static createNewFolder = false
+
+    public static currentState = {}
 
     public static register(context: ExtensionContext):Disposable[]
     {
+        let redirecting = false;
+
+        //wrapper for registered commands, to prevent recursive calls
+        const executeWithRedirecting = (
+          command: (...args: any[]) => Promise<void>
+        ) => {
+            return async (...args: any[]) => {
+                if (redirecting) {
+                    return;
+                }
+                redirecting = true;
+                try {
+                    await command(...args);
+                } finally {
+                    redirecting = false;
+                }
+            };
+        };
+        
         const subscriptions = []
         const provider = new CheckingProvider(context);
         const providerRegistration = window.registerCustomEditorProvider(
@@ -97,57 +117,123 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        const commandRegistration = commands.registerCommand(
+        let commandRegistration = commands.registerCommand(
           "checking-extension.initTranslationChecker",
-          async () => {
-              return await CheckingProvider.initializeChecker();
-          },
+          executeWithRedirecting( async () => {
+              await CheckingProvider.initializeChecker();
+          }),
         );
         subscriptions.push(commandRegistration)
 
-        const commandRegistration2 = commands.registerCommand(
+        commandRegistration = commands.registerCommand(
           "checking-extension.launchWorkflow",
-          async () => {
+          executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.launchWorkflow"`)
-              vscode.window.showInformationMessage('Launching Checking Workflow');
-              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
-              if (repoFolderExists) {
-                  console.log(`Folder Exists`)
-                  CheckingProvider.createNewFolder = false
-                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+
+              // initialize configurations
+              CheckingProvider.setContext('createNewFolder', false);
+              CheckingProvider.setContext('selectedFolder', false);
+              CheckingProvider.setContext('selectedGL', null);
+              CheckingProvider.setContext('loadedGL', false);
+
+              const{
+                  repoExists,
+                  isValidBible,
+                  isCheckingInitialized
+              } = await CheckingProvider.checkWorkspace();
+              if (repoExists) {
+                  if (!isValidBible) {
+                      CheckingProvider.setContext('createNewFolder', false);
+                      CheckingProvider.setContext('selectedFolder', true);
+                  } else if (isCheckingInitialized) {
+                    CheckingProvider.setContext('selectedFolder', false);
+                    await showErrorMessage(`Current Project already has checking setup!`, true);
+                  } else { // validBible, but not initialized
+                      CheckingProvider.setContext('createNewFolder', false);
+                      CheckingProvider.setContext('selectedFolder', true);
+                  }
               } else {
-                  CheckingProvider.createNewFolder = true
-                  await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+                  CheckingProvider.setContext('createNewFolder', true);
+                  CheckingProvider.setContext('selectedFolder', true);
               }
+              await delay(500)
+              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
           },
-        );
-        subscriptions.push(commandRegistration2)
+        ));
+        subscriptions.push(commandRegistration)
 
-        const commandRegistration3 = commands.registerCommand(
-          "checking-extension.createNewFolder",
-          () => {
-              CheckingProvider.createNewFolder = true
-              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord3.checking-extension#initChecking`, false);
-              console.log("checking-extension.createNewFolder")
-
-            //   await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
-          },
-        );
-        subscriptions.push(commandRegistration3)
-
-        const commandRegistration4 = commands.registerCommand(
+        commandRegistration = commands.registerCommand(
           "checking-extension.selectFolder",
-          async () => {
-              await delay(1000)
-              CheckingProvider.createNewFolder = false
-              await CheckingProvider.openWorkspace()
-              await CheckingProvider.gotoWorkFlow('selectGatewayLanguage')
+          executeWithRedirecting(async () => {
+              console.log("checking-extension.selectFolder")
+              await delay(500)
+              const newProject = ! await this.promptUpdateSpecificFolder()
+              if (newProject) {
+                  CheckingProvider.setConfiguration('createNewFolder', true);
+                  CheckingProvider.setConfiguration('selectedFolder', true);
+              } else {
+                  await CheckingProvider.openWorkspace()
+                  CheckingProvider.setConfiguration('createNewFolder', false);
+                  CheckingProvider.setConfiguration('selectedFolder', true);
+              }
+
           },
-        );
-        subscriptions.push(commandRegistration4)
+        ));
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.selectGL",
+          executeWithRedirecting(async () => {
+              console.log("checking-extension.selectGL")
+              const options = await CheckingProvider.getGatewayLangOptions()
+              const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
+              let glOptions = glSelected ? {
+                  languageId: options.gwLanguagePick,
+                  owner: options.gwOwnerPick
+              }
+              : null
+              CheckingProvider.setConfiguration('selectedGL', glOptions);
+          },
+        ));
+        subscriptions.push(commandRegistration)
+
+        // commandRegistration = commands.registerCommand(
+        //   "checking-extension.loadGlResources",
+        //   async () => {
+        //       console.log("checking-extension.selectGL")
+        //       const resources = await getLatestLangHelpsResourcesFromCatalog()
+        //       const options = await CheckingProvider.getGatewayLangOptions()
+        //       const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
+        //       let glOptions = glSelected ? {
+        //             languageId: options.gwLanguagePick,
+        //             owner: options.gwOwnerPick
+        //         }
+        //         : null
+        //       CheckingProvider.setConfiguration('selectedGL', glOptions);
+        //   },
+        // );
+        // subscriptions.push(commandRegistration)
 
         return subscriptions;
+    }
+
+    private static setConfiguration(key:string, value:any) {
+        vscode.workspace.getConfiguration("checking-extension").update(key, value);
+    }
+
+    private static getConfiguration(key:string, value:any):any {
+        return vscode.workspace.getConfiguration("checking-extension").get(key);
+    }
+
+    private static setContext(key:string, value:any) {
+        vscode.commands.executeCommand('setContext', key, value);
+        // @ts-ignore
+        this.currentState[key] = value
+    }
+
+    private static getContext(key:string, value:any):any {
+        // @ts-ignore
+        return this.currentState[key]
     }
 
     private static async gotoWorkFlow(step:string) {
@@ -180,9 +266,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               ? vscode.workspace.workspaceFolders[0]
               : undefined;
         }
-        if (!workspaceFolder) {
-            return;
-        }
+        return workspaceFolder
     }
     
     private static async initializeChecker(navigateToFolder = false) {
@@ -208,8 +292,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         
                     }
                 }
-            } else {
-                await showErrorMessage(`repo already exists!`, true);
             }
         }
         await showErrorMessage(`repo already exists - but not valid!`, true);
@@ -707,6 +789,63 @@ export class CheckingProvider implements CustomTextEditorProvider {
        });
     }
 
+    private static async checkWorkspace( ) {
+        let repoExists = false
+        let isValidBible = false
+        let isCheckingInitialized = false
+        const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+        if (repoFolderExists && projectPath) {
+            repoExists = true
+            const results = isRepoInitialized(projectPath, resourcesPath, null);
+            // @ts-ignore
+            isValidBible = results.repoExists && results.manifest?.dublin_core && results.bibleBooksLoaded;
+            isCheckingInitialized = isValidBible && results.metaDataInitialized && results.checksInitialized;
+        }
+        return {
+            repoExists,
+            isValidBible,
+            isCheckingInitialized,
+            repoFolderExists,
+            projectPath
+        }
+    }
+
+    private static async promptUpdateSpecificFolder( ) {
+        const choices = {
+            'new': `Create New Bible Project`,
+            'select': 'Select Existing Bible Project to Check'
+        };
+        
+        const { pickedKey } =  await this.doPrompting( 'Which Bible Project to Check', choices)
+        
+        if (pickedKey === 'new') {
+            return false
+        } else {
+            await delay(500)
+            await CheckingProvider.openWorkspace()
+            return true
+        }
+    }
+
+    private static async doPrompting( title: string, choices: {}) {
+        const keys = Object.keys(choices);
+        // @ts-ignore
+        const prompts = keys.map(key => choices[key])
+
+        await delay(500)
+        const pickedText = await vscode.window.showQuickPick(
+          prompts,
+          {
+              placeHolder: title,
+          },
+        );
+
+        // @ts-ignore
+        const pickedKey = keys.find(key => pickedText === choices[key]) || ''
+        return { pickedKey, pickedText }
+        
+    }
+
     private static async getGatewayLangOptions() {
         let catalog = getSavedCatalog();
         try {
@@ -753,15 +892,4 @@ export class CheckingProvider implements CustomTextEditorProvider {
             gwOwnerPick
         };
     }
-
-    /**
-     * Write out the json to a given document.
-     *
-     * @TODO Incorporate document updates on user input
-     */
-    // private updateTextDocument(document: TextDocument, json: any) {
-    //   const edit = new WorkspaceEdit();
-    //   edit.replace();
-    //   return workspace.applyEdit(edit);
-    // }
 }
