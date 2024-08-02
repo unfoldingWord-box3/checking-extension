@@ -88,7 +88,7 @@
             "description": "Now that we have a folder, let's choose the Gateway Language options.\n[Select gateway Language](command:checking-extension.selectGL)",
             "media": {
               "image": "./src/media/name-project.png",
-              "altText": "Name Project"
+              "altText": "Select gateway Language"
             },
             "completionEvents": [
               "onContext: selectedGL"
@@ -100,10 +100,34 @@
             "description": "Now that we have selected a Gateway Language, let's download the checking resources.\n[Download Resources](command:checking-extension.loadGlResources)",
             "media": {
               "image": "./src/media/name-project.png",
-              "altText": "Name Project"
+              "altText": "Download Gateway Language Resources"
             },
             "completionEvents": [
-              "onContext: loadedGL"
+              "onContext: loadedGlResources"
+            ]
+          },
+          {
+            "id": "selectTargetLanguage",
+            "title": "Select target Language",
+            "description": "Now that we have Gateway Language Resources, let's choose the Target Language.\n[Select Target Language](command:checking-extension.selectTarget)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Select target Language"
+            },
+            "completionEvents": [
+              "onContext: selectedTarget"
+            ]
+          },
+          {
+            "id": "loadTarget",
+            "title": "Download Target Language",
+            "description": "Now that we have selected a Target Language, let's download the Target Language.\n[Download Target Language](command:checking-extension.loadTarget)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: loadedTargetResources"
             ]
           }
         ]

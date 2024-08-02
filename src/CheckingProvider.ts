@@ -18,13 +18,14 @@ import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     cleanUpFailedCheck,
     delay,
+    downloadLatestLangHelpsResourcesFromCatalog,
     fileExists,
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
     getBookForTestament,
     getLanguagesInCatalog,
-    getLatestResources,
+    getLatestResourcesCatalog,
     getRepoPath,
     getResourceIdsInCatalog,
     getResourcesForChecking,
@@ -135,6 +136,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               CheckingProvider.setContext('selectedFolder', false);
               CheckingProvider.setContext('selectedGL', null);
               CheckingProvider.setContext('loadedGL', false);
+              CheckingProvider.setContext("loadedGlResources", false);
 
               const{
                   repoExists,
@@ -169,12 +171,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
               await delay(500)
               const newProject = ! await this.promptUpdateSpecificFolder()
               if (newProject) {
-                  CheckingProvider.setConfiguration('createNewFolder', true);
-                  CheckingProvider.setConfiguration('selectedFolder', true);
+                  CheckingProvider.setContext('createNewFolder', true);
+                  CheckingProvider.setContext('selectedFolder', true);
               } else {
                   await CheckingProvider.openWorkspace()
-                  CheckingProvider.setConfiguration('createNewFolder', false);
-                  CheckingProvider.setConfiguration('selectedFolder', true);
+                  CheckingProvider.setContext('createNewFolder', false);
+                  CheckingProvider.setContext('selectedFolder', true);
               }
 
           },
@@ -192,27 +194,32 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   owner: options.gwOwnerPick
               }
               : null
-              CheckingProvider.setConfiguration('selectedGL', glOptions);
+              CheckingProvider.setContext('selectedGL', glOptions);
           },
         ));
         subscriptions.push(commandRegistration)
 
-        // commandRegistration = commands.registerCommand(
-        //   "checking-extension.loadGlResources",
-        //   async () => {
-        //       console.log("checking-extension.selectGL")
-        //       const resources = await getLatestLangHelpsResourcesFromCatalog()
-        //       const options = await CheckingProvider.getGatewayLangOptions()
-        //       const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
-        //       let glOptions = glSelected ? {
-        //             languageId: options.gwLanguagePick,
-        //             owner: options.gwOwnerPick
-        //         }
-        //         : null
-        //       CheckingProvider.setConfiguration('selectedGL', glOptions);
-        //   },
-        // );
-        // subscriptions.push(commandRegistration)
+        commandRegistration = commands.registerCommand(
+          "checking-extension.loadGlResources",
+          async () => {
+              console.log("checking-extension.loadGlResources")
+              const glOptions = CheckingProvider.getContext('selectedGL');
+              if (glOptions) {
+                  const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner, resourcesPath)
+
+                  // @ts-ignore
+                  if (results.error) {
+                      //TODO show error
+                  } else {
+                      CheckingProvider.setContext("loadedGlResources", true);
+                  }
+              } else {
+                  //TODO show error
+              }
+
+          },
+        );
+        subscriptions.push(commandRegistration)
 
         return subscriptions;
     }
@@ -221,7 +228,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         vscode.workspace.getConfiguration("checking-extension").update(key, value);
     }
 
-    private static getConfiguration(key:string, value:any):any {
+    private static getConfiguration(key:string):any {
         return vscode.workspace.getConfiguration("checking-extension").get(key);
     }
 
@@ -231,7 +238,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         this.currentState[key] = value
     }
 
-    private static getContext(key:string, value:any):any {
+    private static getContext(key:string):any {
         // @ts-ignore
         return this.currentState[key]
     }
@@ -441,11 +448,46 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess;
     }
 
+    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string):Promise<object> {
+        const increment = 5;
+        const promise = new Promise<object>((resolve) => {
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Window,
+
+                // this will show progress bar, but times out
+                // location: vscode.ProgressLocation.Notification,
+                title: 'Downloading GL resources...',
+                cancellable: false
+            }, async (progressTracker) => {
+                async function updateProgress(message:string) {
+                    console.log(`updateProgress - ${message}`)
+                    progressTracker.report({  increment });
+                    // await showInformationMessage(message);
+                    await delay(200)
+                }
+
+                progressTracker.report({ increment });
+                await delay(100)
+                const catalog = await getLatestResourcesCatalog(resourcesPath)
+
+                await delay(100)
+                const results = downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress)
+
+                // const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
+                progressTracker.report({ increment });
+                await delay(100)
+                resolve(results)
+            })
+        })
+        return promise
+    }
+
     private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
                 location: vscode.ProgressLocation.Window,
+
                 // this will show progress bar, but times out
                 // location: vscode.ProgressLocation.Notification,
                 title: 'Downloading GL resources...',
@@ -765,7 +807,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static getDoor43ResourcesWithProgress(resourcesPath:string) {
+    private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string) {
         return new Promise((resolve) => {
             window.showInformationMessage("Checking DCS for GLs - can take minutes");
             vscode.window.withProgress({
@@ -781,7 +823,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment: 25 });
                 await delay(100)
-                const catalog = await getLatestResources(resourcesPath)
+                const catalog = await getLatestResourcesCatalog(resourcesPath)
                 progressTracker.report({ increment: 10 });
                 await delay(100)
                 resolve(catalog)
@@ -852,7 +894,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             if (!catalog) {
                 await showInformationMessage("Checking DCS for GLs - can take minutes");
                 // @ts-ignore
-                catalog = await this.getDoor43ResourcesWithProgress(resourcesPath);
+                catalog = await this.getDoor43ResourcesCatalogWithProgress(resourcesPath);
                 // @ts-ignore
                 saveCatalog(catalog);
                 await showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);

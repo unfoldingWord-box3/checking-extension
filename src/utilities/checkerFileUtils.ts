@@ -145,7 +145,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
  * @param {string} resourcePath - path of downloaded resources
  * @returns {Promise<null>}
  */
-export async function getLatestResources(resourcePath:string) {
+export async function getLatestResourcesCatalog(resourcePath:string) {
     const sourceContentUpdater = new SourceContentUpdater();
     await sourceContentUpdater.getLatestResources([], resourcePath)
     const updatedCatalogResources = sourceContentUpdater.updatedCatalogResources;
@@ -262,7 +262,7 @@ export function getResourceIdsInCatalog(catalog:any[]) {
  */
 async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string, owner:string, resourcesPath:string) {
     if (!catalog?.length) {
-        catalog = await getLatestResources(resourcesPath)
+        catalog = await getLatestResourcesCatalog(resourcesPath)
         saveCatalog(catalog)
     }
 
@@ -646,9 +646,9 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
+export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
     if (!catalog?.length) {
-        catalog = await getLatestResources(resourcesPath)
+        catalog = await getLatestResourcesCatalog(resourcesPath)
     }
     callback && await callback('downloaded catalog')
 
@@ -781,7 +781,7 @@ function isOriginalBible(bibleId: string) {
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
 export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
-    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
+    const { processed, updatedCatalogResources, foundResources } = await downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
 
     // @ts-ignore
     foundResources.bibles = []
