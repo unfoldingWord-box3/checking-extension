@@ -925,6 +925,36 @@ function replaceHomePath(filePath:string) {
     return filePath
 }
 
+export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
+    let targetLoadSuccess = false;
+    try {
+        const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
+        if (foundPath) {
+            fs.copySync(foundPath, repoPath);
+            targetLoadSuccess = true;
+        } else {
+            // if folder already exists, remove it first
+            const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
+            const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
+            if (versionPath && fs.pathExistsSync(versionPath)) {
+                fs.removeSync(versionPath);
+            }
+
+            const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+            if (!results?.destFolder) {
+                console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
+                targetLoadSuccess = false;
+            } else {
+                targetLoadSuccess = true;
+                fs.copySync(results.destFolder, repoPath);
+            }
+        }
+    } catch (e) {
+        console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
+    }
+    return targetLoadSuccess;
+}
+
 /**
  * Initialize folder of project
  * @param repoPath
@@ -1004,26 +1034,12 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                 if (!hasBibleFiles) {
                     callback && await callback(`verifying target ${targetLanguageId}/${targetBibleId}`)
-                    const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true);
-                    if (foundPath) {
-                        fs.copySync(foundPath, repoPath);
-                    } else {
-                        // if folder already exists, remove it first
-                        const folderPath = path.join(resourcesPath, targetLanguageId, 'bibles', targetBibleId) // , `v${resource.version}_${resource.owner}`)
-                        const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false)
-                        if (versionPath && fs.pathExistsSync(versionPath)) {
-                            fs.removeSync(versionPath)
-                        }
-
-                        const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
-                        if (!results?.destFolder) {
-                            console.error(`initProject - cannot copy target bible from: ${repoPath}`);
-                            return {
-                                success: false,
-                                errorMsg: `cannot copy target bible from: ${repoPath}`,
-                            };
-                        }
-                        fs.copySync(results.destFolder, repoPath);
+                    const targetLoadSuccess = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
+                    if (!targetLoadSuccess) {
+                        return {
+                            success: false,
+                            errorMsg: `cannot copy target bible from: ${repoPath}`,
+                        };
                     }
                     callback && await callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }

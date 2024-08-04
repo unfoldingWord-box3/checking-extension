@@ -84,6 +84,19 @@
             ]
           },
           {
+            "id": "fetchCatalog",
+            "title": "Fetch Resource Catalog",
+            "description": "We need to download Resource Catalog.\n[Download Catalog](command:checking-extension.downloadCatalog)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext: fetchedCatalog",
+              "onContext: projectInitialized"
+            ]
+          },
+          {
             "id": "selectGatewayLanguage",
             "title": "Select gateway Language",
             "description": "Now that we have a folder, let's choose the Gateway Language options.\n[Select gateway Language](command:checking-extension.selectGL)",
