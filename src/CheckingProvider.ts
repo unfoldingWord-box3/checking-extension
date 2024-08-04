@@ -132,11 +132,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
               console.log(`starting "checking-extension.launchWorkflow"`)
 
               // initialize configurations
-              CheckingProvider.setContext('createNewFolder', false);
+              CheckingProvider.setContext('createNewFolder', true);
               CheckingProvider.setContext('selectedFolder', false);
               CheckingProvider.setContext('selectedGL', null);
               CheckingProvider.setContext('loadedGL', false);
               CheckingProvider.setContext("loadedGlResources", false);
+              CheckingProvider.setContext("projectInitialized", false);
+              CheckingProvider.setContext("targetBibleOptions", null)
+              CheckingProvider.setContext("targetBibleLoaded", false)
 
               const{
                   repoExists,
@@ -149,7 +152,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                       CheckingProvider.setContext('selectedFolder', true);
                   } else if (isCheckingInitialized) {
                     CheckingProvider.setContext('selectedFolder', false);
-                    await showErrorMessage(`Current Project already has checking setup!`, true);
+                    await showInformationMessage(`Current Project already has checking setup!`, true);
+                    CheckingProvider.setContext("projectInitialized", true);
                   } else { // validBible, but not initialized
                       CheckingProvider.setContext('createNewFolder', false);
                       CheckingProvider.setContext('selectedFolder', true);
@@ -186,15 +190,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         commandRegistration = commands.registerCommand(
           "checking-extension.selectGL",
           executeWithRedirecting(async () => {
-              console.log("checking-extension.selectGL")
-              const options = await CheckingProvider.getGatewayLangOptions()
-              const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
-              let glOptions = glSelected ? {
+            console.log("checking-extension.selectGL")
+            const options = await CheckingProvider.getGatewayLangOptions()
+            const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
+            let glOptions = glSelected ? {
                   languageId: options.gwLanguagePick,
                   owner: options.gwOwnerPick
               }
               : null
-              CheckingProvider.setContext('selectedGL', glOptions);
+            CheckingProvider.setContext('selectedGL', glOptions);
           },
         ));
         subscriptions.push(commandRegistration)
@@ -209,14 +213,90 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                   // @ts-ignore
                   if (results.error) {
-                      //TODO show error
+                      await showErrorMessage(`Error Downloading resources!`, true);
                   } else {
                       CheckingProvider.setContext("loadedGlResources", true);
                   }
               } else {
-                  //TODO show error
+                  await showErrorMessage(`You must select Gateway Language first`, true);
               }
+          },
+        );
+        subscriptions.push(commandRegistration)
 
+        commandRegistration = commands.registerCommand(
+          "checking-extension.selectTargetBible",
+          executeWithRedirecting(async () => {
+                console.log("checking-extension.selectTargetBible")
+                const catalog = getSavedCatalog()
+                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
+                if (targetLanguagePick && targetOwnerPick && targetBibleIdPick) {
+                    const targetBibleOptions = {
+                        languageId: targetLanguagePick,
+                        owner: targetOwnerPick,
+                        bibleId: targetBibleIdPick
+                    }
+                    CheckingProvider.setContext('targetBibleOptions', targetBibleOptions);
+                }
+            })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.loadTargetBible",
+          async () => {
+              console.log("checking-extension.loadTargetBible")
+              const targetBibleOptions = CheckingProvider.getContext('targetBibleOptions');
+              if (targetBibleOptions) {
+
+                  //TODO load target bible
+                  
+              } else {
+                  await showErrorMessage(`You must select Gateway Language first`, true);
+              }
+          },
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.initializeChecking",
+          async () => {
+              console.log("checking-extension.initializeChecking")
+              const glOptions = CheckingProvider.getContext('selectedGL');
+              if (glOptions && glOptions.languageId && glOptions.owner) {
+                  const createNewFolder = CheckingProvider.getContext('createNewFolder');
+                  if (!createNewFolder) {
+                      const loadedTargetResources = CheckingProvider.getContext('loadedTargetResources');
+                      if (!loadedTargetResources) {
+                          await showErrorMessage(`You must load Target Bible first`, true);
+                      } else {
+                          //TODO create new project
+                      }
+                  } else {
+                      const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
+
+                      if (repoFolderExists && projectPath) {
+                          const results = isRepoInitialized(projectPath, resourcesPath, null);
+                          // @ts-ignore
+                          const isValidBible = results.repoExists && results.manifest?.dublin_core;
+                          const initBibleRepo = isValidBible && !results.metaDataInitialized
+                            && !results.checksInitialized && results.bibleBooksLoaded;
+                          if (initBibleRepo) {
+                              // @ts-ignore
+                              results.glOptions = glOptions
+                              return await this.initializeBibleFolder(results, projectPath);
+                          } else if (results.repoExists) {
+                              if (results.metaDataInitialized && results.checksInitialized) {
+                                  return await showErrorMessage(`repo already has checking setup!`, true);
+                              }
+                              return await showErrorMessage(`Project already exists - but not valid! ${projectPath}`, true);
+                          }
+                      }
+                      return await showErrorMessage(`project folder not selected`, true);
+                  }
+              } else {
+                  await showErrorMessage(`You must select Gateway Language first`, true);
+              }
           },
         );
         subscriptions.push(commandRegistration)
@@ -326,19 +406,29 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const targetLanguageId = dublin_core?.language?.identifier;
         const targetBibleId = dublin_core?.identifier;
         const targetOwner = "";
-
-        const options = await CheckingProvider.getGatewayLangOptions();
-        if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
-            await showErrorMessage(`Options invalid: ${options}`, true);
-            return null;
+        let glLanguageId = ''
+        let glOwner = ''
+        let catalog = null
+        
+        // @ts-ignore
+        if (results?.glOptions) {
+            catalog = getSavedCatalog()
+            // @ts-ignore
+            glLanguageId = results.glOptions.languageId
+            // @ts-ignore
+            glOwner = results.glOptions.owner
         }
+        else {
+            const options = await CheckingProvider.getGatewayLangOptions();
+            if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
+                await showErrorMessage(`Options invalid: ${options}`, true);
+                return null;
+            }
 
-        const {
-            catalog,
-            gwLanguagePick: glLanguageId,
-            gwOwnerPick: glOwner,
-        } = options;
-
+            catalog = options.catalog
+            glLanguageId = options.gwLanguagePick
+            glOwner = options.gwOwnerPick
+        }
         const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
         if (repoInitSuccess) {
             await showInformationMessage(`Checking has been set up in project`);
@@ -468,7 +558,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const catalog = await getLatestResourcesCatalog(resourcesPath)
+                const catalog = getSavedCatalog()
 
                 await delay(100)
                 const results = downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress)
@@ -761,7 +851,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
             gwLanguagePick,
             gwOwnerPick
         } = options;
+        let { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
 
+        return {
+            catalog,
+            gwLanguagePick,
+            gwOwnerPick,
+            targetLanguagePick,
+            targetOwnerPick,
+            targetBibleIdPick,
+        }
+    }
+
+    private static async getTargetLanguageOptions(catalog: object[] | null) {
         //////////////////////////////////
         // Target language
 
@@ -796,15 +898,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           }
         );
         await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
-
-        return {
-            catalog,
-            gwLanguagePick,
-            gwOwnerPick,
-            targetLanguagePick,
-            targetOwnerPick,
-            targetBibleIdPick,
-        }
+        return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
     }
 
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string) {

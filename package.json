@@ -79,7 +79,8 @@
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext: selectedFolder"
+              "onContext: selectedFolder",
+              "onContext: projectInitialized"
             ]
           },
           {
@@ -91,7 +92,8 @@
               "altText": "Select gateway Language"
             },
             "completionEvents": [
-              "onContext: selectedGL"
+              "onContext: selectedGL",
+              "onContext: projectInitialized"
             ]
           },
           {
@@ -103,7 +105,8 @@
               "altText": "Download Gateway Language Resources"
             },
             "completionEvents": [
-              "onContext: loadedGlResources"
+              "onContext: loadedGlResources",
+              "onContext: projectInitialized"
             ]
           },
           {
@@ -115,8 +118,10 @@
               "altText": "Select target Language"
             },
             "completionEvents": [
-              "onContext: selectedTarget"
-            ]
+              "onContext: targetBibleOptions",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
           },
           {
             "id": "loadTarget",
@@ -127,8 +132,36 @@
               "altText": "Download Target Language"
             },
             "completionEvents": [
-              "onContext: loadedTargetResources"
-            ]
+              "onContext: targetBibleLoaded",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
+          },
+          {
+            "id": "projectInitialized",
+            "title": "Project Initialized for Checking",
+            "description": "Project is now ready for Checking",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: projectInitialized"
+            ],
+            "when": "projectInitialized"
+          },
+          {
+            "id": "projectInitialize",
+            "title": "Initialize Project Checking",
+            "description": "Now that we have checking resources downloaded, let's initialize the project for checking.\n[Initialize Checking](command:checking-extension.initializeChecking)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: projectInitialized"
+            ],
+            "when": "!projectInitialized"
           }
         ]
       }
