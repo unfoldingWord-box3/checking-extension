@@ -142,6 +142,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
               CheckingProvider.setContext("targetBibleOptions", null)
               CheckingProvider.setContext("targetBibleLoaded", false)
               CheckingProvider.setContext("projectInitialized", false);
+              await delay(500)
+              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+              // await delay(500)
+              // await vscode.commands.executeCommand('workbench.action.resetSpecificWalkthroughProgress', `unfoldingWord.checking-extension#initChecking`, false)
 
               const{
                   repoExists,
@@ -164,8 +168,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   CheckingProvider.setContext('createNewFolder', true);
                   CheckingProvider.setContext('selectedFolder', true);
               }
-              await delay(500)
-              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
           },
         ));
         subscriptions.push(commandRegistration)
@@ -263,19 +265,24 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.loadTargetBible",
           async () => {
               console.log("checking-extension.loadTargetBible")
-              const targetBibleOptions = CheckingProvider.getContext('targetBibleOptions');
-              if (targetBibleOptions) {
+              const targetOptions = CheckingProvider.getContext('targetBibleOptions');
+              if (targetOptions) {
                   const glOptions = CheckingProvider.getContext('selectedGL');
-                  const targetOptions = CheckingProvider.getContext('targetBibleOptions');
-                  const catalog = getSavedCatalog() || []
-                  const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
-                  const targetLoadSuccess = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
-                  CheckingProvider.setContext("targetBibleLoaded", targetLoadSuccess)
-                  if (!targetLoadSuccess) {
-                      await showErrorMessage(`Target Bible Failed to Load`, true);
+                  if (glOptions) {
+                      const catalog = getSavedCatalog() || [];
+                      const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
+                      const targetLoadSuccess = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
+                      CheckingProvider.setContext("targetBibleLoaded", targetLoadSuccess);
+                      if (targetLoadSuccess) {
+                          await showInformationMessage(`Target Bible Loaded`, true);
+                      } else {
+                          await showErrorMessage(`Target Bible Failed to Load`, true);
+                      }
+                  } else {
+                      await showErrorMessage(`You must select Gateway Language Options first`, true);
                   }
               } else {
-                  await showErrorMessage(`You must select Gateway Language first`, true);
+                  await showErrorMessage(`You must select a Target Bible first`, true);
               }
           },
         );
@@ -288,21 +295,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
               const glOptions = CheckingProvider.getContext('selectedGL');
               if (glOptions && glOptions.languageId && glOptions.owner) {
                   const createNewFolder = CheckingProvider.getContext('createNewFolder');
-                  if (!createNewFolder) {
-                      const loadedTargetResources = CheckingProvider.getContext('loadedTargetResources');
-                      if (!loadedTargetResources) {
-                          return await showErrorMessage(`You must load Target Bible first`, true);
+                  if (createNewFolder) { // create a new folder
+                      const targetOptions = CheckingProvider.getContext('targetBibleOptions');
+                      if (!(targetOptions && targetOptions.languageId && targetOptions.bibleId && targetOptions.owner)) {
+                          return await showErrorMessage(`You must select Target Bible first`, true);
                       } else {
-                          const glOptions = CheckingProvider.getContext('selectedGL');
-                          const targetOptions = CheckingProvider.getContext('targetBibleOptions');
                           const catalog = getSavedCatalog() || []
-                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, targetOptions.owner, catalog);
+                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog);
+                          CheckingProvider.setContext("projectInitialized", repoInitSuccess);
                           if (repoInitSuccess) {
-                              CheckingProvider.setContext("projectInitialized", false);
+                              // navigate to new folder
+                              const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
+                              const uri = vscode.Uri.file(repoPath);
+                              await vscode.commands.executeCommand("vscode.openFolder", uri);
                               return
                           }
                       }
-                  } else {
+                  } else { // initializing existing folder
                       const { projectPath, repoFolderExists } = await CheckingProvider.getWorkSpaceFolder();
 
                       if (repoFolderExists && projectPath) {
