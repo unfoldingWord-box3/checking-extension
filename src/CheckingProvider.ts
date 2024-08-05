@@ -181,7 +181,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   CheckingProvider.setContext('createNewFolder', true);
                   CheckingProvider.setContext('selectedFolder', true);
               } else {
-                  await CheckingProvider.openWorkspace()
                   CheckingProvider.setContext('createNewFolder', false);
                   CheckingProvider.setContext('selectedFolder', true);
               }

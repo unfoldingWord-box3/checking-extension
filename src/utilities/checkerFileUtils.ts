@@ -1195,9 +1195,9 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
             }
         } else {
             console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}, try manifest`)
-            manifest = getResourceManifest(repoPath)
         }
         
+        manifest = getResourceManifest(repoPath)
         const bibleBooks = getBibleFiles(repoPath)
         bibleBooksLoaded = !!bibleBooks?.length
     } catch (e) {
