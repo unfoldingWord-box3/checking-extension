@@ -144,8 +144,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               CheckingProvider.setContext("projectInitialized", false);
               await delay(500)
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              // await delay(500)
-              // await vscode.commands.executeCommand('workbench.action.resetSpecificWalkthroughProgress', `unfoldingWord.checking-extension#initChecking`, false)
+              await vscode.commands.executeCommand('resetGettingStartedProgress')
 
               const{
                   repoExists,
