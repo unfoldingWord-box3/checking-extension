@@ -19,7 +19,7 @@
   "contributes": {
     "commands": [
       {
-        "title": "Translation Checking: Launch Checking Workflow",
+        "title": "Translation Checking: Launch Initialize",
         "command": "checking-extension.launchWorkflow"
       }
     ],
@@ -173,31 +173,7 @@
           }
         ]
       }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "checking-extension",
-          "title": "Translation Checking Tool",
-          "icon": "./src/media/dep.svg"
-        }
-      ]
-    },
-    "views": {
-      "checking-extension": [
-        {
-          "id": "checkingView",
-          "name": "Checking View",
-          "contextualTitle": "Tranlation Checking View",
-          "commands": [
-            {
-              "command": "checking-extension.launchWorkflow",
-              "title": "Launch Translation Checking Workflow"
-            }
-          ]
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "install:all": "pnpm run install:webview && pnpm install",

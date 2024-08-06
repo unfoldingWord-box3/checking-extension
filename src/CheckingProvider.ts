@@ -120,36 +120,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        // let commandRegistration = commands.registerCommand(
-        //   "checking-extension.initTranslationChecker",
-        //   executeWithRedirecting( async () => {
-        //       await CheckingProvider.initializeChecker();
-        //   }),
-        // );
-        // subscriptions.push(commandRegistration)
-
         commandRegistration = commands.registerCommand(
           "checking-extension.launchWorkflow",
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.launchWorkflow"`)
 
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              await delay(500)
-              await vscode.commands.executeCommand('resetGettingStartedProgress')
-              await delay(500)
-
-              // initialize configurations
-              const catalog = getSavedCatalog();
-              CheckingProvider.setContext('createNewFolder', true);
-              CheckingProvider.setContext('selectedFolder', false);
-              CheckingProvider.setContext('fetchedCatalog', !!catalog);
-              CheckingProvider.setContext('selectedGL', null);
-              CheckingProvider.setContext('loadedGL', false);
-              CheckingProvider.setContext("loadedGlResources", false);
-              CheckingProvider.setContext("targetBibleOptions", null)
-              CheckingProvider.setContext("targetBibleLoaded", false)
-              CheckingProvider.setContext("projectInitialized", false);
-              await delay(500)
+              await this.initializeWorkflow();
 
               const{
                   repoExists,
@@ -184,19 +161,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
               await delay(500)
               const newProject = ! await this.promptUpdateSpecificFolder()
               if (newProject) {
-                  // const createNewFolder = CheckingProvider.getContext('createNewFolder');
-                  // if (!createNewFolder) { // if changed, then clear progress
-                  //     await vscode.commands.executeCommand('resetGettingStartedProgress')
-                  //     await delay(500)
-                  // }
+                  await this.initializeWorkflow();
+                  await delay(500)
                   CheckingProvider.setContext('createNewFolder', true);
-                  CheckingProvider.setContext('selectedFolder', true);
+                  CheckingProvider.setContext('selectedFolder', false);
               } else {
-                  // const selectedFolder = CheckingProvider.getContext('selectedFolder');
-                  // if (!selectedFolder) { // if changed, then clear progress
-                  //     await vscode.commands.executeCommand('resetGettingStartedProgress')
-                  //     await delay(500)
-                  // }
+                  await this.initializeWorkflow();
+                  await delay(500)
                   CheckingProvider.setContext('createNewFolder', false);
                   CheckingProvider.setContext('selectedFolder', true);
               }
@@ -285,10 +256,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   if (glOptions) {
                       const catalog = getSavedCatalog() || [];
                       const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
-                      const targetLoadSuccess = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
-                      CheckingProvider.setContext("targetBibleLoaded", targetLoadSuccess);
-                      if (targetLoadSuccess) {
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
+                      CheckingProvider.setContext("targetBibleLoaded", !!targetFoundPath);
+                      if (targetFoundPath) {
                           await showInformationMessage(`Target Bible Loaded`, true);
+                          console.log(`checking-extension.loadTargetBible - target Bible is at ${targetFoundPath}`)
                       } else {
                           await showErrorMessage(`Target Bible Failed to Load`, true);
                       }
@@ -357,6 +329,25 @@ export class CheckingProvider implements CustomTextEditorProvider {
         subscriptions.push(commandRegistration)
 
         return subscriptions;
+    }
+
+    private static async initializeWorkflow() {
+        await delay(500);
+        await vscode.commands.executeCommand("resetGettingStartedProgress");
+        await delay(500);
+
+        // initialize configurations
+        const catalog = getSavedCatalog();
+        CheckingProvider.setContext("createNewFolder", true);
+        CheckingProvider.setContext("selectedFolder", false);
+        CheckingProvider.setContext("fetchedCatalog", !!catalog);
+        CheckingProvider.setContext("selectedGL", null);
+        CheckingProvider.setContext("loadedGL", false);
+        CheckingProvider.setContext("loadedGlResources", false);
+        CheckingProvider.setContext("targetBibleOptions", null);
+        CheckingProvider.setContext("targetBibleLoaded", false);
+        CheckingProvider.setContext("projectInitialized", false);
+        await delay(500);
     }
 
     private static setConfiguration(key:string, value:any) {

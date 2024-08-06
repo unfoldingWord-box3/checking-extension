@@ -926,12 +926,11 @@ function replaceHomePath(filePath:string) {
 }
 
 export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
-    let targetLoadSuccess = false;
+    let targetFoundPath = null;
     try {
         const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
         if (foundPath) {
-            fs.copySync(foundPath, repoPath);
-            targetLoadSuccess = true;
+            targetFoundPath = foundPath;
         } else {
             // if folder already exists, remove it first
             const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
@@ -943,16 +942,15 @@ export async function downloadTargetBible(targetBibleId: string, resourcesBasePa
             const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
             if (!results?.destFolder) {
                 console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
-                targetLoadSuccess = false;
+                targetFoundPath = null;
             } else {
-                targetLoadSuccess = true;
-                fs.copySync(results.destFolder, repoPath);
+                targetFoundPath = results.destFolder;
             }
         }
     } catch (e) {
         console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
     }
-    return targetLoadSuccess;
+    return targetFoundPath;
 }
 
 /**
@@ -1034,12 +1032,14 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                 if (!hasBibleFiles) {
                     callback && await callback(`verifying target ${targetLanguageId}/${targetBibleId}`)
-                    const targetLoadSuccess = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
-                    if (!targetLoadSuccess) {
+                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
+                    if (!targetFoundPath) {
                         return {
                             success: false,
                             errorMsg: `cannot copy target bible from: ${repoPath}`,
                         };
+                    } else {
+                        fs.copySync(targetFoundPath, repoPath)
                     }
                     callback && await callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }
