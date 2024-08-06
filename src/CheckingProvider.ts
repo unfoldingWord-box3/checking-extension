@@ -256,10 +256,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   if (glOptions) {
                       const catalog = getSavedCatalog() || [];
                       const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
-                      const targetLoadSuccess = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
-                      CheckingProvider.setContext("targetBibleLoaded", targetLoadSuccess);
-                      if (targetLoadSuccess) {
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
+                      CheckingProvider.setContext("targetBibleLoaded", !!targetFoundPath);
+                      if (targetFoundPath) {
                           await showInformationMessage(`Target Bible Loaded`, true);
+                          console.log(`checking-extension.loadTargetBible - target Bible is at ${targetFoundPath}`)
                       } else {
                           await showErrorMessage(`Target Bible Failed to Load`, true);
                       }
