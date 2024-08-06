@@ -120,59 +120,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        // let commandRegistration = commands.registerCommand(
-        //   "checking-extension.initTranslationChecker",
-        //   executeWithRedirecting( async () => {
-        //       await CheckingProvider.initializeChecker();
-        //   }),
-        // );
-        // subscriptions.push(commandRegistration)
-
         commandRegistration = commands.registerCommand(
           "checking-extension.launchWorkflow",
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.launchWorkflow"`)
 
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              await delay(500)
-              await vscode.commands.executeCommand('resetGettingStartedProgress')
-              await delay(500)
-
-              // initialize configurations
-              const catalog = getSavedCatalog();
-              CheckingProvider.setContext('createNewFolder', true);
-              CheckingProvider.setContext('selectedFolder', false);
-              CheckingProvider.setContext('fetchedCatalog', !!catalog);
-              CheckingProvider.setContext('selectedGL', null);
-              CheckingProvider.setContext('loadedGL', false);
-              CheckingProvider.setContext("loadedGlResources", false);
-              CheckingProvider.setContext("targetBibleOptions", null)
-              CheckingProvider.setContext("targetBibleLoaded", false)
-              CheckingProvider.setContext("projectInitialized", false);
-              await delay(500)
-
-              const{
-                  repoExists,
-                  isValidBible,
-                  isCheckingInitialized
-              } = await CheckingProvider.checkWorkspace();
-              if (repoExists) {
-                  if (!isValidBible) {
-                      CheckingProvider.setContext('createNewFolder', false);
-                      CheckingProvider.setContext('selectedFolder', true);
-                  } else if (isCheckingInitialized) {
-                      CheckingProvider.setContext('createNewFolder', false);
-                      CheckingProvider.setContext('selectedFolder', true);
-                      await showInformationMessage(`Current Project already has checking setup!`, true);
-                      // CheckingProvider.setContext("projectInitialized", true);
-                  } else { // validBible, but not initialized
-                      CheckingProvider.setContext('createNewFolder', false);
-                      CheckingProvider.setContext('selectedFolder', true);
-                  }
-              } else {
-                  CheckingProvider.setContext('createNewFolder', true);
-                  CheckingProvider.setContext('selectedFolder', true);
-              }
+              await this.initializeWalkthrough();
           },
         ));
         subscriptions.push(commandRegistration)
@@ -189,8 +143,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   //     await vscode.commands.executeCommand('resetGettingStartedProgress')
                   //     await delay(500)
                   // }
+                  await delay(500)
+                  await this.initializeWalkthrough();
+                  await delay(500)
                   CheckingProvider.setContext('createNewFolder', true);
-                  CheckingProvider.setContext('selectedFolder', true);
+                  CheckingProvider.setContext('selectedFolder', false);
+                  await delay(500)
               } else {
                   // const selectedFolder = CheckingProvider.getContext('selectedFolder');
                   // if (!selectedFolder) { // if changed, then clear progress
@@ -357,6 +315,48 @@ export class CheckingProvider implements CustomTextEditorProvider {
         subscriptions.push(commandRegistration)
 
         return subscriptions;
+    }
+
+    private static async initializeWalkthrough() {
+        await delay(500);
+        await vscode.commands.executeCommand("resetGettingStartedProgress");
+        await delay(500);
+
+        // initialize configurations
+        const catalog = getSavedCatalog();
+        CheckingProvider.setContext("createNewFolder", true);
+        CheckingProvider.setContext("selectedFolder", false);
+        CheckingProvider.setContext("fetchedCatalog", !!catalog);
+        CheckingProvider.setContext("selectedGL", null);
+        CheckingProvider.setContext("loadedGL", false);
+        CheckingProvider.setContext("loadedGlResources", false);
+        CheckingProvider.setContext("targetBibleOptions", null);
+        CheckingProvider.setContext("targetBibleLoaded", false);
+        CheckingProvider.setContext("projectInitialized", false);
+        await delay(500);
+
+        const {
+            repoExists,
+            isValidBible,
+            isCheckingInitialized,
+        } = await CheckingProvider.checkWorkspace();
+        if (repoExists) {
+            if (!isValidBible) {
+                CheckingProvider.setContext("createNewFolder", false);
+                CheckingProvider.setContext("selectedFolder", true);
+            } else if (isCheckingInitialized) {
+                CheckingProvider.setContext("createNewFolder", false);
+                CheckingProvider.setContext("selectedFolder", true);
+                await showInformationMessage(`Current Project already has checking setup!`, true);
+                // CheckingProvider.setContext("projectInitialized", true);
+            } else { // validBible, but not initialized
+                CheckingProvider.setContext("createNewFolder", false);
+                CheckingProvider.setContext("selectedFolder", true);
+            }
+        } else {
+            CheckingProvider.setContext("createNewFolder", true);
+            CheckingProvider.setContext("selectedFolder", true);
+        }
     }
 
     private static setConfiguration(key:string, value:any) {
