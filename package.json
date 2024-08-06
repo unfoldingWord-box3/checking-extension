@@ -19,7 +19,7 @@
   "contributes": {
     "commands": [
       {
-        "title": "Translation Checking: Launch Checking Workflow",
+        "title": "Translation Checking: Launch Initialize",
         "command": "checking-extension.launchWorkflow"
       }
     ],
