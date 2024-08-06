@@ -59,8 +59,8 @@
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext: selectedFolder",
-              "onContext: projectInitialized"
+              "onContext:selectedFolder",
+              "onContext:projectInitialized"
             ],
             "when": "!createNewFolder"
           },
@@ -73,8 +73,8 @@
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext: createNewFolder",
-              "onContext: projectInitialized"
+              "onContext:createNewFolder",
+              "onContext:projectInitialized"
             ],
             "when": "createNewFolder"
           },
@@ -87,8 +87,8 @@
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext: fetchedCatalog",
-              "onContext: projectInitialized"
+              "onContext:fetchedCatalog",
+              "onContext:projectInitialized"
             ]
           },
           {
@@ -100,8 +100,8 @@
               "altText": "Select gateway Language"
             },
             "completionEvents": [
-              "onContext: selectedGL",
-              "onContext: projectInitialized"
+              "onContext:selectedGL",
+              "onContext:projectInitialized"
             ]
           },
           {
@@ -113,8 +113,8 @@
               "altText": "Download Gateway Language Resources"
             },
             "completionEvents": [
-              "onContext: loadedGlResources",
-              "onContext: projectInitialized"
+              "onContext:loadedGlResources",
+              "onContext:projectInitialized"
             ]
           },
           {
@@ -126,8 +126,8 @@
               "altText": "Select target Language"
             },
             "completionEvents": [
-              "onContext: targetBibleOptions",
-              "onContext: projectInitialized"
+              "onContext:targetBibleOptions",
+              "onContext:projectInitialized"
             ],
             "when": "createNewFolder"
           },
@@ -140,8 +140,8 @@
               "altText": "Download Target Language"
             },
             "completionEvents": [
-              "onContext: targetBibleLoaded",
-              "onContext: projectInitialized"
+              "onContext:targetBibleLoaded",
+              "onContext:projectInitialized"
             ],
             "when": "createNewFolder"
           },
@@ -154,7 +154,7 @@
               "altText": "Download Target Language"
             },
             "completionEvents": [
-              "onContext: projectInitialized"
+              "onContext:projectInitialized"
             ],
             "when": "projectInitialized"
           },
@@ -167,7 +167,7 @@
               "altText": "Download Target Language"
             },
             "completionEvents": [
-              "onContext: projectInitialized"
+              "onContext:projectInitialized"
             ],
             "when": "!projectInitialized"
           }
