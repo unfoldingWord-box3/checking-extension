@@ -93,6 +93,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     public static register(context: ExtensionContext):Disposable[]
     {
         let redirecting = false;
+        let commandRegistration = null;
 
         //wrapper for registered commands, to prevent recursive calls
         const executeWithRedirecting = (
@@ -119,23 +120,29 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         subscriptions.push(providerRegistration)
 
-        let commandRegistration = commands.registerCommand(
-          "checking-extension.initTranslationChecker",
-          executeWithRedirecting( async () => {
-              await CheckingProvider.initializeChecker();
-          }),
-        );
-        subscriptions.push(commandRegistration)
+        // let commandRegistration = commands.registerCommand(
+        //   "checking-extension.initTranslationChecker",
+        //   executeWithRedirecting( async () => {
+        //       await CheckingProvider.initializeChecker();
+        //   }),
+        // );
+        // subscriptions.push(commandRegistration)
 
         commandRegistration = commands.registerCommand(
           "checking-extension.launchWorkflow",
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.launchWorkflow"`)
 
+              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+              await delay(500)
+              await vscode.commands.executeCommand('resetGettingStartedProgress')
+              await delay(500)
+
               // initialize configurations
+              const catalog = getSavedCatalog();
               CheckingProvider.setContext('createNewFolder', true);
               CheckingProvider.setContext('selectedFolder', false);
-              CheckingProvider.setContext('fetchedCatalog', !!getSavedCatalog());
+              CheckingProvider.setContext('fetchedCatalog', !!catalog);
               CheckingProvider.setContext('selectedGL', null);
               CheckingProvider.setContext('loadedGL', false);
               CheckingProvider.setContext("loadedGlResources", false);
@@ -143,8 +150,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
               CheckingProvider.setContext("targetBibleLoaded", false)
               CheckingProvider.setContext("projectInitialized", false);
               await delay(500)
-              await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              await vscode.commands.executeCommand('resetGettingStartedProgress')
 
               const{
                   repoExists,
@@ -156,9 +161,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                       CheckingProvider.setContext('createNewFolder', false);
                       CheckingProvider.setContext('selectedFolder', true);
                   } else if (isCheckingInitialized) {
-                    CheckingProvider.setContext('selectedFolder', false);
-                    await showInformationMessage(`Current Project already has checking setup!`, true);
-                    CheckingProvider.setContext("projectInitialized", true);
+                      CheckingProvider.setContext('createNewFolder', false);
+                      CheckingProvider.setContext('selectedFolder', true);
+                      await showInformationMessage(`Current Project already has checking setup!`, true);
+                      // CheckingProvider.setContext("projectInitialized", true);
                   } else { // validBible, but not initialized
                       CheckingProvider.setContext('createNewFolder', false);
                       CheckingProvider.setContext('selectedFolder', true);
@@ -178,9 +184,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
               await delay(500)
               const newProject = ! await this.promptUpdateSpecificFolder()
               if (newProject) {
+                  // const createNewFolder = CheckingProvider.getContext('createNewFolder');
+                  // if (!createNewFolder) { // if changed, then clear progress
+                  //     await vscode.commands.executeCommand('resetGettingStartedProgress')
+                  //     await delay(500)
+                  // }
                   CheckingProvider.setContext('createNewFolder', true);
                   CheckingProvider.setContext('selectedFolder', true);
               } else {
+                  // const selectedFolder = CheckingProvider.getContext('selectedFolder');
+                  // if (!selectedFolder) { // if changed, then clear progress
+                  //     await vscode.commands.executeCommand('resetGettingStartedProgress')
+                  //     await delay(500)
+                  // }
                   CheckingProvider.setContext('createNewFolder', false);
                   CheckingProvider.setContext('selectedFolder', true);
               }
@@ -911,7 +927,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let targetLanguagePick = await vscode.window.showQuickPick(
           targetLangChoices,
           {
-              placeHolder: "Select the target language",
+              placeHolder: "Select the target language:",
           }
         );
         // @ts-ignore
@@ -922,7 +938,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const targetOwnerPick = await vscode.window.showQuickPick(
           targetOwners,
           {
-              placeHolder: "Select the target organization",
+              placeHolder: "Select the target organization:",
           }
         );
         await showInformationMessage(`Target owner selected ${targetOwnerPick}`);
@@ -933,7 +949,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const targetBibleIdPick = await vscode.window.showQuickPick(
           bibleIds,
           {
-              placeHolder: "Select the bibleId",
+              placeHolder: "Select the target Bible ID:",
           }
         );
         await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
@@ -987,11 +1003,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     private static async promptUpdateSpecificFolder( ) {
         const choices = {
-            'new': `Create New Bible Project`,
+            'new': `Create New Checking Project`,
             'select': 'Select Existing Bible Project to Check'
         };
         
-        const { pickedKey } =  await this.doPrompting( 'Which Bible Project to Check', choices)
+        const { pickedKey } =  await this.doPrompting( 'Which Bible Project to Check?', choices)
         
         if (pickedKey === 'new') {
             return false
@@ -1046,7 +1062,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let gwLanguagePick = await vscode.window.showQuickPick(
           glChoices,
           {
-              placeHolder: "Select the gateway checking language",
+              placeHolder: "Select the gateway checking language:",
           },
         );
         // @ts-ignore
@@ -1057,7 +1073,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const gwOwnerPick = await vscode.window.showQuickPick(
           owners,
           {
-              placeHolder: "Select the gateway checking organization",
+              placeHolder: "Select the gateway checking organization:",
           },
         );
         await showInformationMessage(`GL checking owner selected ${gwOwnerPick}`);

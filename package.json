@@ -19,34 +19,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "checking-extension.initTranslationChecker",
-        "title": "Translation Checking Tool: Initialize Project"
-      },
-      {
-        "title": "Translation Checking Tool: Initialize Checking Workflow",
-        "command": "checking-extension.launchWorkflow",
-        "category": "Project Management"
-      },
-      {
-        "title": "Translation Checking Tool: Create New Folder",
-        "command": "checking-extension.createNewFolder",
-        "category": "Project Management"
-      },
-      {
-        "title": "Translation Checking Tool: Select Folder",
-        "command": "checking-extension.selectFolder",
-        "category": "Project Management"
-      },
-      {
-        "title": "Translation Checking Tool: Select Gateway Language",
-        "command": "checking-extension.selectGL",
-        "category": "Project Management"
+        "title": "Translation Checking: Launch Checking Workflow",
+        "command": "checking-extension.launchWorkflow"
       }
     ],
     "customEditors": [
       {
         "viewType": "checking-extension.translationChecker",
-        "displayName": "Translation Checking Tool: Make Selections for Translation Words and Notes",
+        "displayName": "Translation Checking: Make Selections for Translation Words and Notes",
         "selector": [
           {
             "filenamePattern": "*.twl_check"
@@ -68,10 +48,10 @@
       {
         "id": "initChecking",
         "title": "Initialize Checking",
-        "description": "A checking workflow.\nTo clear the workflow, do `CTRL-SHFT-P` (on Mac do`CMD-SHFT-P`) and select `Developer: Reset Welcome Page Walkthrough Progress`",
+        "description": "A checking workflow.\nTo clear the workflow, do `CTRL-SIHFT-P` (on Mac do`CMD-SHIFT-P`) and select `Developer: Reset Welcome Page Walkthrough Progress`",
         "steps": [
           {
-            "id": "selectFolder",
+            "id": "selectedFolder",
             "title": "Select Project Folder",
             "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
             "media": {
@@ -81,7 +61,22 @@
             "completionEvents": [
               "onContext: selectedFolder",
               "onContext: projectInitialized"
-            ]
+            ],
+            "when": "!createNewFolder"
+          },
+          {
+            "id": "createNewProject",
+            "title": "Create new Project",
+            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext: createNewFolder",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
           },
           {
             "id": "fetchCatalog",
@@ -178,7 +173,31 @@
           }
         ]
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "checking-extension",
+          "title": "Translation Checking Tool",
+          "icon": "./src/media/dep.svg"
+        }
+      ]
+    },
+    "views": {
+      "checking-extension": [
+        {
+          "id": "checkingView",
+          "name": "Checking View",
+          "contextualTitle": "Tranlation Checking View",
+          "commands": [
+            {
+              "command": "checking-extension.launchWorkflow",
+              "title": "Launch Translation Checking Workflow"
+            }
+          ]
+        }
+      ]
+    }
   },
   "scripts": {
     "install:all": "pnpm run install:webview && pnpm install",
