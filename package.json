@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.6-beta.3",
+  "version": "0.0.7",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -19,14 +19,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "checking-extension.initTranslationChecker",
-        "title": "Translation Checking Tool: Initialize Project"
+        "title": "Translation Checking: Launch Checking Workflow",
+        "command": "checking-extension.launchWorkflow"
       }
     ],
     "customEditors": [
       {
         "viewType": "checking-extension.translationChecker",
-        "displayName": "Translation Checking Tool: Make Selections for Translation Words and Notes",
+        "displayName": "Translation Checking: Make Selections for Translation Words and Notes",
         "selector": [
           {
             "filenamePattern": "*.twl_check"
@@ -43,7 +43,161 @@
         "view": "workbench.explorer.emptyView",
         "contents": "==================\nTo Create a new checking project, click on the 'Create Checking Project' button below:\n[Create Checking Project](command:checking-extension.initTranslationChecker)"
       }
-    ]
+    ],
+    "walkthroughs": [
+      {
+        "id": "initChecking",
+        "title": "Initialize Checking",
+        "description": "A checking workflow.\nTo clear the workflow, do `CTRL-SIHFT-P` (on Mac do`CMD-SHIFT-P`) and select `Developer: Reset Welcome Page Walkthrough Progress`",
+        "steps": [
+          {
+            "id": "selectedFolder",
+            "title": "Select Project Folder",
+            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext: selectedFolder",
+              "onContext: projectInitialized"
+            ],
+            "when": "!createNewFolder"
+          },
+          {
+            "id": "createNewProject",
+            "title": "Create new Project",
+            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext: createNewFolder",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
+          },
+          {
+            "id": "fetchCatalog",
+            "title": "Fetch Resource Catalog",
+            "description": "We need to download Resource Catalog.\n[Download Catalog](command:checking-extension.downloadCatalog)",
+            "media": {
+              "image": "./src/media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext: fetchedCatalog",
+              "onContext: projectInitialized"
+            ]
+          },
+          {
+            "id": "selectGatewayLanguage",
+            "title": "Select gateway Language",
+            "description": "Now that we have a folder, let's choose the Gateway Language options.\n[Select gateway Language](command:checking-extension.selectGL)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Select gateway Language"
+            },
+            "completionEvents": [
+              "onContext: selectedGL",
+              "onContext: projectInitialized"
+            ]
+          },
+          {
+            "id": "loadGlResources",
+            "title": "Download Gateway Language Resources",
+            "description": "Now that we have selected a Gateway Language, let's download the checking resources.\n[Download Resources](command:checking-extension.loadGlResources)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Gateway Language Resources"
+            },
+            "completionEvents": [
+              "onContext: loadedGlResources",
+              "onContext: projectInitialized"
+            ]
+          },
+          {
+            "id": "selectTargetBible",
+            "title": "Select Target Bible",
+            "description": "Now that we have Gateway Language Resources, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Select target Language"
+            },
+            "completionEvents": [
+              "onContext: targetBibleOptions",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
+          },
+          {
+            "id": "loadTarget",
+            "title": "Download Target Bible",
+            "description": "Now that we have selected a Target Bible, let's download the Target Bible.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: targetBibleLoaded",
+              "onContext: projectInitialized"
+            ],
+            "when": "createNewFolder"
+          },
+          {
+            "id": "projectInitialized",
+            "title": "Project Initialized for Checking",
+            "description": "Project is now ready for Checking",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: projectInitialized"
+            ],
+            "when": "projectInitialized"
+          },
+          {
+            "id": "projectInitialize",
+            "title": "Initialize Project Checking",
+            "description": "Now that we have checking resources downloaded, let's initialize the project for checking.\n[Initialize Checking](command:checking-extension.initializeChecking)",
+            "media": {
+              "image": "./src/media/name-project.png",
+              "altText": "Download Target Language"
+            },
+            "completionEvents": [
+              "onContext: projectInitialized"
+            ],
+            "when": "!projectInitialized"
+          }
+        ]
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "checking-extension",
+          "title": "Translation Checking Tool",
+          "icon": "./src/media/dep.svg"
+        }
+      ]
+    },
+    "views": {
+      "checking-extension": [
+        {
+          "id": "checkingView",
+          "name": "Checking View",
+          "contextualTitle": "Tranlation Checking View",
+          "commands": [
+            {
+              "command": "checking-extension.launchWorkflow",
+              "title": "Launch Translation Checking Workflow"
+            }
+          ]
+        }
+      ]
+    }
   },
   "scripts": {
     "install:all": "pnpm run install:webview && pnpm install",

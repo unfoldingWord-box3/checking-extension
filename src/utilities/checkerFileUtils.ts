@@ -145,7 +145,7 @@ async function downloadAndProcessResource(resource:any, resourcesPath:string, by
  * @param {string} resourcePath - path of downloaded resources
  * @returns {Promise<null>}
  */
-export async function getLatestResources(resourcePath:string) {
+export async function getLatestResourcesCatalog(resourcePath:string) {
     const sourceContentUpdater = new SourceContentUpdater();
     await sourceContentUpdater.getLatestResources([], resourcePath)
     const updatedCatalogResources = sourceContentUpdater.updatedCatalogResources;
@@ -262,7 +262,7 @@ export function getResourceIdsInCatalog(catalog:any[]) {
  */
 async function getLangHelpsResourcesFromCatalog(catalog:any[], languageId:string, owner:string, resourcesPath:string) {
     if (!catalog?.length) {
-        catalog = await getLatestResources(resourcesPath)
+        catalog = await getLatestResourcesCatalog(resourcesPath)
         saveCatalog(catalog)
     }
 
@@ -646,12 +646,13 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
+export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
     if (!catalog?.length) {
-        catalog = await getLatestResources(resourcesPath)
+        catalog = await getLatestResourcesCatalog(resourcesPath)
     }
     callback && await callback('downloaded catalog')
 
+    let error = false
     const processed:any[] = []
     let foundResources = verifyHaveGlHelpsResources(languageId, owner, resourcesPath)
     if (Object.keys(foundResources)?.length) {
@@ -671,6 +672,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
             found.push(item)
         } else {
             console.error('getLatestLangHelpsResourcesFromCatalog - Resource item not found', {languageId, owner, resourceId: resource.id})
+            error = true
         }
     }
 
@@ -713,8 +715,10 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
                 const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook, ignoreIndex)
                 if (!success) {
                     console.error('getLangHelpsResourcesFromCatalog - could not process', item)
+                    error = true
                 }
             } else {
+                error = true
                 // @ts-ignore
                 console.error('getLatestLangHelpsResourcesFromCatalog - could not download Resource item', {
                     languageId,
@@ -728,6 +732,7 @@ async function getLatestLangHelpsResourcesFromCatalog(catalog:null|any[], langua
         processed,
         updatedCatalogResources: catalog,
         foundResources,
+        error
     }
 }
 
@@ -776,7 +781,7 @@ function isOriginalBible(bibleId: string) {
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
 export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
-    const { processed, updatedCatalogResources, foundResources } = await getLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
+    const { processed, updatedCatalogResources, foundResources } = await downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, callback)
 
     // @ts-ignore
     foundResources.bibles = []
@@ -920,6 +925,36 @@ function replaceHomePath(filePath:string) {
     return filePath
 }
 
+export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
+    let targetLoadSuccess = false;
+    try {
+        const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
+        if (foundPath) {
+            fs.copySync(foundPath, repoPath);
+            targetLoadSuccess = true;
+        } else {
+            // if folder already exists, remove it first
+            const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
+            const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
+            if (versionPath && fs.pathExistsSync(versionPath)) {
+                fs.removeSync(versionPath);
+            }
+
+            const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+            if (!results?.destFolder) {
+                console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
+                targetLoadSuccess = false;
+            } else {
+                targetLoadSuccess = true;
+                fs.copySync(results.destFolder, repoPath);
+            }
+        }
+    } catch (e) {
+        console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
+    }
+    return targetLoadSuccess;
+}
+
 /**
  * Initialize folder of project
  * @param repoPath
@@ -999,26 +1034,12 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                 if (!hasBibleFiles) {
                     callback && await callback(`verifying target ${targetLanguageId}/${targetBibleId}`)
-                    const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, catalog, true);
-                    if (foundPath) {
-                        fs.copySync(foundPath, repoPath);
-                    } else {
-                        // if folder already exists, remove it first
-                        const folderPath = path.join(resourcesPath, targetLanguageId, 'bibles', targetBibleId) // , `v${resource.version}_${resource.owner}`)
-                        const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false)
-                        if (versionPath && fs.pathExistsSync(versionPath)) {
-                            fs.removeSync(versionPath)
-                        }
-
-                        const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
-                        if (!results?.destFolder) {
-                            console.error(`initProject - cannot copy target bible from: ${repoPath}`);
-                            return {
-                                success: false,
-                                errorMsg: `cannot copy target bible from: ${repoPath}`,
-                            };
-                        }
-                        fs.copySync(results.destFolder, repoPath);
+                    const targetLoadSuccess = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
+                    if (!targetLoadSuccess) {
+                        return {
+                            success: false,
+                            errorMsg: `cannot copy target bible from: ${repoPath}`,
+                        };
                     }
                     callback && await callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
                 }
@@ -1174,9 +1195,9 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
             }
         } else {
             console.log(`isRepoInitialized - metadata.json does not exist at ${metaDataExists}, try manifest`)
-            manifest = getResourceManifest(repoPath)
         }
         
+        manifest = getResourceManifest(repoPath)
         const bibleBooks = getBibleFiles(repoPath)
         bibleBooksLoaded = !!bibleBooks?.length
     } catch (e) {
