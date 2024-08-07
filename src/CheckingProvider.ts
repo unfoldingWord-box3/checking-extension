@@ -268,8 +268,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   const glOptions = this.getContext('selectedGL');
                   if (glOptions) {
                       const catalog = getSavedCatalog() || [];
-                      const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
-                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetOptions.languageId, targetOptions.owner, repoPath, catalog);
+                      const targetLanguageId = targetOptions.languageId;
+                      const targetBibleId = targetOptions.bibleId || "";
+                      const targetOwner = targetOptions.owner;
+                      const repoPath = getRepoPath(targetLanguageId, targetBibleId, glOptions.languageId);
+                      await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, repoPath, catalog);
                       if (targetFoundPath) {
                           await this.gotoWorkFlowStep("projectInitialize");
                           await showInformationMessage(`Target Bible Loaded`, true);
@@ -616,8 +620,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment });
-                    // await showInformationMessage(message);
-                    await delay(200)
+                    await showInformationMessage(message);
+                    // await delay(200)
                 }
 
                 progressTracker.report({ increment });
@@ -649,8 +653,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 async function updateProgress(message:string) {
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment });
-                    // await showInformationMessage(message);
-                    await delay(200)
+                    await showInformationMessage(message);
+                    // await delay(200)
                 }
 
                 progressTracker.report({ increment });
