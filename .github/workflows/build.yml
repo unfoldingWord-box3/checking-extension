@@ -41,8 +41,7 @@ jobs:
         run: npm run pre-package:extension
 
       - name: Package Extension
-        run: yarn install --prod
-      - run: vsce package --yarn
+        run: yarn run package:extension
 
       - name: Set artifact name
         run: echo "ARTIFACT_NAME=$(echo "$APP_NAME-$APP_VERSION-$HASH.vsix")" >> $GITHUB_ENV

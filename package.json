@@ -190,7 +190,7 @@
     "test": "vscode-test",
     "pnpm-package:extension": "pnpm vsce package --no-dependencies",
     "pre-package:extension": "pnpm run install:all && pnpm run build:webview",
-    "package:extension": "yarn && vsce package --yarn"
+    "package:extension": "yarn install --prod && vsce package --yarn"
   },
   "devDependencies": {
     "@vscode/test-cli": "^0.0.9",
