@@ -189,7 +189,7 @@
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "pnpm-package:extension": "pnpm vsce package --no-dependencies",
-    "pre-package:extension": "pnpm run install:all && pnpm run build:webview",
+    "pre-package:extension": "pnpm run install:webview && pnpm run build:webview",
     "package:extension": "yarn install --prod && vsce package --yarn"
   },
   "devDependencies": {
