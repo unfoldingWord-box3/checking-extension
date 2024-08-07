@@ -41,7 +41,7 @@ jobs:
         run: npm run pre-package:extension
 
       - name: Package Extension
-        run: yarn install --frozen-lockfile --prod
+        run: yarn install --prod
       - run: vsce package --yarn
 
       - name: Set artifact name
