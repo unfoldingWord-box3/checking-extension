@@ -5,8 +5,8 @@ on: [push, pull_request]
 jobs:
   build:
 
-#    runs-on: ubuntu-latest
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+#    runs-on: macos-latestyar
 
     strategy:
       matrix:
@@ -35,13 +35,13 @@ jobs:
       - run: pnpm --version
 
       - name: Install vsce
-        run: npm install -g  @vscode/vsce
+        run: npm install -g @vscode/vsce
 
       - name: Install and build webview
         run: npm run pre-package:extension
 
       - name: Package Extension
-        run: yarn
+        run: yarn install --frozen-lockfile
       - run: vsce package --yarn
 
       - name: Set artifact name
