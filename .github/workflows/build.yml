@@ -6,7 +6,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-#    runs-on: macos-latestyar
+#    runs-on: macos-latest
 
     strategy:
       matrix:
@@ -41,7 +41,7 @@ jobs:
         run: npm run pre-package:extension
 
       - name: Package Extension
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --prod
       - run: vsce package --yarn
 
       - name: Set artifact name
