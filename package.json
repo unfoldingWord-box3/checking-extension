@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.8",
+  "version": "0.0.9-beta",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -188,8 +188,9 @@
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
-    "pre-package:extension": "pnpm run install:webview && pnpm run build:webview",
-    "package:extension": "npm install && vsce package"
+    "pnpm-package:extension": "pnpm vsce package --no-dependencies",
+    "pre-package:extension": "pnpm run install:all && pnpm run build:webview",
+    "package:extension": "yarn && vsce package --yarn"
   },
   "dependencies": {
     "@types/vscode": "^1.91.0",
