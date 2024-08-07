@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.9-beta.2",
+  "version": "0.0.9-beta.3",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -41,7 +41,7 @@
     "viewsWelcome": [
       {
         "view": "workbench.explorer.emptyView",
-        "contents": "==================\nTo Create a new checking project, click on the 'Create Checking Project' button below:\n[Create Checking Project](command:checking-extension.initTranslationChecker)"
+        "contents": "==================\nTo Create a new Translation Checking Project, click on the 'Create Checking Project' button below:\n[Create Checking Project](command:checking-extension.launchWorkflow)"
       }
     ],
     "walkthroughs": [
