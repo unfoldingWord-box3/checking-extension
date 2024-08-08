@@ -28,7 +28,6 @@ jobs:
       - name: Install yarn
         run: npm i -g yarn
       - run: yarn --version
-      - run: yarn cache clean
 
       - name: Install pnpm
         run: npm install --global pnpm
