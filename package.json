@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.9-beta.3",
+  "version": "0.0.9-beta.4",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -55,7 +55,7 @@
             "title": "Select Project Folder",
             "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
             "media": {
-              "image": "./src/media/folder-active.png",
+              "image": "media/folder-active.png",
               "altText": "Select Project Folder"
             },
             "completionEvents": [
@@ -69,7 +69,7 @@
             "title": "Create new Project",
             "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
             "media": {
-              "image": "./src/media/folder-active.png",
+              "image": "media/folder-active.png",
               "altText": "Select Project Folder"
             },
             "completionEvents": [
@@ -83,7 +83,7 @@
             "title": "Fetch Resource Catalog",
             "description": "We need to download Resource Catalog.\n[Download Catalog](command:checking-extension.downloadCatalog)",
             "media": {
-              "image": "./src/media/folder-active.png",
+              "image": "media/folder-active.png",
               "altText": "Select Project Folder"
             },
             "completionEvents": [
@@ -96,7 +96,7 @@
             "title": "Select gateway Language",
             "description": "Now that we have a folder, let's choose the Gateway Language options.\n[Select gateway Language](command:checking-extension.selectGL)",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Select gateway Language"
             },
             "completionEvents": [
@@ -109,7 +109,7 @@
             "title": "Download Gateway Language Resources",
             "description": "Now that we have selected a Gateway Language, let's download the checking resources.\n[Download Resources](command:checking-extension.loadGlResources)",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Download Gateway Language Resources"
             },
             "completionEvents": [
@@ -122,7 +122,7 @@
             "title": "Select Target Bible",
             "description": "Now that we have Gateway Language Resources, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Select target Language"
             },
             "completionEvents": [
@@ -136,7 +136,7 @@
             "title": "Download Target Bible",
             "description": "Now that we have selected a Target Bible, let's download the Target Bible.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Download Target Language"
             },
             "completionEvents": [
@@ -150,7 +150,7 @@
             "title": "Project Initialized for Checking",
             "description": "Project is now ready for Checking",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Download Target Language"
             },
             "completionEvents": [
@@ -163,7 +163,7 @@
             "title": "Initialize Project Checking",
             "description": "Now that we have checking resources downloaded, let's initialize the project for checking.\n[Initialize Checking](command:checking-extension.initializeChecking)",
             "media": {
-              "image": "./src/media/name-project.png",
+              "image": "media/name-project.png",
               "altText": "Download Target Language"
             },
             "completionEvents": [
