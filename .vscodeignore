@@ -35,3 +35,11 @@ vsc-extension-quickstart.md
 out/**
 node_modules/**
 test_files/**
+
+.prettierignore
+babel.config.json
+jest.config.js
+pnpm-lock.yaml
+webview-ui/pnpm-lock.yaml
+.github/**
+.idea/**
