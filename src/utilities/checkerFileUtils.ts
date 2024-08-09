@@ -650,7 +650,7 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
     if (!catalog?.length) {
         catalog = await getLatestResourcesCatalog(resourcesPath)
     }
-    callback && await callback('downloaded catalog')
+    callback && await callback('Downloaded Catalog')
 
     let error = false
     const processed:any[] = []
@@ -696,9 +696,9 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
             foundResources[item.resourceId] = resourceObject
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
-            callback && await callback(`downloading ${item.languageId}/${item.resourceId}`)
+            callback && await callback(`Starting Download of ${item.languageId}/${item.resourceId} ...`)
             const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
-            callback && await callback(`downloaded ${item.languageId}/${item.resourceId}`)
+            callback && await callback(`Downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
                 processed.push(resource_)
                 const resourcePath = resource_.resourcePath;
@@ -821,7 +821,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                 const item = findResource(updatedCatalogResources || [], languageId_, owner_, bibleId)
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
-                    callback && await callback(`downloading ${item.languageId}/${item.resourceId}`)
+                    callback && await callback(`Starting Download of ${item.languageId}/${item.resourceId} ...`)
                     const resource = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
                     if (resource) {
                         processed.push(resource)
@@ -839,7 +839,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
-                    callback && await callback(`downloaded ${item.languageId}/${item.resourceId}`)
+                    callback && await callback(`Downloaded ${item.languageId}/${item.resourceId}`)
                 }
             }
         }
@@ -1031,7 +1031,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 }
 
                 if (!hasBibleFiles) {
-                    callback && await callback(`verifying target ${targetLanguageId}/${targetBibleId}`)
+                    callback && await callback(`Verifying Target Bible ${targetLanguageId}/${targetBibleId}`)
                     const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
                     if (!targetFoundPath) {
                         return {
@@ -1041,7 +1041,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     } else {
                         fs.copySync(targetFoundPath, repoPath)
                     }
-                    callback && await callback(`downloaded target ${targetLanguageId}/${targetBibleId}`)
+                    callback && await callback(`Downloaded Target Bible ${targetLanguageId}/${targetBibleId}`)
                 }
                 
                 // replace home path with ~
