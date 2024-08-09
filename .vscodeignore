@@ -31,3 +31,7 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+out/**
+node_modules/**
+test_files/**
