@@ -30,7 +30,7 @@ importers:
         specifier: ^3.0.9
         version: 3.1.6
       gitea-react-toolkit:
-        specifier: ^2.4.0
+        specifier: 2.4.0
         version: 2.4.0(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       localforage:
         specifier: ^1.10.0
