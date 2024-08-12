@@ -3,12 +3,13 @@ import React, { useState, useEffect } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
-    TranslationUtils,
     Checker,
+    TranslationUtils,
     twArticleHelpers,
 }
 // @ts-ignore
 from 'checking-tool-rcl'
+import AuthContextProvider from '../dcs/context/AuthContext'
 
 import type { TnTSV } from "../../../types/TsvTypes"
 import { ResourcesObject } from "../../../types/index";
@@ -21,7 +22,7 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
-const showDocument = true // set to false to disable showing ta or tw document
+const showDocument = true // set this to false to disable showing ta or tw articles
 
 console.log("TranslationCheckingView.tsx")
 
@@ -219,7 +220,11 @@ function TranslationCheckingView() {
 
     return (
       <>
-          {content}
+          <AuthContextProvider>
+              {/*<StoreContextProvider>*/}
+                  {content}
+              {/*</StoreContextProvider>*/}
+          </AuthContextProvider>
       </>
     );
 }
