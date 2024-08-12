@@ -1,6 +1,6 @@
 {
   "name": "checking-extension-webview",
-  "version": "0.0.4",
+  "version": "0.0.10",
   "private": true,
   "scripts": {
     "start": "vite",
@@ -10,12 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@material-ui/core": "^4.12.4",
+    "@material-ui/icons": "^4.11.3",
+    "@material-ui/lab": "4.0.0-alpha.61",
+    "@mui/lab": "5.0.0-alpha.173",
     "@vscode/webview-ui-toolkit": "^1.4.0",
     "checking-tool-rcl": "0.9.7",
     "dompurify": "^3.0.9",
+    "gitea-react-toolkit": "2.4.0",
+    "localforage": "^1.10.0",
     "marked": "^12.0.0",
+    "prop-types": "^15.8.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "translation-helps-rcl": "v3.6.3"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",

@@ -3,7 +3,8 @@
     "target": "esnext",
     "lib": ["dom", "dom.iterable", "esnext"],
     "useDefineForClassFields": true,
-    "allowJs": false,
+    "allowJs": true, // Allows JavaScript files to be compiled
+//    "checkJs": true, // Enables type checking on JavaScript files
     "skipLibCheck": true,
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
@@ -16,5 +17,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["./src"]
+  "include": ["./src/**/*"]
 }
