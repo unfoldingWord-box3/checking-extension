@@ -29,6 +29,9 @@ importers:
       checking-tool-rcl:
         specifier: 0.9.10-beta.7
         version: 0.9.10-beta.7(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0)
+      deep-equal:
+        specifier: 1.0.1
+        version: 1.0.1
       dompurify:
         specifier: ^3.0.9
         version: 3.1.6
@@ -1101,6 +1104,9 @@ packages:
   decamelize@1.2.0:
     resolution: {integrity: sha512-z2S+W9X73hAUUki+N+9Za2lBlun89zigOyGrsax+KUQ6wKW4ZoWpEYBkGhQjwAjjDCkWxhY0VKEhk8wzY7F5cA==}
     engines: {node: '>=0.10.0'}
+
+  deep-equal@1.0.1:
+    resolution: {integrity: sha512-bHtC0iYvWhyaTzvV3CZgPeZQqCOBGyGsVV7v4eevpdkLHfiSrXUdBG+qAuSz4RI70sszvjQ1QSZ98An1yNwpSw==}
 
   deep-equal@2.2.3:
     resolution: {integrity: sha512-ZIwpnevOurS8bpT4192sqAowWM76JDKSHYzMLty3BZGSswgq6pBaH3DhCSW5xVAZICZyKdOBPjwww5wfgT/6PA==}
@@ -3267,6 +3273,8 @@ snapshots:
       ms: 2.1.2
 
   decamelize@1.2.0: {}
+
+  deep-equal@1.0.1: {}
 
   deep-equal@2.2.3:
     dependencies:

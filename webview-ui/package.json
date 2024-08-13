@@ -18,6 +18,7 @@
     "@mui/lab": "5.0.0-alpha.89",
     "@vscode/webview-ui-toolkit": "^1.4.0",
     "checking-tool-rcl": "0.9.10-beta.7",
+    "deep-equal": "1.0.1",
     "dompurify": "^3.0.9",
     "gitea-react-toolkit": "2.4.0",
     "localforage": "^1.10.0",
