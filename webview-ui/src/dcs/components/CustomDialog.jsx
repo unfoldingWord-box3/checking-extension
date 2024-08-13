@@ -6,7 +6,7 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 
-export default function ErrorDialog({ onClose, title, open, isLoading = false, content = "", closeButtonStr = null }) {
+export default function CustomDialog({ onClose, title, open, isLoading = false, content = "", closeButtonStr = null }) {
 
   return (
     <Dialog open={open} onClose={onClose} aria-labelledby="form-dialog-title">

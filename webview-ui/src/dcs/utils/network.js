@@ -17,7 +17,7 @@ import {
   SERVER_MAX_WAIT_TIME_RETRY,
   SERVER_OTHER_ERROR,
   SERVER_UNREACHABLE_ERROR,
-} from '../common/constants'
+} from '../../common/constants'
 import { getLocalStorageItem, setLocalStorageValue } from '../hooks/useUserLocalStorage'
 
 export const NETWORK_DISCONNECT_ERROR = 'networkDisconnectError'

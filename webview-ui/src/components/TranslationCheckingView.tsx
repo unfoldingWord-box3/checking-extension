@@ -15,6 +15,12 @@ import AuthContextProvider from '../dcs/context/AuthContext'
 import type { TnTSV } from "../../../types/TsvTypes"
 import { ResourcesObject } from "../../../types/index";
 import { ALL_BIBLE_BOOKS } from "../../../src/utilities/BooksOfTheBible";
+import { AppBar, IconButton, makeStyles, Toolbar, Typography } from "@material-ui/core";
+import MenuIcon from '@material-ui/icons/Menu'
+// @ts-ignore
+import { APP_NAME, APP_VERSION } from "../common/constants.js";
+// @ts-ignore
+import Drawer from "../dcs/components/Drawer.jsx";
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -22,6 +28,37 @@ type TranslationNotesViewProps = {
     chapter: number;
     verse: number;
 };
+
+// @ts-ignore
+const useStyles = makeStyles(theme => ({
+    root: {
+        display: 'flex',
+        flexGrow: 1,
+        flexDirection: 'row',
+        backgroundColor: '#19579E',
+        color: '#FFFFFF',
+        padding: '10px',
+        margin: '0px',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
+    button: {
+        minWidth: '40px',
+        padding: '5px 0px',
+        marginRight: theme.spacing(3),
+    },
+    icon: { width: '40px' },
+    menuButton: { marginRight: theme.spacing(1) },
+    title: {
+        flexGrow: 1,
+        cursor: 'pointer',
+        backgroundColor: '#19579E',
+        marginBottom: '10px',
+        fontSize: '16px',
+        fontWeight: 'bold'
+    },
+}))
+
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -47,9 +84,11 @@ function hasResourceData(resource:object) {
 }
 
 function TranslationCheckingView() {
+    const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
     const [currentContextId, setCurrentContextId] = useState<object>({});
+    const [drawerOpen, setOpen] = useState(false)
 
     const LexiconData:object = CheckingObj.lexicons;
     const translations:object = CheckingObj.locales
@@ -180,6 +219,18 @@ function TranslationCheckingView() {
             prevIndex > 0 ? prevIndex - 1 : prevIndex,
         );
 
+    const handleDrawerOpen = () => {
+        if (!drawerOpen) {
+            setOpen(true)
+        }
+    }
+
+    const handleDrawerClose = () => {
+        if (drawerOpen) {
+            setOpen(false)
+        }
+    }
+    
     const haveCheckingData = hasResourceData(checkingData);
     const hasTargetBibleBook = hasResourceData(CheckingObj?.targetBible);
     const haveResources = hasTargetBibleBook && CheckingObj.validResources && haveCheckingData
@@ -200,30 +251,65 @@ function TranslationCheckingView() {
     }
 
     const content = haveResources ? (
-      <div id="checkerWrapper" >
-          <Checker
-            styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
-            alignedGlBible={alignedGlBible}
-            bibles={bibles}
-            checkingData={checkingData}
-            checkType={checkType}
-            contextId={contextId}
-            getLexiconData={getLexiconData_}
-            glWordsData={glWordsData}
-            saveSelection={_saveSelection}
-            showDocument={showDocument}
-            targetBible={targetBible}
-            targetLanguageDetails={targetLanguageDetails}
-            translate={translate}
+      <>
+          <AppBar position='static'>
+              <Toolbar>
+                  <div id='title-bar' className={classes.root}>
+                      <IconButton
+                        edge='start'
+                        className={classes.menuButton}
+                        color='inherit'
+                        aria-label='menu'
+                        onClick={handleDrawerOpen}
+                      >
+                          <MenuIcon />
+                      </IconButton>
+                      <Typography
+                        variant='h6'
+                        className={classes.title}
+                        onClick={() => {
+                        }}
+                      >
+                          {`${APP_NAME} - v${APP_VERSION}`}
+                      </Typography>
+                  </div>
+              </Toolbar>
+          </AppBar>
+          <Drawer
+            user={'user'}
+            logout={null}
+            open={drawerOpen}
+            onOpen={handleDrawerOpen}
+            onClose={handleDrawerClose}
+            checkUnsavedChanges={null}
+            resetResourceLayout={null}
+            showFeedback={null}
           />
-      </div>
+          <div id="checkerWrapper" style={{ marginTop: "10px" }}>
+              <Checker
+                styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
+                alignedGlBible={alignedGlBible}
+                bibles={bibles}
+                checkingData={checkingData}
+                checkType={checkType}
+                contextId={contextId}
+                getLexiconData={getLexiconData_}
+                glWordsData={glWordsData}
+                saveSelection={_saveSelection}
+                showDocument={showDocument}
+                targetBible={targetBible}
+                targetLanguageDetails={targetLanguageDetails}
+                translate={translate}
+              />
+          </div>
+      </>
     ) : getResourceMissingErrorMsg(CheckingObj);
 
     return (
       <>
           <AuthContextProvider>
               {/*<StoreContextProvider>*/}
-                  {content}
+              {content}
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>
       </>

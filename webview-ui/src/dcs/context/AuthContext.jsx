@@ -8,21 +8,22 @@ import {
   QA_BASE_URL,
   SERVER_KEY,
   TOKEN_ID,
-} from '../common/constants'
+} from '../../common/constants'
 import {
   doFetch,
   processNetworkError,
   unAuthenticated,
 } from '../utils/network'
 import useLocalStorage from '../hooks/useLocalStorage'
-import ErrorDialog from "../components/ErrorDialog";
+import CustomDialog from "../components/CustomDialog";
 
 export const AuthContext = createContext({})
 
 export default function AuthContextProvider(props) {
   const [authentication, setAuthentication] = useState(null)
   const [networkError, setNetworkError] = useState(null)
-  const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
+  // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
+  const defaultServer = QA_BASE_URL
   const [server, setServer] = useLocalStorage(SERVER_KEY, defaultServer)
 
   /**
@@ -130,9 +131,9 @@ export default function AuthContextProvider(props) {
         {props.children}
       </AuthenticationContextProvider>
       { !!networkError &&
-        <ErrorDialog
+        <CustomDialog
           content={networkError}
-          setNetworkError={setNetworkError}
+          // setNetworkError={setNetworkError}
           closeButtonStr={CLOSE}
         />
       }
