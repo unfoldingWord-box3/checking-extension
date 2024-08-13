@@ -15,6 +15,7 @@ import {
   unAuthenticated,
 } from '../utils/network'
 import useLocalStorage from '../hooks/useLocalStorage'
+import ErrorDialog from "../components/ErrorDialog";
 
 export const AuthContext = createContext({})
 
@@ -129,8 +130,8 @@ export default function AuthContextProvider(props) {
         {props.children}
       </AuthenticationContextProvider>
       { !!networkError &&
-        <NetworkErrorPopup
-          networkError={networkError}
+        <ErrorDialog
+          content={networkError}
           setNetworkError={setNetworkError}
           closeButtonStr={CLOSE}
         />

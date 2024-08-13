@@ -185,6 +185,7 @@
     "install:all": "pnpm run install:webview && pnpm install",
     "install:webview": "cd webview-ui && pnpm install",
     "build:all": "pnpm run build:webview && pnpm run compile",
+    "build:all-debug": "pnpm run build:webview-debug && pnpm run compile",
     "start:webview": "cd webview-ui && pnpm run start",
     "build:webview": "cd webview-ui && pnpm run build",
     "build:webview-debug": "cd webview-ui && pnpm run build:dev",
