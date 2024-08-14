@@ -13,7 +13,7 @@ body, html, #content, .fill-height {
   margin: 0;
   overflow: hidden;
   height:100%;
-  font-size: 20px;
+  font-size: 16px;
 }
 
 body {
@@ -1776,6 +1776,7 @@ svg > text {
     box-sizing: border-box;
     flex-shrink: 0;
     flex-direction: column;
+    font-size: 20px;
 }
 .MuiAppBar-positionFixed {
     top: 0;
@@ -1918,6 +1919,7 @@ svg > text {
     padding: 0;
     position: relative;
     list-style: none;
+    font-size: 20px;
 }
 .MuiList-padding {
     padding-top: 8px;
