@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useContext } from "react";
 import PropTypes from 'prop-types'
 import SwipeableDrawer from '@material-ui/core/SwipeableDrawer'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -11,6 +11,8 @@ import IconButton from '@material-ui/core/IconButton'
 import ListItem from '@material-ui/core/ListItem'
 import List from '@material-ui/core/List'
 import DashboardOutlinedIcon from '@material-ui/icons/DashboardOutlined'
+import { AuthContext } from "../context/AuthContext";
+import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authentication";
 // TODO: Enable buttons once ready to fully implement functionality
 // import DashboardIcon from '@material-ui/icons/Dashboard'
 // import Crop54Icon from '@material-ui/icons/Crop54'
@@ -19,15 +21,29 @@ import DashboardOutlinedIcon from '@material-ui/icons/DashboardOutlined'
 // import Button from '@material-ui/core/Button'
 
 export default function Drawer({
-  user,
   open,
   onOpen,
-  logout,
   onClose,
   resetResourceLayout,
   checkUnsavedChanges,
   showFeedback,
 }) {
+  const {
+    state: {
+      server,
+    },
+    actions: {
+      logout,
+      showDialogContent,
+      setServer,
+    }
+  } = useContext(AuthContext)
+  const {
+    state: authentication,
+    component: authenticationComponent,
+  } = useContext(AuthenticationContext)
+  const user = authentication?.user
+
   async function onSettingsClick() {
     const okToContinue = await checkUnsavedChanges()
 
@@ -50,9 +66,10 @@ export default function Drawer({
     }
   }
 
-  function onResetResourceLayout() {
-    resetResourceLayout()
-    onClose()
+  function onLogIn() {
+    showDialogContent({
+      message: authenticationComponent
+    })
   }
 
   return (
@@ -94,14 +111,6 @@ export default function Drawer({
         </ListItem>
       </List>
       <List disablePadding>
-        <ListItem button key={'Reset Resource Layout'} onClick={onResetResourceLayout}>
-          <ListItemIcon>
-            <DashboardOutlinedIcon />
-          </ListItemIcon>
-          <ListItemText primary={'Reset Resource Layout'} />
-        </ListItem>
-      </List>
-      <List disablePadding>
         <ListItem
           button
           key={'Bug Report or Feedback'}
@@ -112,12 +121,21 @@ export default function Drawer({
           </ListItemIcon>
           <ListItemText primary={'Bug Report or Feedback'} />
         </ListItem>
-        {user && (
+        {user ? ( // if logged in give logout option
           <ListItem button key={'Logout'} onClick={onLogout}>
             <ListItemIcon>
               <ExitToAppIcon />
             </ListItemIcon>
             <ListItemText primary={'Logout'} />
+          </ListItem>
+        )
+        : // or if logged in give login option
+        (
+          <ListItem button key={'Login'} onClick={onLogIn}>
+            <ListItemIcon>
+              <ExitToAppIcon />
+            </ListItemIcon>
+            <ListItemText primary={'Login'} />
           </ListItem>
         )}
       </List>
@@ -127,9 +145,7 @@ export default function Drawer({
 
 Drawer.propTypes = {
   open: PropTypes.bool,
-  user: PropTypes.object,
   onOpen: PropTypes.func,
-  logout: PropTypes.func,
   onClose: PropTypes.func,
   resetResourceLayout: PropTypes.func,
   checkUnsavedChanges: PropTypes.func,

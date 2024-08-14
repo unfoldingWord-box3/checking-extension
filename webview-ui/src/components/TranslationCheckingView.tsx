@@ -276,8 +276,6 @@ function TranslationCheckingView() {
               </Toolbar>
           </AppBar>
           <Drawer
-            user={'user'}
-            logout={null}
             open={drawerOpen}
             onOpen={handleDrawerOpen}
             onClose={handleDrawerClose}

@@ -21,7 +21,8 @@ export const AuthContext = createContext({})
 
 export default function AuthContextProvider(props) {
   const [authentication, setAuthentication] = useState(null)
-  const [networkError, setNetworkError] = useState(null)
+  const [dialogContent, _setDialogContent] = useState(null)
+  const [networkError, _setNetworkError] = useState(null)
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
   const defaultServer = QA_BASE_URL
   const [server, setServer] = useLocalStorage(SERVER_KEY, defaultServer)
@@ -33,6 +34,29 @@ export default function AuthContextProvider(props) {
    */
   function processError(error, httpCode=0) {
     processNetworkError(error, httpCode, null, null, setNetworkError, null, null )
+  }
+
+  function setNetworkError(content) {
+    _setNetworkError(content)
+    showDialogContent({ message: content })
+  }
+  
+  function showDialogContent({ message, closeButtonStr }) {
+    if (message) {
+      _setDialogContent({
+        message,
+        closeButtonStr,
+      });
+    } else {
+      _setDialogContent(null)
+    }
+  }
+
+  function clearContent() {
+    if (networkError) {
+      _setNetworkError(null);
+    }
+    showDialogContent(null)
   }
 
   const myAuthStore = localforage.createInstance({
@@ -109,6 +133,7 @@ export default function AuthContextProvider(props) {
     },
     actions: {
       logout,
+      showDialogContent,
       setNetworkError,
       setServer,
     },
@@ -130,13 +155,12 @@ export default function AuthContextProvider(props) {
       >
         {props.children}
       </AuthenticationContextProvider>
-      { !!networkError &&
-        <CustomDialog
-          content={networkError}
-          // setNetworkError={setNetworkError}
-          closeButtonStr={CLOSE}
-        />
-      }
+      <CustomDialog
+        open={!!dialogContent?.message}
+        content={dialogContent?.message}
+        onClose={() => clearContent()}
+        closeButtonStr={dialogContent?.closeButtonStr || CLOSE}
+      />
     </AuthContext.Provider>
   )
 }
