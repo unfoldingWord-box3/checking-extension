@@ -1779,45 +1779,97 @@ export function flattenGroupData(groupsData:{}) {
 
     for (const category of Object.keys(groupsData)) {
         // @ts-ignore
-        const groups:{} = groupsData[category]
+        let groups:{} = groupsData[category]
+        // console.log('groups',Object.keys(groups))
+
+        // @ts-ignore
+        const _groups = groups?.groups;
+        if (_groups) {
+            groups = _groups
+            // console.log('groups2',Object.keys(groups))
+        }
+        console.log('groups',Object.keys(groups))
         for (const groupId of Object.keys(groups)) {
+            // console.log('groupId',groupId)
             // @ts-ignore
             const group:object[] = groups[groupId]
-            const newGroup = group.map(item => {
-                const newItem = {...item} // shallow copy
+            
+            if (Array.isArray(group)) {
+                // console.log('group',group)
+                const newGroup = group.map(item => {
+                    const newItem = { ...item }; // shallow copy
+                    // @ts-ignore
+                    newItem.category = category;
+                    return newItem;
+                });
                 // @ts-ignore
-                newItem.category = category
-                return newItem
-            })
-            // @ts-ignore
-            mergedGroups[groupId] = newGroup
+                mergedGroups[groupId] = newGroup;
+            } else {
+                // console.log(`group is not an array`)
+            }
         }
     }
 
-    let sortedGroups = { }
-    for (const key of Object.keys(mergedGroups).sort()) {
-        // @ts-ignore
-        sortedGroups[key] = mergedGroups[key]
-    }
+    // let sortedGroups = { }
+    // for (const key of Object.keys(mergedGroups).sort()) {
+    //     // @ts-ignore
+    //     sortedGroups[key] = mergedGroups[key]
+    // }
 
-    return sortedGroups;
+    return mergedGroups;
+}
+
+function arrayToTsvLine(keys: string[]) {
+    return keys.join('\t');
 }
 
 export function checkDataToTwl(checkData:{}) {
-    let twl:null|string[][] = null
+    let twl:string[] = []
+    let rows:object[] = []
+    let results:string = ''
     const groups = Object.keys(checkData)
     if (groups?.length > 1) {
         twl = []
-        twl.push([
-          'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'
-        ])
-        for (const item of groups) {
-            const Reference = ``, ID = ``, Tags = ``, OrigWords = ``, Occurrence = ``, TWLink = ``
-            
-            twl.push([
-                Reference, ID, Tags, OrigWords, Occurrence, TWLink
-            ])
+
+        for (const groupId of groups) {
+            // @ts-ignore
+            const group = checkData[groupId]
+
+            for (const item of group) {
+                // @ts-ignore
+                const contextId = item?.contextId;
+                const reference = contextId?.reference;
+                const chapter = reference?.chapter || '';
+                const verse = reference?.verse || '';
+                const Reference = (chapter && verse) ? `${chapter}:${verse}` : ''
+
+                const ID = `ID`;
+                const Tags = `Tags`;
+                const OrigWords = `OrigWords`;
+                const Occurrence = `Occurrence`;
+                const TWLink = `TWLink`
+
+                rows.push(
+                  {
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink
+                  },
+                )
+            }
         }
+        twl = rows.map(r => arrayToTsvLine([
+            // @ts-ignore
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink
+        ]))
+        const keys = [
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'
+        ];
+        twl.unshift(arrayToTsvLine(keys))
+        
+        // const _rows = rows.sort((a, b) => {
+        //     return (a.chapter < bName) ? -1 : (aName > bName) ? 1 : 0;
+        // })
+        // rows = _rows
+        results = twl.join('\n')
     }
-    return null
+    return results
 }

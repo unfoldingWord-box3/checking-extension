@@ -1,4 +1,4 @@
-import { flattenGroupData } from "../utilities/checkerFileUtils";
+import { checkDataToTwl, flattenGroupData } from "../utilities/checkerFileUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as assert from 'assert';
@@ -21,8 +21,13 @@ suite('Test check_twl to twl tsv', () => {
     // console.log('files', files)
     // const files2 = fs.readdirSync('./src/test/fixtures')
     // console.log('files2', files2)
+    
+    const groupData = flattenGroupData(checkData)
+    fs.outputJsonSync('./testResults.json', groupData, { spaces: 2 })
+    assert.ok(Object.keys(groupData).length > 5);
 
-    // const groupData = flattenGroupData(checkData)
-    // expect(groupData).to.be.true;
+    const results = checkDataToTwl(groupData)
+    assert.ok(results);
+    fs.outputFileSync('./testResults.tsv', results, 'UTF-8');
   });
 });
