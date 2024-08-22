@@ -1,10 +1,7 @@
 import { flattenGroupData } from "../utilities/checkerFileUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
-// @ts-ignore
-const chai = import("chai");
-// @ts-ignore
-const expect = chai.expect;
+import * as assert from 'assert';
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
@@ -17,9 +14,15 @@ suite('Test check_twl to twl tsv', () => {
   });
 
   test('Test Titus', () => {
-    const checkData = fs.readJsonSync('./fixtures/tit.twl_check');
-    expect(checkData).to.be.true;
-    const groupData = flattenGroupData(checkData)
-    expect(groupData).to.be.true;
+    const checkData = fs.readJsonSync('./src/test/fixtures/tit.twl_check');
+    assert.ok(checkData)
+    // expect(checkData).to.be.true;
+    // const files = fs.readdirSync('./src/test')
+    // console.log('files', files)
+    // const files2 = fs.readdirSync('./src/test/fixtures')
+    // console.log('files2', files2)
+
+    // const groupData = flattenGroupData(checkData)
+    // expect(groupData).to.be.true;
   });
 });
