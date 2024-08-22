@@ -193,13 +193,14 @@
     "build:webview-debug": "cd webview-ui && pnpm run build:dev",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test",
+    "test": "yarn run compile:debug && vscode-test",
     "pre-package:extension": "npm run install:webview && npm run build:webview",
     "package:extension": "yarn install && vsce package --yarn"
   },
   "devDependencies": {
     "@vscode/test-cli": "^0.0.9",
     "@vscode/test-electron": "^2.4.0",
+    "chai": "^5.1.1",
     "ts-loader": "^9.5.1",
     "webpack": "^5.93.0",
     "webpack-cli": "^5.1.4"

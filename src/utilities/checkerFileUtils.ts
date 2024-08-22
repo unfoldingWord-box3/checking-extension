@@ -1773,3 +1773,51 @@ export function cleanUpFailedCheck(repoPath:string) {
         }
     }
 }
+
+export function flattenGroupData(groupsData:{}) {
+    let mergedGroups = { }
+
+    for (const category of Object.keys(groupsData)) {
+        // @ts-ignore
+        const groups:{} = groupsData[category]
+        for (const groupId of Object.keys(groups)) {
+            // @ts-ignore
+            const group:object[] = groups[groupId]
+            const newGroup = group.map(item => {
+                const newItem = {...item} // shallow copy
+                // @ts-ignore
+                newItem.category = category
+                return newItem
+            })
+            // @ts-ignore
+            mergedGroups[groupId] = newGroup
+        }
+    }
+
+    let sortedGroups = { }
+    for (const key of Object.keys(mergedGroups).sort()) {
+        // @ts-ignore
+        sortedGroups[key] = mergedGroups[key]
+    }
+
+    return sortedGroups;
+}
+
+export function checkDataToTwl(checkData:{}) {
+    let twl:null|string[][] = null
+    const groups = Object.keys(checkData)
+    if (groups?.length > 1) {
+        twl = []
+        twl.push([
+          'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'
+        ])
+        for (const item of groups) {
+            const Reference = ``, ID = ``, Tags = ``, OrigWords = ``, Occurrence = ``, TWLink = ``
+            
+            twl.push([
+                Reference, ID, Tags, OrigWords, Occurrence, TWLink
+            ])
+        }
+    }
+    return null
+}
