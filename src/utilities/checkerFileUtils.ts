@@ -1873,22 +1873,7 @@ export function checkDataToTwl(checkData:{}) {
             }
         }
 
-        const _rows = rows.sort((a, b) => {
-            // @ts-ignore
-            const aCh = toInt(a.chapter)
-            // @ts-ignore
-            const bCh = toInt(b.chapter)
-            let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
-            if (!comp) {
-                // @ts-ignore
-                const aV = toInt(a.verse)
-                // @ts-ignore
-                const bV = toInt(b.verse)
-                comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
-            }
-            return comp
-        })
-
+        const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
             r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.selections, r.TWLink
@@ -1898,6 +1883,80 @@ export function checkDataToTwl(checkData:{}) {
         ];
         twl.unshift(arrayToTsvLine(keys))
         
+        results = twl.join('\n')
+    }
+    return results
+}
+
+function sortRowsByRef(rows: object[]) {
+    const _rows = rows.sort((a, b) => {
+        // @ts-ignore
+        const aCh = toInt(a.chapter);
+        // @ts-ignore
+        const bCh = toInt(b.chapter);
+        let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
+        if (!comp) {
+            // @ts-ignore
+            const aV = toInt(a.verse);
+            // @ts-ignore
+            const bV = toInt(b.verse);
+            comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+        }
+        return comp;
+    });
+    return _rows;
+}
+
+export function checkDataToTn(checkData:{}) {
+    let twl:string[] = []
+    let rows:object[] = []
+    let results:string = ''
+    const groups = Object.keys(checkData)
+    if (groups?.length > 1) {
+        twl = []
+
+        for (const groupId of groups) {
+            // @ts-ignore
+            const group = checkData[groupId]
+
+            for (const item of group) {
+                // @ts-ignore
+                const contextId = item?.contextId;
+                const reference = contextId?.reference;
+                const chapter = reference?.chapter || '';
+                const verse = reference?.verse || '';
+                const Reference = (chapter && verse) ? `${chapter}:${verse}` : ''
+
+                const ID = `${contextId?.checkId || ''}`;
+                const category = item?.category || '';
+                const groupId = contextId?.groupId || '';
+                const Tags = `${category}`;
+                const quoteString = contextId?.quoteString || '';
+                const Quote = `${quoteString}`;
+                const Occurrence = `${contextId?.occurrence || ''}`;
+                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
+                const SupportReference = `rc://*/ta/man/translate/${groupId}`
+                const _note = contextId?.occurrenceNote || '';
+                const Note = `${_note}`;
+
+                rows.push(
+                  {
+                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, selections, Note
+                  },
+                )
+            }
+        }
+        
+        const _rows = sortRowsByRef(rows);
+        twl = _rows.map(r => arrayToTsvLine([
+            // @ts-ignore
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.selections, r.TWLink
+        ]))
+        const keys = [
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'selections', 'TWLink'
+        ];
+        twl.unshift(arrayToTsvLine(keys))
+
         results = twl.join('\n')
     }
     return results
