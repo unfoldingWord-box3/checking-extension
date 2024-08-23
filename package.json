@@ -192,7 +192,7 @@
     "build:webview": "cd webview-ui && pnpm run build",
     "build:webview-debug": "cd webview-ui && pnpm run build:dev",
     "lint": "eslint src --ext ts",
-    "test": "yarn run compile:debug && vscode-test",
+    "test:unit": "yarn run compile:debug && vscode-test",
     "pre-package:extension": "npm run install:webview && npm run build:webview",
     "package:extension": "yarn install && vsce package --yarn"
   },

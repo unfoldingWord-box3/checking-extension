@@ -1778,6 +1778,9 @@ export function flattenGroupData(groupsData:{}) {
     let mergedGroups = { }
 
     for (const category of Object.keys(groupsData)) {
+        if (category === 'manifest') {
+            continue // skip manifest
+        }
         // @ts-ignore
         let groups:{} = groupsData[category]
         // console.log('groups',Object.keys(groups))
@@ -1788,7 +1791,7 @@ export function flattenGroupData(groupsData:{}) {
             groups = _groups
             // console.log('groups2',Object.keys(groups))
         }
-        console.log('groups',Object.keys(groups))
+        // console.log('groups',Object.keys(groups))
         for (const groupId of Object.keys(groups)) {
             // console.log('groupId',groupId)
             // @ts-ignore
@@ -1823,6 +1826,15 @@ function arrayToTsvLine(keys: string[]) {
     return keys.join('\t');
 }
 
+/**
+ * convert value to int if string, otherwise just return value
+ * @param {string|int} value
+ * @returns {int}
+ */
+export function toInt(value:any):any {
+    return (value && typeof value === 'string') ? parseInt(value, 10) : value;
+}
+
 export function checkDataToTwl(checkData:{}) {
     let twl:string[] = []
     let rows:object[] = []
@@ -1843,32 +1855,49 @@ export function checkDataToTwl(checkData:{}) {
                 const verse = reference?.verse || '';
                 const Reference = (chapter && verse) ? `${chapter}:${verse}` : ''
 
-                const ID = `ID`;
-                const Tags = `Tags`;
-                const OrigWords = `OrigWords`;
-                const Occurrence = `Occurrence`;
-                const TWLink = `TWLink`
+                const ID = `${contextId?.checkId || ''}`;
+                const category = item?.category || '';
+                const groupId = contextId?.groupId || '';
+                const Tags = `${category}`;
+                const quoteString = contextId?.quoteString || '';
+                const OrigWords = `${quoteString}`;
+                const Occurrence = `${contextId?.occurrence || ''}`;
+                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
+                const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, selections, TWLink
                   },
                 )
             }
         }
-        twl = rows.map(r => arrayToTsvLine([
+
+        const _rows = rows.sort((a, b) => {
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink
+            const aCh = toInt(a.chapter)
+            // @ts-ignore
+            const bCh = toInt(b.chapter)
+            let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
+            if (!comp) {
+                // @ts-ignore
+                const aV = toInt(a.verse)
+                // @ts-ignore
+                const bV = toInt(b.verse)
+                comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+            }
+            return comp
+        })
+
+        twl = _rows.map(r => arrayToTsvLine([
+            // @ts-ignore
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.selections, r.TWLink
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'selections', 'TWLink'
         ];
         twl.unshift(arrayToTsvLine(keys))
         
-        // const _rows = rows.sort((a, b) => {
-        //     return (a.chapter < bName) ? -1 : (aName > bName) ? 1 : 0;
-        // })
-        // rows = _rows
         results = twl.join('\n')
     }
     return results

@@ -3289,7 +3289,23 @@
         {
           "comments": false,
           "reminders": false,
-          "selections": false,
+          "selections": [
+            {
+              "text": "diligentemente",
+              "occurrence": 1,
+              "occurrences": 1
+            },
+            {
+              "text": "Apolos",
+              "occurrence": 1,
+              "occurrences": 1
+            },
+            {
+              "text": "falte",
+              "occurrence": 1,
+              "occurrences": 1
+            }
+          ],
           "verseEdits": false,
           "nothingToSelect": false,
           "contextId": {
@@ -3435,7 +3451,13 @@
         {
           "comments": false,
           "reminders": false,
-          "selections": false,
+          "selections": [
+            {
+              "text": "amonestación",
+              "occurrence": 1,
+              "occurrences": 1
+            }
+          ],
           "verseEdits": false,
           "nothingToSelect": false,
           "contextId": {
@@ -3459,7 +3481,13 @@
         {
           "comments": false,
           "reminders": false,
-          "selections": false,
+          "selections": [
+            {
+              "text": "forma autocontrolada",
+              "occurrence": 1,
+              "occurrences": 1
+            }
+          ],
           "verseEdits": false,
           "nothingToSelect": false,
           "contextId": {
