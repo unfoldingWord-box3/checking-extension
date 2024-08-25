@@ -1864,10 +1864,12 @@ export function checkDataToTwl(checkData:{}) {
                 const Occurrence = `${contextId?.occurrence || ''}`;
                 const selections = item?.selections ? JSON.stringify(item?.selections) : ''
                 const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
+                const comments = ''
+                const bookmarks = ''
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, selections, TWLink
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks
                   },
                 )
             }
@@ -1876,10 +1878,10 @@ export function checkDataToTwl(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.selections, r.TWLink
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'selections', 'TWLink'
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks'
         ];
         twl.unshift(arrayToTsvLine(keys))
         
@@ -1938,10 +1940,12 @@ export function checkDataToTn(checkData:{}) {
                 const SupportReference = `rc://*/ta/man/translate/${groupId}`
                 const _note = contextId?.occurrenceNote || '';
                 const Note = `${_note}`;
+                const comments = ''
+                const bookmarks = ''
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, selections, Note
+                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, Note, selections, comments, bookmarks
                   },
                 )
             }
@@ -1950,10 +1954,10 @@ export function checkDataToTn(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.selections, r.TWLink
+            r.Reference,  r.ID, r.Tags, r.SupportReference, r.Quote, r.Occurrence, r.Note, r.selections, r.comments, r.bookmarks
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'selections', 'TWLink'
+            'Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note', 'selections', 'comments', 'bookmarks'
         ];
         twl.unshift(arrayToTsvLine(keys))
 
