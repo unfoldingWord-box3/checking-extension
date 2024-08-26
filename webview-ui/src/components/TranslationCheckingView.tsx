@@ -103,6 +103,7 @@ function TranslationCheckingView() {
     // @ts-ignore
     const haveChecks = hasResourceData(checks)
     const targetBible = CheckingObj.targetBible
+    let getSecretCallback:any
 
     const translate = (key:string) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key)
@@ -171,17 +172,66 @@ function TranslationCheckingView() {
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
         console.log(`handleMessage`, data)
-        
+
+        const update = (data: TnTSV) => {
+            setCheckingObj(data);
+        };
+
+        const getSecretResponse = (value: string|undefined) => {
+            if (getSecretCallback) {
+                getSecretCallback(value);
+                getSecretCallback = undefined // clear callback after use
+            } else {
+                console.error(`No handler for getSecret response`)
+            }
+        };
+
         const commandToFunctionMapping: CommandToFunctionMap = {
-            ["update"]: (data: TnTSV) => {
-                setCheckingObj(data);
-            },
-            // ["changeRef"]: (data: VerseRefGlobalState) =>
-            //     changeChapterVerse(data),
+            ["update"]: update,
+            ["getSecretResponse"]: getSecretResponse,
         };
 
         commandToFunctionMapping[command](data);
     };
+
+    const secretProvider = {
+        getItem: async (key:string) => {
+            let value = await getSecret(key)
+            if (value) {
+                value = JSON.parse(value)
+            }
+            return value
+        },
+        setItem: async (key:string, value:object) => {
+            const valueJson = value ? JSON.stringify(value) : ''
+            setSecret(key, valueJson)
+        },
+        removeItem: async (key:string) => {
+            setSecret(key, '')
+        }
+    }
+
+    async function setSecret(key:string, value:string) {
+        const promise = new Promise<string>((resolve) => {
+            getSecretCallback = resolve
+            vscode.postMessage({
+                command: "saveSecret",
+                text: "Save Secret",
+                data: value,
+            });
+        })
+    }
+    
+    async function getSecret(key:string) {
+        const promise = new Promise<string>((resolve) => {
+            getSecretCallback = resolve
+            vscode.postMessage({
+                command: "getSecret",
+                text: "Get Secret",
+                data: key,
+            });
+        })
+    }
 
     function sendFirstLoadMessage() {
         vscode.postMessage({
@@ -305,7 +355,9 @@ function TranslationCheckingView() {
 
     return (
       <>
-          <AuthContextProvider>
+          <AuthContextProvider
+            storageProvider={secretProvider}
+          >
               {/*<StoreContextProvider>*/}
               {content}
               {/*</StoreContextProvider>*/}
