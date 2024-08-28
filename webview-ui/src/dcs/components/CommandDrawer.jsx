@@ -20,7 +20,7 @@ import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authe
 // import Divider from '@material-ui/core/Divider'
 // import Button from '@material-ui/core/Button'
 
-export default function Drawer({
+export default function CommandDrawer({
   open,
   onOpen,
   onClose,
@@ -143,7 +143,7 @@ export default function Drawer({
   )
 }
 
-Drawer.propTypes = {
+CommandDrawer.propTypes = {
   open: PropTypes.bool,
   onOpen: PropTypes.func,
   onClose: PropTypes.func,

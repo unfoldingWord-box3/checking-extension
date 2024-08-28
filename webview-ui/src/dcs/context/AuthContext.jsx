@@ -1,4 +1,4 @@
-import React, { createContext, useState } from 'react'
+import React, { createContext, useEffect, useState } from "react";
 import localforage from 'localforage'
 import { AuthenticationContextProvider } from 'gitea-react-toolkit'
 import {
@@ -18,6 +18,7 @@ import useLocalStorage from '../hooks/useLocalStorage'
 import CustomDialog from "../components/CustomDialog";
 
 export const AuthContext = createContext({})
+export const AUTH_KEY = 'authentication';
 
 export default function AuthContextProvider(props) {
   const [authentication, setAuthentication] = useState(null)
@@ -26,6 +27,12 @@ export default function AuthContextProvider(props) {
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
   const defaultServer = QA_BASE_URL
   const [server, setServer] = useLocalStorage(SERVER_KEY, defaultServer)
+
+  useEffect(() => {
+    if (props.auth && (props.auth !== authentication)) {
+      setAuthentication(props.auth)
+    }
+  }, [props.auth])
 
   /**
    * in the case of a network error, process and display error dialog
@@ -70,7 +77,7 @@ export default function AuthContextProvider(props) {
   // }
 
   const getAuth = async () => {
-    const auth = await myStorageProvider.getItem('authentication')
+    const auth = await myStorageProvider.getItem(AUTH_KEY)
 
     if (auth) { // verify that auth is still valid
       doFetch(`${server}/api/v1/user`, auth, HTTP_GET_MAX_WAIT_TIME)
@@ -81,7 +88,7 @@ export default function AuthContextProvider(props) {
             console.log(`getAuth() - error fetching user info, status code ${httpCode}`)
 
             if (unAuthenticated(httpCode)) {
-              console.error(`getAuth() - user not authenticated, going to login`)
+              console.error(`getAuth() - user not authenticated, going to logout`)
               logout()
             } else {
               processError(null, httpCode)
@@ -102,9 +109,9 @@ export default function AuthContextProvider(props) {
 
   const saveAuth = async authentication => {
     if (authentication === undefined || authentication === null) {
-      await myStorageProvider.removeItem('authentication')
+      await myStorageProvider.removeItem(AUTH_KEY)
     } else {
-      await myStorageProvider.setItem('authentication', authentication)
+      await myStorageProvider.setItem(AUTH_KEY, authentication)
       console.info(
         'saveAuth() success. authentication user is:',
         authentication.user.login,
@@ -118,7 +125,7 @@ export default function AuthContextProvider(props) {
   }
 
   async function logout() {
-    await myStorageProvider.removeItem('authentication')
+    await myStorageProvider.removeItem(AUTH_KEY)
     setAuthentication(null)
   }
 

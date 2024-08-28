@@ -733,26 +733,32 @@ export class CheckingProvider implements CustomTextEditorProvider {
             return secretStorage
         }
         
-        const getSecret = async (text:string, key:string) => {
-            let value:string|undefined;
-            const secretStorage = getSecretStorage();
-            if (secretStorage && key) {
-                value = await secretStorage.get(key)
-            }
+        const getSecret = (text:string, data:object) => {
+            const _getSecret = async (text:string, key:string) => {
+                let value: string | undefined;
+                const secretStorage = getSecretStorage();
+                if (secretStorage && key) {
+                    value = await secretStorage.get(key);
+                }
 
-            // send back value
-            webviewPanel.webview.postMessage({
-                command: "getSecretResponse",
-                data: value,
-            } as TranslationCheckingPostMessages);
-            return value
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "getSecretResponse",
+                    data: value,
+                } as TranslationCheckingPostMessages);
+            }
+            // @ts-ignore
+            const key:string = data?.key || '';
+            _getSecret(text, key)
         }
 
-        const saveSecret = async (text:string, data:object) => {
+        const saveSecret = (text:string, data:object) => {
             const secretStorage = getSecretStorage();
-            const key = data?.key;
+            // @ts-ignore
+            const key:string = data?.key || '';
             if (secretStorage && key) {
-                await secretStorage.store(key, data?.value || '');
+                // @ts-ignore
+                secretStorage.store(key, data?.value || '');
             }
         }
 

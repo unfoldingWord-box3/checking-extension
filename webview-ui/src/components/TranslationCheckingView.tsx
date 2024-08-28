@@ -20,7 +20,10 @@ import MenuIcon from '@material-ui/icons/Menu'
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
-import Drawer from "../dcs/components/Drawer.jsx";
+import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
+// @ts-ignore
+const isEqual = require('deep-equal');
+
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -89,6 +92,7 @@ function TranslationCheckingView() {
     const [CheckingObj, setCheckingObj] = useState<ResourcesObject>({});
     const [currentContextId, setCurrentContextId] = useState<object>({});
     const [drawerOpen, setOpen] = useState(false)
+    const [auth, setAuth] = useState({ })
 
     const LexiconData:object = CheckingObj.lexicons;
     const translations:object = CheckingObj.locales
@@ -169,12 +173,21 @@ function TranslationCheckingView() {
         }
     }
 
+    async function initiData(data: TnTSV) {
+        setCheckingObj(data);
+        // @ts-ignore
+        const _auth = await secretProvider.getSecret(AuthContextProvider.AUTH_KEY)
+        if (!isEqual(auth, _auth)) {
+            setAuth(_auth);
+        }
+    }
+
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
         console.log(`handleMessage`, data)
 
         const update = (data: TnTSV) => {
-            setCheckingObj(data);
+            initiData(data);
         };
 
         const getSecretResponse = (value: string|undefined) => {
@@ -198,9 +211,10 @@ function TranslationCheckingView() {
         getItem: async (key:string) => {
             let value = await getSecret(key)
             if (value) {
-                value = JSON.parse(value)
+                const valueObj = JSON.parse(value)
+                return valueObj
             }
-            return value
+            return { }
         },
         setItem: async (key:string, value:object) => {
             const valueJson = value ? JSON.stringify(value) : ''
@@ -221,10 +235,15 @@ function TranslationCheckingView() {
             });
         })
     }
-    
-    async function getSecret(key:string) {
+
+    // @ts-ignore
+    async function getSecret(key:string):Promise<string> {
         const promise = new Promise<string>((resolve) => {
-            getSecretCallback = resolve
+            const callback = (value:string) => {
+                resolve(value)
+            }
+
+            getSecretCallback = callback
             vscode.postMessage({
                 command: "getSecret",
                 text: "Get Secret",
@@ -325,7 +344,7 @@ function TranslationCheckingView() {
                   </div>
               </Toolbar>
           </AppBar>
-          <Drawer
+          <CommandDrawer
             open={drawerOpen}
             onOpen={handleDrawerOpen}
             onClose={handleDrawerClose}
@@ -357,6 +376,7 @@ function TranslationCheckingView() {
       <>
           <AuthContextProvider
             storageProvider={secretProvider}
+            auth={auth}
           >
               {/*<StoreContextProvider>*/}
               {content}
