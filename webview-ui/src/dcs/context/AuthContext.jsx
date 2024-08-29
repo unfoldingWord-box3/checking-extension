@@ -20,6 +20,14 @@ import isEqual from 'deep-equal'
 export const AuthContext = createContext({})
 export const AUTH_KEY = 'authentication';
 
+function processAuthResponse(data) {
+  const results = processResponse(data) ? data : null
+  if (results?.user) {
+    return results
+  }
+  return null
+}
+
 function processResponse(data) {
   const results = data && Object.keys(data).length ? data : null
   return results
@@ -42,7 +50,7 @@ export default function AuthContextProvider(props) {
       const auth = await myStorageProvider.getItem(AUTH_KEY);
       const server = await myStorageProvider.getItem(SERVER_KEY);
 
-      const _auth = processResponse(auth)
+      const _auth = processAuthResponse(auth)
       if (!isEqual(authentication, _auth)) {
         setAuthentication(_auth);
       }
@@ -137,9 +145,14 @@ export default function AuthContextProvider(props) {
 
   const saveAuth = async authentication => {
     if (authentication === undefined || authentication === null) {
+      console.info('saveAuth() - not authenticated')
+      setAuthentication(null)
       await myStorageProvider.removeItem(AUTH_KEY)
     } else {
-      await myStorageProvider.setItem(AUTH_KEY, authentication)
+      setAuthentication(authentication)
+      if (authentication.remember) {
+        await myStorageProvider.setItem(AUTH_KEY, authentication);
+      }
       console.info(
         'saveAuth() success. authentication user is:',
         authentication.user.login,

@@ -735,10 +735,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const getSecret = (text:string, data:object) => {
             const _getSecret = async (text:string, key:string) => {
                 console.log(`getSecret: ${text}, ${data} - key ${key}`)
-                let value: string | undefined;
+                let valueObject: object | undefined;
                 const secretStorage = getSecretStorage();
                 if (secretStorage && key) {
-                    value = await secretStorage.get(key);
+                    const value = await secretStorage.get(key);
+                    valueObject = value && JSON.parse(value)
                 }
 
                 // send back value
@@ -746,7 +747,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     command: "getSecretResponse",
                     data: {
                         key,
-                        value,
+                        valueObject,
                     },
                 } as TranslationCheckingPostMessages);
             }
@@ -760,9 +761,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const secretStorage = getSecretStorage();
             // @ts-ignore
             const key:string = data?.key || '';
+            // @ts-ignore
+            const value = data?.value;
             if (secretStorage && key) {
                 // @ts-ignore
-                secretStorage.store(key, data?.value || '');
+                const valueObject = value ? JSON.stringify(value) : null
+                secretStorage.store(key, valueObject || '');
             }
         }
 

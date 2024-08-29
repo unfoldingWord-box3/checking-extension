@@ -97,16 +97,15 @@ function TranslationCheckingView() {
             const value = data?.value;
             return value
         },
-        setItem: async (key:string, value:object) => {
-            const valueJson = value ? JSON.stringify(value) : ''
-            await setSecret(key, valueJson)
+        setItem: async (key:string, value:any) => {
+            await setSecret(key, value)
         },
         removeItem: async (key:string) => {
             await setSecret(key, '')
         }
     }
 
-    async function setSecret(key:string, value:string) {
+    async function setSecret(key:string, value:any) {
         const promise = new Promise<string>((resolve) => {
              vscode.postMessage({
                 command: "saveSecret",
