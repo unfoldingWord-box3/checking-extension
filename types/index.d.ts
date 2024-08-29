@@ -9,6 +9,6 @@ export type ResourcesObject = {
   [key: string]: object;
 };
 
-type TranslationCheckingPostMessages =
+export type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
     | { command: "getSecretResponse"; data: string|undefined };

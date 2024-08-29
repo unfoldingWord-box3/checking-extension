@@ -14,7 +14,6 @@ import {
   processNetworkError,
   unAuthenticated,
 } from '../utils/network'
-import useLocalStorage from '../hooks/useLocalStorage'
 import CustomDialog from "../components/CustomDialog";
 
 export const AuthContext = createContext({})
@@ -26,13 +25,20 @@ export default function AuthContextProvider(props) {
   const [networkError, _setNetworkError] = useState(null)
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
   const defaultServer = QA_BASE_URL
-  const [server, setServer] = useLocalStorage(SERVER_KEY, defaultServer)
+  const [server, setServer] = useState(defaultServer)
+
+  const myStorageProvider = props.storageProvider || { }
 
   useEffect(() => {
-    if (props.auth && (props.auth !== authentication)) {
-      setAuthentication(props.auth)
+    async function initData() {
+      const auth = await myStorageProvider.getItem(AUTH_KEY);
+      const server = await myStorageProvider.getItem(SERVER_KEY);
+
+      setAuthentication(props.auth);
+      setServer(server)
     }
-  }, [props.auth])
+    initData()
+  }, [])
 
   /**
    * in the case of a network error, process and display error dialog
@@ -66,7 +72,6 @@ export default function AuthContextProvider(props) {
     showDialogContent(null)
   }
 
-  const myStorageProvider = props.storageProvider || { }
   // const myAuthStore = localforage.createInstance({
   //   driver: [localforage.INDEXEDDB],
   //   name: 'my-auth-store',

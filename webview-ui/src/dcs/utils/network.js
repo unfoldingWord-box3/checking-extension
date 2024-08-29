@@ -18,10 +18,21 @@ import {
   SERVER_OTHER_ERROR,
   SERVER_UNREACHABLE_ERROR,
 } from '../../common/constants'
-import { getLocalStorageItem, setLocalStorageValue } from '../hooks/useUserLocalStorage'
+// import { getLocalStorageItem, setLocalStorageValue } from '../hooks/useUserLocalStorage'
 
 export const NETWORK_DISCONNECT_ERROR = 'networkDisconnectError'
 export const SERVER_CHECK_SECOND_TRY_KEY = 'serverCheckSecondTry'
+
+function getLocalStorageItem(key) {
+  // TODO implement
+  console.log(`TODO getLocalStorageItem(${key})`)
+  return null
+}
+
+function setLocalStorageItem(key, value) {
+  // TODO implement
+  console.log(`TODO setLocalStorageItem(${key}, ${value})`)
+}
 
 export function getServerDisconnectMessage(errorMessage) {
   if (errorMessage === ERROR_NETWORK_DISCONNECTED) {

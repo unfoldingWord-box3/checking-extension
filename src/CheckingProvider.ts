@@ -45,8 +45,7 @@ import {
     getLanguagePrompts
 } from "./utilities/languages";
 // @ts-ignore
-var isEqual = require('deep-equal');
-
+import isEqual from 'deep-equal'
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
