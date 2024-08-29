@@ -15,30 +15,45 @@ import {
   unAuthenticated,
 } from '../utils/network'
 import CustomDialog from "../components/CustomDialog";
-
+// @ts-ignore
+import isEqual from 'deep-equal'
 export const AuthContext = createContext({})
 export const AUTH_KEY = 'authentication';
+
+function processResponse(data) {
+  const results = data && Object.keys(data).length ? data : null
+  return results
+}
 
 export default function AuthContextProvider(props) {
   const [authentication, setAuthentication] = useState(null)
   const [dialogContent, _setDialogContent] = useState(null)
   const [networkError, _setNetworkError] = useState(null)
+  const [initialized, setInitialized] = useState(false)
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
   const defaultServer = QA_BASE_URL
   const [server, setServer] = useState(defaultServer)
 
   const myStorageProvider = props.storageProvider || { }
+  const ready = props.ready
 
   useEffect(() => {
     async function initData() {
       const auth = await myStorageProvider.getItem(AUTH_KEY);
       const server = await myStorageProvider.getItem(SERVER_KEY);
 
-      setAuthentication(props.auth);
-      setServer(server)
+      const _auth = processResponse(auth)
+      if (!isEqual(authentication, _auth)) {
+        setAuthentication(_auth);
+      }
+      const _server = processResponse(server) || defaultServer
+      setServer(_server)
+      setInitialized(true)
     }
-    initData()
-  }, [])
+    if (ready) {
+      initData();
+    }
+  }, [ready])
 
   /**
    * in the case of a network error, process and display error dialog
@@ -82,34 +97,42 @@ export default function AuthContextProvider(props) {
   // }
 
   const getAuth = async () => {
-    const auth = await myStorageProvider.getItem(AUTH_KEY)
+    if (initialized) {
+      let auth
+      if (!authentication?.user) {
+        auth = await myStorageProvider.getItem(AUTH_KEY);
+      } else {
+        auth = authentication
+      }
 
-    if (auth) { // verify that auth is still valid
-      doFetch(`${server}/api/v1/user`, auth, HTTP_GET_MAX_WAIT_TIME)
-        .then(response => {
-          const httpCode = response?.status || 0
+      if (auth) { // verify that auth is still valid
+        doFetch(`${server}/api/v1/user`, auth, HTTP_GET_MAX_WAIT_TIME)
+          .then(response => {
+            const httpCode = response?.status || 0;
 
-          if (httpCode !== 200) {
-            console.log(`getAuth() - error fetching user info, status code ${httpCode}`)
+            if (httpCode !== 200) {
+              console.log(`getAuth() - error fetching user info, status code ${httpCode}`);
 
-            if (unAuthenticated(httpCode)) {
-              console.error(`getAuth() - user not authenticated, going to logout`)
-              logout()
-            } else {
-              processError(null, httpCode)
+              if (unAuthenticated(httpCode)) {
+                console.error(`getAuth() - user not authenticated, going to logout`);
+                logout();
+              } else {
+                processError(null, httpCode);
+              }
             }
-          }
-        }).catch(e => {
-          if (e.toString().includes('401')) { // check if 401 code in exception
-            console.error(`getAuth() - user token expired`)
-            logout()
+          }).catch(e => {
+          if (e.toString().includes("401")) { // check if 401 code in exception
+            console.error(`getAuth() - user token expired`);
+            logout();
           } else {
-            console.warn(`getAuth() - hard error fetching user info, error=`, e)
-            processError(e)
+            console.warn(`getAuth() - hard error fetching user info, error=`, e);
+            processError(e);
           }
-        })
+        });
+      }
+      return auth;
     }
-    return auth
+    return null
   }
 
   const saveAuth = async authentication => {

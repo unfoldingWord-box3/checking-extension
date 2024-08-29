@@ -52,7 +52,7 @@ export async function getServerFault() {
   try {
     // on retry we set longer timeout
     const secondTry = getLocalStorageItem(SERVER_CHECK_SECOND_TRY_KEY)
-    setLocalStorageValue(SERVER_CHECK_SECOND_TRY_KEY, false) // clear flag
+    setLocalStorageItem(SERVER_CHECK_SECOND_TRY_KEY, false) // clear flag
     const timeout = secondTry ? HTTP_GET_MAX_WAIT_TIME : SERVER_MAX_WAIT_TIME_RETRY
     await checkIfServerOnline(getLocalStorageItem(SERVER_KEY), { timeout }) // throws exception if server disconnected
     return null
@@ -203,7 +203,7 @@ export function unAuthenticated(httpCode) {
  * @param {object} networkError - contains details about how to display and handle network error - created by processNetworkError
  */
 export function reloadApp(networkError) {
-  setLocalStorageValue(SERVER_CHECK_SECOND_TRY_KEY, true) // we will do longer wait on retry
+  setLocalStorageItem(SERVER_CHECK_SECOND_TRY_KEY, true) // we will do longer wait on retry
   networkError?.router?.reload()
 }
 

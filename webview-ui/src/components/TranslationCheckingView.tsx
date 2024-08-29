@@ -54,11 +54,11 @@ const useStyles = makeStyles(theme => ({
     },
 }))
 
+let getSecretCallback:any = null
 
 console.log("TranslationCheckingView.tsx")
 
 function TranslationCheckingView() {
-    let getSecretCallback:any
     const [checkingObj, setCheckingObj] = useState<ResourcesObject>({});
 
     async function initiData(data: TnTSV) {
@@ -92,12 +92,10 @@ function TranslationCheckingView() {
 
     const secretProvider = {
         getItem: async (key:string) => {
-            let value = await getSecret(key)
-            if (value) {
-                const valueObj = JSON.parse(value)
-                return valueObj
-            }
-            return { }
+            let data = await getSecret(key)
+            // @ts-ignore
+            const value = data?.value;
+            return value
         },
         setItem: async (key:string, value:object) => {
             const valueJson = value ? JSON.stringify(value) : ''
@@ -113,26 +111,24 @@ function TranslationCheckingView() {
              vscode.postMessage({
                 command: "saveSecret",
                 text: "Save Secret",
-                data: value,
+                data: { key, value },
             });
             resolve(value)
         })
+        return promise
     }
 
     // @ts-ignore
     async function getSecret(key:string):Promise<string> {
         const promise = new Promise<string>((resolve) => {
-            const callback = (value:string) => {
-                resolve(value)
-            }
-
-            getSecretCallback = callback
+            getSecretCallback = resolve
             vscode.postMessage({
                 command: "getSecret",
                 text: "Get Secret",
-                data: key,
+                data: { key }
             });
         })
+        return promise
     }
 
     function sendFirstLoadMessage() {
@@ -155,6 +151,7 @@ function TranslationCheckingView() {
       <>
           <AuthContextProvider
             storageProvider={secretProvider}
+            ready={!!(checkingObj && Object.keys(checkingObj).length)}
           >
               {/*<StoreContextProvider>*/}
               <TranslationChecking

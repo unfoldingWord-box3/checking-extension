@@ -11,4 +11,4 @@ export type ResourcesObject = {
 
 export type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
-    | { command: "getSecretResponse"; data: string|undefined };
+    | { command: "getSecretResponse"; data: object };

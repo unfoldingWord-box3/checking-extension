@@ -734,6 +734,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
         const getSecret = (text:string, data:object) => {
             const _getSecret = async (text:string, key:string) => {
+                console.log(`getSecret: ${text}, ${data} - key ${key}`)
                 let value: string | undefined;
                 const secretStorage = getSecretStorage();
                 if (secretStorage && key) {
@@ -743,7 +744,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 // send back value
                 webviewPanel.webview.postMessage({
                     command: "getSecretResponse",
-                    data: value,
+                    data: {
+                        key,
+                        value,
+                    },
                 } as TranslationCheckingPostMessages);
             }
             // @ts-ignore
@@ -752,6 +756,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
 
         const saveSecret = (text:string, data:object) => {
+            console.log(`saveSecret: ${text}`)
             const secretStorage = getSecretStorage();
             // @ts-ignore
             const key:string = data?.key || '';
@@ -763,6 +768,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
+            // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: updateWebview,
