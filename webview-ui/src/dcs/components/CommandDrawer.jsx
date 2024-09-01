@@ -58,7 +58,10 @@ export default function CommandDrawer({
   }
 
   async function onLogout() {
-    const okToContinue = await checkUnsavedChanges()
+    let okToContinue = true
+    if (checkUnsavedChanges) {
+      okToContinue = await checkUnsavedChanges();
+    }
 
     if (okToContinue) {
       logout()

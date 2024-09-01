@@ -34,7 +34,7 @@ function processResponse(data) {
 }
 
 export default function AuthContextProvider(props) {
-  const [authentication, setAuthentication] = useState(null)
+  const [authentication, _setAuthentication] = useState(null)
   const [dialogContent, _setDialogContent] = useState(null)
   const [networkError, _setNetworkError] = useState(null)
   const [initialized, setInitialized] = useState(false)
@@ -92,7 +92,7 @@ export default function AuthContextProvider(props) {
     if (networkError) {
       _setNetworkError(null);
     }
-    showDialogContent(null)
+    _setDialogContent(null);
   }
 
   // const myAuthStore = localforage.createInstance({
@@ -145,14 +145,13 @@ export default function AuthContextProvider(props) {
 
   const saveAuth = async authentication => {
     if (authentication === undefined || authentication === null) {
-      console.info('saveAuth() - not authenticated')
-      setAuthentication(null)
+      console.info(`saveAuth() - authenticated, but don't save`)
       await myStorageProvider.removeItem(AUTH_KEY)
     } else {
-      setAuthentication(authentication)
       if (authentication.remember) {
         await myStorageProvider.setItem(AUTH_KEY, authentication);
       }
+      _setDialogContent(null);
       console.info(
         'saveAuth() success. authentication user is:',
         authentication.user.login,
@@ -167,7 +166,13 @@ export default function AuthContextProvider(props) {
 
   async function logout() {
     await myStorageProvider.removeItem(AUTH_KEY)
+    saveAuth(null)
     setAuthentication(null)
+  }
+
+  function setAuthentication(authentication) {
+    console.info(`setAuthentication() - authenticated = ${!!authentication}`)
+    _setAuthentication(authentication)
   }
 
   const value = {
