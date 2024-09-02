@@ -99,7 +99,7 @@ export class TranslationCheckingPanel {
       <html lang="en">
         <head>
           <meta charset="UTF-8" />
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src https://*.vscode-resource.vscode-cdn.net ${webview.cspSource}; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'unsafe-inline' 'unsafe-eval' ${webview.cspSource};">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src https://*.vscode-resource.vscode-cdn.net ${webview.cspSource}; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'unsafe-inline' 'unsafe-eval' ${webview.cspSource}; connect-src 'self' https:;">
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <link rel="stylesheet" type="text/css" href="${stylesUri}">
           <title>Translation Notes</title>

@@ -5,6 +5,7 @@ import {
     CustomTextEditorProvider,
     Disposable,
     ExtensionContext,
+    SecretStorage,
     TextDocument,
     WebviewPanel,
     window,
@@ -44,8 +45,7 @@ import {
     getLanguagePrompts
 } from "./utilities/languages";
 // @ts-ignore
-var isEqual = require('deep-equal');
-
+import isEqual from 'deep-equal'
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -89,6 +89,8 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
 export class CheckingProvider implements CustomTextEditorProvider {
 
     public static currentState = {}
+
+    constructor(private readonly context: ExtensionContext) {}
 
     public static register(context: ExtensionContext):Disposable[]
     {
@@ -422,7 +424,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
         return workspaceFolder
     }
-    
+
     private static async initializeChecker(navigateToFolder = false) {
         await showInformationMessage("initializing Checker");
         const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
@@ -669,9 +671,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static readonly viewType = "checking-extension.translationChecker";
-
-    constructor(private readonly context: ExtensionContext) {}
-
     /**
      * Called when our custom editor is opened.
      */
@@ -723,15 +722,71 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         };
 
+        let secretStorage:SecretStorage|null = null
+
+        const getSecretStorage = () => {
+            if (!secretStorage) {
+                secretStorage = this.context.secrets;
+            }
+
+            return secretStorage
+        }
+        
+        const getSecret = (text:string, data:object) => {
+            const _getSecret = async (text:string, key:string) => {
+                console.log(`getSecret: ${text}, ${data} - key ${key}`)
+                let valueObject: object | undefined;
+                const secretStorage = getSecretStorage();
+                if (secretStorage && key) {
+                    const value = await secretStorage.get(key);
+                    valueObject = value && JSON.parse(value)
+                }
+
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "getSecretResponse",
+                    data: {
+                        key,
+                        valueObject,
+                    },
+                } as TranslationCheckingPostMessages);
+            }
+            // @ts-ignore
+            const key:string = data?.key || '';
+            _getSecret(text, key)
+        }
+
+        const saveSecret = (text:string, data:object) => {
+            console.log(`saveSecret: ${text}`)
+            const secretStorage = getSecretStorage();
+            // @ts-ignore
+            const key:string = data?.key || '';
+            // @ts-ignore
+            const value = data?.value;
+            if (secretStorage && key) {
+                // @ts-ignore
+                const valueObject = value ? JSON.stringify(value) : null
+                secretStorage.store(key, valueObject || '');
+            }
+        }
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
+            // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: updateWebview,
                 ["saveSelection"]: saveSelection,
+                ["getSecret"]: getSecret,
+                ["saveSecret"]: saveSecret,
             };
 
-            commandToFunctionMapping[command](text, data);
+            const commandFunction = commandToFunctionMapping[command];
+            if (commandFunction) {
+                commandFunction(text, data);
+            } else {
+                console.error(`Command ${command}: ${text} has no handler`)
+            }
         };
 
         new TranslationCheckingPanel(
