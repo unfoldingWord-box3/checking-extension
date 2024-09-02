@@ -36,8 +36,8 @@ importers:
         specifier: ^3.0.9
         version: 3.1.6
       gitea-react-toolkit:
-        specifier: 2.4.1-rc
-        version: 2.4.1-rc(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 2.4.1
+        version: 2.4.1(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       localforage:
         specifier: ^1.10.0
         version: 1.10.0
@@ -1279,8 +1279,8 @@ packages:
     resolution: {integrity: sha512-5uYhsJH8VJBTv7oslg4BznJYhDoRI6waYCxMmCdnTrcCrHA/fCFKoTFz2JKKE0HdDFUF7/oQuhzumXJK7paBRQ==, tarball: https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.2.4.tgz}
     engines: {node: '>= 0.4'}
 
-  gitea-react-toolkit@2.4.1-rc:
-    resolution: {integrity: sha512-M65sAx+OS7yYr+wvkHg3NZ5tF+XuNqyDPqBi6S59IMl14PjPiqEl7IZZWPanOStSFEERMjeCOnwE2OcAmd3/VA==, tarball: https://registry.npmjs.org/gitea-react-toolkit/-/gitea-react-toolkit-2.4.1-rc.tgz}
+  gitea-react-toolkit@2.4.1:
+    resolution: {integrity: sha512-ZLX4WkHfpiK8IVZMT8yGTDnKR2Sb4mFtxhgqDU6+2fBLocHIa7ebC4Qa3ItlOAJYAZ+qBp/9HQwUQCrmS3WY4A==, tarball: https://registry.npmjs.org/gitea-react-toolkit/-/gitea-react-toolkit-2.4.1.tgz}
     peerDependencies:
       '@material-ui/core': ^4.7.0
       '@material-ui/icons': ^4.9.1
@@ -3479,7 +3479,7 @@ snapshots:
       has-symbols: 1.0.3
       hasown: 2.0.2
 
-  gitea-react-toolkit@2.4.1-rc(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  gitea-react-toolkit@2.4.1(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@material-ui/core': 4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
