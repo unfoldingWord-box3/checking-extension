@@ -15,7 +15,8 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 import TranslationChecking from "./TranslationChecking";
-
+// @ts-ignore
+import isEqual from 'deep-equal'
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -61,8 +62,10 @@ console.log("TranslationCheckingView.tsx")
 function TranslationCheckingView() {
     const [checkingObj, setCheckingObj] = useState<ResourcesObject>({});
 
-    async function initiData(data: TnTSV) {
-        setCheckingObj(data);
+    async function initData(data: TnTSV) {
+        if (!isEqual(checkingObj?.project, data?.project)) {
+            setCheckingObj(data);
+        }
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -70,7 +73,7 @@ function TranslationCheckingView() {
         console.log(`handleMessage`, data)
 
         const update = (data: TnTSV) => {
-            initiData(data);
+            initData(data);
         };
 
         const getSecretResponse = (value: string|undefined) => {
