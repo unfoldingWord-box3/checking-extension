@@ -150,13 +150,6 @@ function TranslationCheckingView() {
     }, []);
 
     function saveSelection(newState:{}) { // send message back to extension to save new selection to file
-        vscode.postMessage({
-            command: "saveSelection",
-            text: "Webview save selection",
-            data: newState,
-        });
-        // setCheckingObj(newState)
-
         // @ts-ignore
         const newSelections = newState && newState.selections
         // @ts-ignore
@@ -165,7 +158,7 @@ function TranslationCheckingView() {
         const checks = checkingObj?.checks;
         // @ts-ignore
         const { check, catagoryId, groupId, index } = findCheckToUpdate(currentContextId, checks)
-        if (check && catagoryId && groupId) {
+        if (check && catagoryId && groupId) { // TRICKY: do shallow copy of section of checkingObj and modify matched check
             const newCheckingObj = {...checkingObj}
             // @ts-ignore
             const newChecks = {...newCheckingObj?.checks}
@@ -191,8 +184,19 @@ function TranslationCheckingView() {
             newItem.selections = newSelections
             setCheckingObj(newCheckingObj)
         }
+
+        vscode.postMessage({
+            command: "saveSelection",
+            text: "Webview save selection",
+            data: newState,
+        });
     }
 
+    /**
+     * search checkingData for check that matches currentContextId and return location within checkingData
+     * @param currentContextId
+     * @param checkingData
+     */
     function findCheckToUpdate(currentContextId:{}, checkingData:{}) {
         let foundCheck:null|object = null;
         let foundCatagoryId = '';

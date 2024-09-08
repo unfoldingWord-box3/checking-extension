@@ -878,8 +878,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * search checkingData for check that matches currentContextId and return location within checkingData
+     * @param currentContextId
+     * @param checkingData
+     */
     private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
-        let foundCheck;
+        let foundCheck:null|object = null;
         if (currentContextId && checkingData) {
             // @ts-ignore
             const _checkId = currentContextId?.checkId;
@@ -891,31 +896,34 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const _occurrence = currentContextId?.occurrence;
             // @ts-ignore
             const _reference = currentContextId?.reference;
-            for (const groupId of Object.keys(checkingData)) {
-                if (groupId === 'manifest') { // skip over manifest
+            for (const catagoryId of Object.keys(checkingData)) {
+                if (catagoryId === 'manifest') { // skip over manifest
                     continue
                 }
                 // @ts-ignore
-                const groups = checkingData[groupId]?.groups || {};
-                for (const checkId of Object.keys(groups)) {
-                    const checks: object[] = groups[checkId];
-                    foundCheck = checks.find(item => {
-                        // @ts-ignore
-                        const contextId = item?.contextId;
-                        // @ts-ignore
-                        if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
-                            if (isEqual(_reference, contextId?.reference)) {
-                                if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
-                                    return true;
-                                }
+                const groups = checkingData[catagoryId]?.groups || {};
+                const currentGroup = groups[_groupId]
+                
+                if (!currentGroup) continue // if current groupId is not contained, then skip to next catagory
+                
+                const checks: object[] = currentGroup;
+                const index = checks.findIndex(item => {
+                    // @ts-ignore
+                    const contextId = item?.contextId;
+                    // @ts-ignore
+                    if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
+                        if (isEqual(_reference, contextId?.reference)) {
+                            if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                return true;
                             }
                         }
-                        return false;
-                    });
-
-                    if (foundCheck) {
-                        break;
                     }
+                    return false;
+                });
+
+                if (index >= 0) {
+                    foundCheck = checks[index]
+                    break;
                 }
 
                 if (foundCheck) {
