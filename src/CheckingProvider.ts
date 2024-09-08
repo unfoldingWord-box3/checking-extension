@@ -681,7 +681,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
     ): Promise<void> {
         // Setup initial content for the webview
         const assetsPath = vscode.Uri.joinPath(this.context.extensionUri, 'webview-ui/build/assets');
-        let lastFilePath:string|null = null
         this.fixCSS(assetsPath);
 
         webviewPanel.webview.options = {
@@ -697,11 +696,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
          * @param firstLoad - true if this is an initial load, otherwise just a change of document content which will by handled by the webview
          */
         const updateWebview = (firstLoad:boolean) => {
-            const checkingResources = this.getCheckingResources(document);
             if (firstLoad) { // only update if file changed
                 webviewPanel.webview.postMessage({
                     command: "update",
-                    data: checkingResources,
+                    data: this.getCheckingResources(document),
                 } as TranslationCheckingPostMessages);
             } else {
                 console.log(`updateWebview - not first load`)
