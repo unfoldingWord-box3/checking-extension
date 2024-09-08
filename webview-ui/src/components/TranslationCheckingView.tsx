@@ -14,7 +14,7 @@ import MenuIcon from '@material-ui/icons/Menu'
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
-import TranslationChecking from "./TranslationChecking";
+import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'
 
@@ -148,7 +148,117 @@ function TranslationCheckingView() {
             window.removeEventListener("message", handleMessage);
         };
     }, []);
-    
+
+    function saveSelection(newState:{}) { // send message back to extension to save new selection to file
+        vscode.postMessage({
+            command: "saveSelection",
+            text: "Webview save selection",
+            data: newState,
+        });
+        // setCheckingObj(newState)
+
+        // @ts-ignore
+        const newSelections = newState && newState.selections
+        // @ts-ignore
+        const currentContextId = newState && newState.currentContextId
+        // @ts-ignore
+        const checks = checkingObj?.checks;
+        // @ts-ignore
+        const { check, catagoryId, groupId, index } = findCheckToUpdate(currentContextId, checks)
+        if (check && catagoryId && groupId) {
+            const newCheckingObj = {...checkingObj}
+            // @ts-ignore
+            const newChecks = {...newCheckingObj?.checks}
+            // @ts-ignore
+            newCheckingObj.checks = newChecks
+            // @ts-ignore
+            const newCatagory = { ...newChecks[catagoryId] }
+            // @ts-ignore
+            newChecks[catagoryId] = newCatagory
+            // @ts-ignore
+            const newGroups = { ...newCatagory.groups }
+            // @ts-ignore
+            newCatagory.groups = newGroups
+            // @ts-ignore
+            const newGroup = [ ...newGroups[groupId] ]
+            // @ts-ignore
+            newGroups[groupId] = newGroup
+            // @ts-ignore
+            const newItem = { ...newGroup[index] }
+            // @ts-ignore
+            newGroup[index] = newItem
+            // @ts-ignore
+            newItem.selections = newSelections
+            setCheckingObj(newCheckingObj)
+        }
+    }
+
+    function findCheckToUpdate(currentContextId:{}, checkingData:{}) {
+        let foundCheck:null|object = null;
+        let foundCatagoryId = '';
+        let foundGroupId = '';
+        let foundIndex = -1;
+        if (currentContextId && checkingData) {
+            // @ts-ignore
+            const _checkId = currentContextId?.checkId;
+            // @ts-ignore
+            const _groupId = currentContextId?.groupId;
+            // @ts-ignore
+            const _quote = currentContextId?.quote;
+            // @ts-ignore
+            const _occurrence = currentContextId?.occurrence;
+            // @ts-ignore
+            const _reference = currentContextId?.reference;
+            for (const catagoryId of Object.keys(checkingData)) {
+                if (catagoryId === 'manifest') { // skip over manifest
+                    continue
+                }
+                // @ts-ignore
+                const groups = checkingData[catagoryId]?.groups || {};
+                const currentGroup = groups[_groupId]
+                
+                if (!currentGroup) continue // if current groupId is not contained, then skip to next catagory
+                
+                const checks: object[] = currentGroup;
+                const index = checks.findIndex(item => {
+                    // @ts-ignore
+                    const contextId = item?.contextId;
+                    // @ts-ignore
+                    if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
+                        if (isEqual(_reference, contextId?.reference)) {
+                            if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                });
+
+                if (index >= 0) {
+                    foundCheck = checks[index]
+                    foundCatagoryId = catagoryId;
+                    foundGroupId = _groupId;
+                    foundIndex = index
+                    break;
+                }
+                
+                if (foundCheck) {
+                    break;
+                }
+            }
+        }
+
+        if(!foundCheck) {
+            console.warn(`findCheckToUpdate - check not found`, currentContextId)
+        }
+        return {
+            check: foundCheck,
+            catagoryId: foundCatagoryId,
+            groupId: foundGroupId,
+            index: foundIndex,
+        };
+    }
+
     return (
       <>
           <AuthContextProvider
@@ -156,8 +266,9 @@ function TranslationCheckingView() {
             ready={!!(checkingObj && Object.keys(checkingObj).length)}
           >
               {/*<StoreContextProvider>*/}
-              <TranslationChecking
+              <TranslationCheckingPane
                 checkingObj={checkingObj}
+                saveSelection={saveSelection}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

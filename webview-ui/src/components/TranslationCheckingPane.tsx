@@ -57,7 +57,7 @@ const useStyles = makeStyles(theme => ({
 }))
 
 
-console.log("TranslationChecking.tsx")
+console.log("TranslationCheckingPane.tsx")
 
 /**
  * make sure resource has content data other than manifest
@@ -75,13 +75,16 @@ function hasResourceData(resource:object) {
 }
 
 type GetLexiconDataFunction = (lexiconId:string, entryId:string) => { };
+type SaveSelectionFunction = (resources: ResourcesObject) => void;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
+    saveSelection: SaveSelectionFunction;
 };
 
-const TranslationChecking: React.FC<TranslationCheckingProps> = ({
-  checkingObj
+const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
+  checkingObj,
+  saveSelection
  }) => {
     const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
@@ -125,7 +128,8 @@ const TranslationChecking: React.FC<TranslationCheckingProps> = ({
         // @ts-ignore
         const nextContextId = newState && newState.nextContextId
         currentContextId && setCurrentContextId(nextContextId)
-        saveSelectionMessage(newState)
+        // @ts-ignore
+        saveSelection(newState)
     }
 
     const contextId = currentContextId || {}
@@ -165,14 +169,6 @@ const TranslationChecking: React.FC<TranslationCheckingProps> = ({
             id: bookId,
             name: bookName
         }
-    }
-    
-    function saveSelectionMessage(newState:{}) { // send message back to extension to save new selection to file
-        vscode.postMessage({
-            command: "saveSelection",
-            text: "Webview save selection",
-            data: newState,
-        });
     }
     
     const handleDrawerOpen = () => {
@@ -260,4 +256,4 @@ const TranslationChecking: React.FC<TranslationCheckingProps> = ({
     ) : getResourceMissingErrorMsg(checkingObj);
 }
 
-export default TranslationChecking;
+export default TranslationCheckingPane;

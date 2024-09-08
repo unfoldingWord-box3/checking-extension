@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { ResourcesInfo, TranslationCheckingPostMessages } from "../types";
 import {
     cleanUpFailedCheck,
     delay,
@@ -681,6 +681,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     ): Promise<void> {
         // Setup initial content for the webview
         const assetsPath = vscode.Uri.joinPath(this.context.extensionUri, 'webview-ui/build/assets');
+        let lastFilePath:string|null = null
         this.fixCSS(assetsPath);
 
         webviewPanel.webview.options = {
@@ -691,11 +692,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
             ],
         };
 
+        /**
+         * called whenever source document file path changes or content changes
+         */
         const updateWebview = () => {
-            webviewPanel.webview.postMessage({
-                command: "update",
-                data: this.getCheckingResources(document),
-            } as TranslationCheckingPostMessages);
+            const {
+                filePath,
+                resources
+            } = this.getCheckingResources(document);
+            if (filePath !== lastFilePath) { // only update if file changed
+                lastFilePath = filePath
+                webviewPanel.webview.postMessage({
+                    command: "update",
+                    data: resources,
+                } as TranslationCheckingPostMessages);
+            } else {
+                console.log(`updateWebview - filePath unchanged ${filePath}`)
+            }
         };
 
         const saveSelection = (text:string, newState:{}) => {
@@ -922,15 +935,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
      *
      * @TODO Use this function to turn doc text into ScriptureTSV!
      */
-    private getCheckingResources(document: TextDocument):ResourcesObject {
+    private getCheckingResources(document: TextDocument):ResourcesInfo {
+        const errorReturn = {
+            filePath: null,
+            resources: {}
+        }
         let checks = document.getText();
         if (checks.trim().length === 0) {
-            return {};
+            return errorReturn;
         }
 
         const filePath = document.fileName;
         if (!filePath) {
-            return {};
+            return errorReturn;
         }
 
         try {
@@ -938,13 +955,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
             checks = JSON.parse(checks)
             // @ts-ignore
             resources.checks = checks
-            return resources;
+            return {
+                filePath,
+                resources
+            };
         } catch {
             throw new Error(
-                "Could not get document as json. Content is not valid check file in json format",
+                "getCheckingResources - Could not get document as json. Content is not valid check file in json format",
             );
         }
-        return { }
+        return errorReturn
     }
 
     private updateChecks(document: TextDocument, checkingData:object) {
