@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { ResourcesInfo, TranslationCheckingPostMessages } from "../types";
+import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     cleanUpFailedCheck,
     delay,
@@ -694,20 +694,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         /**
          * called whenever source document file path changes or content changes
+         * @param firstLoad - true if this is an initial load, otherwise just a change of document content which will by handled by the webview
          */
-        const updateWebview = () => {
-            const {
-                filePath,
-                resources
-            } = this.getCheckingResources(document);
-            if (filePath !== lastFilePath) { // only update if file changed
-                lastFilePath = filePath
+        const updateWebview = (firstLoad:boolean) => {
+            const checkingResources = this.getCheckingResources(document);
+            if (firstLoad) { // only update if file changed
                 webviewPanel.webview.postMessage({
                     command: "update",
-                    data: resources,
+                    data: checkingResources,
                 } as TranslationCheckingPostMessages);
             } else {
-                console.log(`updateWebview - filePath unchanged ${filePath}`)
+                console.log(`updateWebview - not first load`)
             }
         };
 
@@ -783,12 +780,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         }
 
+        const firstLoad = (text:string, data:object) => {
+            console.log(`firstLoad: ${text}`)
+            updateWebview(true)
+        }
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
-                ["loaded"]: updateWebview,
+                ["loaded"]: firstLoad,
                 ["saveSelection"]: saveSelection,
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
@@ -818,7 +820,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const changeDocumentSubscription = workspace.onDidChangeTextDocument(
             (e) => {
                 if (e.document.uri.toString() === document.uri.toString()) {
-                    updateWebview();
+                    updateWebview(false);
                 }
             },
         );
@@ -940,22 +942,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     /**
      * Try to get a current document as a scripture TSV object
-     *
-     * @TODO Use this function to turn doc text into ScriptureTSV!
      */
-    private getCheckingResources(document: TextDocument):ResourcesInfo {
-        const errorReturn = {
-            filePath: null,
-            resources: {}
-        }
+    private getCheckingResources(document: TextDocument):ResourcesObject {
         let checks = document.getText();
         if (checks.trim().length === 0) {
-            return errorReturn;
+            return {};
         }
 
         const filePath = document.fileName;
         if (!filePath) {
-            return errorReturn;
+            return {};
         }
 
         try {
@@ -963,16 +959,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
             checks = JSON.parse(checks)
             // @ts-ignore
             resources.checks = checks
-            return {
-                filePath,
-                resources
-            };
+            return resources;
         } catch {
             throw new Error(
                 "getCheckingResources - Could not get document as json. Content is not valid check file in json format",
             );
         }
-        return errorReturn
+        return { }
     }
 
     private updateChecks(document: TextDocument, checkingData:object) {
