@@ -1263,6 +1263,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     const projectResources = `.${sep}.resources${sep}`;
     const bibleId = bible.bibleId || bible.id;
     let biblePath = bible.path;
+    let localChanged = false;
     if (!biblePath) {
         // look first in projects folders
         biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner);
@@ -1278,17 +1279,17 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         }
         
         if (biblePath) {
-            changed = true // need to save bible path
+            localChanged = true // need to save bible path
             bible.path = biblePath;
             // @ts-ignore
             metadata.otherResources[bibleId] = bible;
         }
     }
 
-    if (isHomePath(biblePath) || !bible.path) {
+    if (isHomePath(biblePath) || !bible.path || localChanged) {
         const matchBase = `~${sep}translationCore${sep}otherProjects${sep}cache${sep}`;
         const matchedBase = biblePath.substring(0, matchBase.length) === matchBase;
-        if (matchedBase || !bible.path) {
+        if (matchedBase || !bible.path || localChanged) {
             const cacheFolder = `${sep}cache${sep}`;
             const parts = biblePath.split(cacheFolder);
             if (parts.length >= 2) {
@@ -1302,7 +1303,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                         const parentDir = path.join(dest, "..");
                         fs.ensureDirSync(parentDir);
                         fs.copySync(src, dest);
-                        changed = true;
+                        localChanged = true;
                     }
                     biblePath = newPath;
                     bible.path = biblePath;
@@ -1324,7 +1325,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
             }
         }
     }
-    return { bibleId, biblePath, changed };
+    return { bibleId, biblePath, changed: changed || localChanged };
 }
 
 /**
