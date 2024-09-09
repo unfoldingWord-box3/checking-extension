@@ -219,11 +219,11 @@ function TranslationCheckingView() {
                 }
                 // @ts-ignore
                 const groups = checkingData[catagoryId]?.groups || {};
-                const currentGroup = groups[_groupId]
+                const desiredGroup = groups[_groupId]
                 
-                if (!currentGroup) continue // if current groupId is not contained, then skip to next catagory
+                if (!desiredGroup) continue // if desired group is not in this category, then skip to next category
                 
-                const checks: object[] = currentGroup;
+                const checks: object[] = desiredGroup;
                 const index = checks.findIndex(item => {
                     // @ts-ignore
                     const contextId = item?.contextId;
