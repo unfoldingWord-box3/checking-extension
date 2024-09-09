@@ -105,7 +105,7 @@ export class TranslationCheckingPanel {
           <title>Translation Notes</title>
           <link href="${codiconFontUri}" rel="stylesheet" />
         </head>
-        <body>
+        <body style="overflow-y: auto;">
           <div id="root"></div>
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </body>

@@ -105,25 +105,25 @@ export default function CommandDrawer({
           </h1>
         </div>
       )}
+      {/*<List disablePadding>*/}
+      {/*  <ListItem button key={'Account Settings'} onClick={onSettingsClick}>*/}
+      {/*    <ListItemIcon>*/}
+      {/*      <SettingsIcon />*/}
+      {/*    </ListItemIcon>*/}
+      {/*    <ListItemText primary={'Account Settings'} />*/}
+      {/*  </ListItem>*/}
+      {/*</List>*/}
       <List disablePadding>
-        <ListItem button key={'Account Settings'} onClick={onSettingsClick}>
-          <ListItemIcon>
-            <SettingsIcon />
-          </ListItemIcon>
-          <ListItemText primary={'Account Settings'} />
-        </ListItem>
-      </List>
-      <List disablePadding>
-        <ListItem
-          button
-          key={'Bug Report or Feedback'}
-          onClick={onFeedbackClick}
-        >
-          <ListItemIcon>
-            <BugReportIcon />
-          </ListItemIcon>
-          <ListItemText primary={'Bug Report or Feedback'} />
-        </ListItem>
+        {/*<ListItem*/}
+        {/*  button*/}
+        {/*  key={'Bug Report or Feedback'}*/}
+        {/*  onClick={onFeedbackClick}*/}
+        {/*>*/}
+        {/*  <ListItemIcon>*/}
+        {/*    <BugReportIcon />*/}
+        {/*  </ListItemIcon>*/}
+        {/*  <ListItemText primary={'Bug Report or Feedback'} />*/}
+        {/*</ListItem>*/}
         {user ? ( // if logged in give logout option
           <ListItem button key={'Logout'} onClick={onLogout}>
             <ListItemIcon>

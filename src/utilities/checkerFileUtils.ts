@@ -913,16 +913,28 @@ function removeHomePath(filePath:string) {
     return filePath
 }
 
+function isHomePath(filePath: string) {
+    return filePath && (filePath.indexOf("~") === 0);
+}
+
 /**
  * replace leading ~ with home path
  * @param filePath
  */
 function replaceHomePath(filePath:string) {
-    if (filePath && (filePath.indexOf('~') === 0)) {
+    if (isHomePath(filePath)) {
         const newPath = filePath.replace('~', ospath.home())
         return newPath
     }
     return filePath
+}
+
+function cleanupPath(filePath:string, repoPath:string) {
+    let _filePath = replaceHomePath(filePath)
+    if (filePath[0] === '.') {
+        _filePath = path.join(repoPath, _filePath)
+    }
+    return _filePath
 }
 
 export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
@@ -1246,6 +1258,76 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
     return { resource, hasResourceFiles };
 }
 
+function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object) {
+    const sep = path.sep || '/'
+    const projectResources = `.${sep}.resources${sep}`;
+    const bibleId = bible.bibleId || bible.id;
+    let biblePath = bible.path;
+    let localChanged = false;
+    if (!biblePath) {
+        // look first in projects folders
+        biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner);
+        if (biblePath) {
+            const resourcesSubFolder = `${sep}.resources${sep}`;
+            const parts = biblePath.split(resourcesSubFolder)
+            if (parts.length >= 2) {
+                biblePath = projectResources + parts[1]
+            }
+        }
+        if (!biblePath) { // look in resources cache
+            biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner);
+        }
+        
+        if (biblePath) {
+            localChanged = true // need to save bible path
+            bible.path = biblePath;
+            // @ts-ignore
+            metadata.otherResources[bibleId] = bible;
+        }
+    }
+
+    if (isHomePath(biblePath) || !bible.path || localChanged) {
+        const matchBase = `~${sep}translationCore${sep}otherProjects${sep}cache${sep}`;
+        const matchedBase = biblePath.substring(0, matchBase.length) === matchBase;
+        if (matchedBase || !bible.path || localChanged) {
+            const cacheFolder = `${sep}cache${sep}`;
+            const parts = biblePath.split(cacheFolder);
+            if (parts.length >= 2) {
+                const newPath = projectResources + parts[1];
+                const _newFullPath = path.join(repoPath, newPath);
+
+                try {
+                    if (!fs.existsSync(_newFullPath)) {
+                        const src = path.join(replaceHomePath(biblePath));
+                        const dest = _newFullPath;
+                        const parentDir = path.join(dest, "..");
+                        fs.ensureDirSync(parentDir);
+                        fs.copySync(src, dest);
+                        localChanged = true;
+                    }
+                    biblePath = newPath;
+                    bible.path = biblePath;
+                    bible.bibleId = bibleId;
+                    // @ts-ignore
+                    metadata.otherResources[bibleId] = bible;
+                } catch (e) {
+                    console.warn(`getResourcesForChecking - could not copy resource from ${biblePath} to ${newPath}`);
+                    let parts = biblePath.split(sep);
+                    while (parts.length) {
+                        const checkPath = parts.join(sep);
+                        const exists = fs.existsSync(checkPath);
+                        if (exists) {
+                            break;
+                        }
+                        parts = parts.slice(0, parts.length - 1);
+                    }
+                }
+            }
+        }
+    }
+    return { bibleId, biblePath, changed: changed || localChanged };
+}
+
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -1258,8 +1340,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
     const results = {}
 
     if (metaDataExists) {
-      let metadata = fs.readJsonSync(pathToMetaData);
-      metadata = metadata[checkingName]
+      const _metadata = fs.readJsonSync(pathToMetaData);
+      const metadata = _metadata[checkingName]
       if (metadata) {
           // @ts-ignore
           results.lexicons = lexicons
@@ -1299,29 +1381,59 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               languageId: metadata.targetLanguageId,
               resourceId,
           }
-          
+
+          let book;
+          let changed = false
+
           const biblesList = metadata.otherResources.bibles
           const bibles = []
           const isNT = BooksOfTheBible.isNT(bookId)
-          const origLangguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
-          const origLangguageBibleId = isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
+          const origLanguageId = isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
+          const origLanguageBibleId = isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const origLangBible = {
-              languageId: origLangguageId,
-              id: origLangguageBibleId,
+              languageId: origLanguageId,
+              id: origLanguageBibleId,
               owner: 'unfoldingWord'
           }
-          biblesList.unshift(origLangBible); // insert into first position
-          let book;
+
+          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata);
+          changed = __ret.changed;
+
+          const otherOrigLanguageId = !isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
+          const otherOrigLanguageBibleId = !isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
+          const otherOrigLangBible = {
+              languageId: otherOrigLanguageId,
+              id: otherOrigLanguageBibleId,
+              owner: 'unfoldingWord'
+          }
+          const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata);
+          changed = ___ret.changed;
 
           for (const bible of biblesList) {
-              const bibleId = bible.bibleId || bible.id
-              if (bible.path) {
-                  const biblePath = replaceHomePath(bible.path)
-                  book = getBookOfTheBibleFromFolder(biblePath, bookId)
-              } else {
-                  book = getBookOfTheBible(resourcesBasePath, bookId, bibleId, bible.languageId, bible.owner);
+              const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata);
+              changed = __ret.changed;
+          }
 
-              }
+          const firstBibleIsOriginal = biblesList?.length
+            && (biblesList[0].id === origLangBible.id)
+            && (biblesList[0].languageId === origLangBible.languageId)
+            && (biblesList[0].owner === origLangBible.owner);
+          if (firstBibleIsOriginal) {
+              biblesList.shift() // remove it
+              changed = true
+          }
+          
+          if (changed) { // update metadata file
+              fs.outputJsonSync(pathToMetaData, _metadata, { spaces: 2 });
+          }
+          
+          biblesList.unshift(origLangBible); // insert original bible into first position
+
+          for (const bible of biblesList) {
+              const bibleId = bible.bibleId || bible.id;
+              let biblePath = bible.path;
+              biblePath = cleanupPath(biblePath, repoPath)
+              book = getBookOfTheBibleFromFolder(biblePath, bookId)
 
               if (book) {
                   const manifest = book?.manifest;
@@ -1348,7 +1460,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
                   results[_bibleId] = bibleObject;
               }
           }
-
+          
           // @ts-ignore
           results.bibles = bibles
           // @ts-ignore
@@ -1636,6 +1748,12 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
     return null
 }
 
+export function getPathForBible(resourcesPath: string, languageId: string, bibleId: string, owner: string) {
+    const folderPath = path.join(resourcesPath, languageId, "bibles", bibleId); // , `v${resource.version}_${resource.owner}`)
+    const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false);
+    return versionPath;
+}
+
 /**
  * read bible book from file system at resourcesPath
  * @param resourcesPath
@@ -1645,8 +1763,7 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
  * @param owner
  */
 export function getBookOfTheBible(resourcesPath:string, bookId:string, bibleId:string, languageId:string, owner:string) {
-    const folderPath = path.join(resourcesPath, languageId, 'bibles', bibleId) // , `v${resource.version}_${resource.owner}`)
-    const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false)
+    const versionPath = getPathForBible(resourcesPath, languageId, bibleId, owner);
     const book = getBookOfTheBibleFromFolder(versionPath, bookId)
     return book
 }

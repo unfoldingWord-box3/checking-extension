@@ -691,11 +691,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
             ],
         };
 
-        const updateWebview = () => {
-            webviewPanel.webview.postMessage({
-                command: "update",
-                data: this.getCheckingResources(document),
-            } as TranslationCheckingPostMessages);
+        /**
+         * called whenever source document file path changes or content changes
+         * @param firstLoad - true if this is an initial load, otherwise just a change of document content which will by handled by the webview
+         */
+        const updateWebview = (firstLoad:boolean) => {
+            if (firstLoad) { // only update if file changed
+                webviewPanel.webview.postMessage({
+                    command: "update",
+                    data: this.getCheckingResources(document),
+                } as TranslationCheckingPostMessages);
+            } else {
+                console.log(`updateWebview - not first load`)
+            }
         };
 
         const saveSelection = (text:string, newState:{}) => {
@@ -770,12 +778,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         }
 
+        const firstLoad = (text:string, data:object) => {
+            console.log(`firstLoad: ${text}`)
+            updateWebview(true)
+        }
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
-                ["loaded"]: updateWebview,
+                ["loaded"]: firstLoad,
                 ["saveSelection"]: saveSelection,
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
@@ -805,7 +818,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const changeDocumentSubscription = workspace.onDidChangeTextDocument(
             (e) => {
                 if (e.document.uri.toString() === document.uri.toString()) {
-                    updateWebview();
+                    updateWebview(false);
                 }
             },
         );
@@ -865,8 +878,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * search checkingData for check that matches currentContextId and return location within checkingData
+     * @param currentContextId
+     * @param checkingData
+     */
     private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
-        let foundCheck;
+        let foundCheck:null|object = null;
         if (currentContextId && checkingData) {
             // @ts-ignore
             const _checkId = currentContextId?.checkId;
@@ -878,31 +896,34 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const _occurrence = currentContextId?.occurrence;
             // @ts-ignore
             const _reference = currentContextId?.reference;
-            for (const groupId of Object.keys(checkingData)) {
-                if (groupId === 'manifest') { // skip over manifest
+            for (const catagoryId of Object.keys(checkingData)) {
+                if (catagoryId === 'manifest') { // skip over manifest
                     continue
                 }
                 // @ts-ignore
-                const groups = checkingData[groupId]?.groups || {};
-                for (const checkId of Object.keys(groups)) {
-                    const checks: object[] = groups[checkId];
-                    foundCheck = checks.find(item => {
-                        // @ts-ignore
-                        const contextId = item?.contextId;
-                        // @ts-ignore
-                        if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
-                            if (isEqual(_reference, contextId?.reference)) {
-                                if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
-                                    return true;
-                                }
+                const groups = checkingData[catagoryId]?.groups || {};
+                const desiredGroup = groups[_groupId]
+                
+                if (!desiredGroup) continue // if desired group is not in this category, then skip to next category
+                
+                const checks: object[] = desiredGroup;
+                const index = checks.findIndex(item => {
+                    // @ts-ignore
+                    const contextId = item?.contextId;
+                    // @ts-ignore
+                    if ((_checkId === contextId?.checkId) && (_groupId === contextId?.groupId)) {
+                        if (isEqual(_reference, contextId?.reference)) {
+                            if (isEqual(_quote, contextId?.quote) && (_occurrence === contextId?.occurrence)) {
+                                return true;
                             }
                         }
-                        return false;
-                    });
-
-                    if (foundCheck) {
-                        break;
                     }
+                    return false;
+                });
+
+                if (index >= 0) {
+                    foundCheck = checks[index]
+                    break;
                 }
 
                 if (foundCheck) {
@@ -919,8 +940,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     /**
      * Try to get a current document as a scripture TSV object
-     *
-     * @TODO Use this function to turn doc text into ScriptureTSV!
      */
     private getCheckingResources(document: TextDocument):ResourcesObject {
         let checks = document.getText();
@@ -941,7 +960,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             return resources;
         } catch {
             throw new Error(
-                "Could not get document as json. Content is not valid check file in json format",
+                "getCheckingResources - Could not get document as json. Content is not valid check file in json format",
             );
         }
         return { }

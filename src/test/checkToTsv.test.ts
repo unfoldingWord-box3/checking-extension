@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 
 suite('Test twl_check to twl tsv', () => {
   suiteTeardown(() => {
-    vscode.window.showInformationMessage('All tests done!');
+    vscode.window.showInformationMessage('All Check TSV Tests done!');
   });
 
   test('Test Titus', () => {
