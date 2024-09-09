@@ -42,9 +42,14 @@ jobs:
       - name: Install Extension Dependencies
         run: npm run install:extension
 
-      - name: Run Unit Tests
-        run: npm run test:unit
+#      - name: Run Unit Tests
+#        run: npm run test:unit
 
+      - name: Run Unit Tests with emulated UI
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
+          npm run test:unit
+            
       - name: Package Extension
         run: yarn run package:extension
 
