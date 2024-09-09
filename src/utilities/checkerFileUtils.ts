@@ -1259,14 +1259,16 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
 }
 
 function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object) {
-    const projectResources = "./.resources/";
+    const sep = path.sep || '/'
+    const projectResources = `.${sep}.resources${sep}`;
     const bibleId = bible.bibleId || bible.id;
     let biblePath = bible.path;
     if (!biblePath) {
         // look first in projects folders
         biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner);
         if (biblePath) {
-            const parts = biblePath.split("/.resources/")
+            const resourcesSubFolder = `${sep}.resources${sep}`;
+            const parts = biblePath.split(resourcesSubFolder)
             if (parts.length >= 2) {
                 biblePath = projectResources + parts[1]
             }
@@ -1274,14 +1276,21 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         if (!biblePath) { // look in resources cache
             biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner);
         }
+        
+        if (biblePath) {
+            changed = true // need to save bible path
+            bible.path = biblePath;
+            // @ts-ignore
+            metadata.otherResources[bibleId] = bible;
+        }
     }
 
     if (isHomePath(biblePath) || !bible.path) {
-        // ~/translationCore/otherProjects/cache/
-        const matchBase = "~/translationCore/otherProjects/cache/";
+        const matchBase = `~${sep}translationCore${sep}otherProjects${sep}cache${sep}`;
         const matchedBase = biblePath.substring(0, matchBase.length) === matchBase;
         if (matchedBase || !bible.path) {
-            const parts = biblePath.split("/cache/");
+            const cacheFolder = `${sep}cache${sep}`;
+            const parts = biblePath.split(cacheFolder);
             if (parts.length >= 2) {
                 const newPath = projectResources + parts[1];
                 const _newFullPath = path.join(repoPath, newPath);
@@ -1302,9 +1311,9 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                     metadata.otherResources[bibleId] = bible;
                 } catch (e) {
                     console.warn(`getResourcesForChecking - could not copy resource from ${biblePath} to ${newPath}`);
-                    let parts = biblePath.split("/");
+                    let parts = biblePath.split(sep);
                     while (parts.length) {
-                        const checkPath = parts.join("/");
+                        const checkPath = parts.join(sep);
                         const exists = fs.existsSync(checkPath);
                         if (exists) {
                             break;
@@ -1385,9 +1394,10 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               id: origLanguageBibleId,
               owner: 'unfoldingWord'
           }
-          
-          biblesList.unshift(origLangBible); // insert into first position
-          
+
+          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata);
+          changed = __ret.changed;
+
           const otherOrigLanguageId = !isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
           const otherOrigLanguageBibleId = !isNT ? BooksOfTheBible.NT_ORIG_LANG_BIBLE : BooksOfTheBible.OT_ORIG_LANG_BIBLE
           const otherOrigLangBible = {
@@ -1395,15 +1405,32 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               id: otherOrigLanguageBibleId,
               owner: 'unfoldingWord'
           }
-          const __ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata);
-          changed = __ret.changed;
+          const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata);
+          changed = ___ret.changed;
 
           for (const bible of biblesList) {
               const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata);
-              const bibleId = __ret.bibleId;
-              let biblePath = __ret.biblePath;
               changed = __ret.changed;
+          }
 
+          const firstBibleIsOriginal = biblesList?.length
+            && (biblesList[0].id === origLangBible.id)
+            && (biblesList[0].languageId === origLangBible.languageId)
+            && (biblesList[0].owner === origLangBible.owner);
+          if (firstBibleIsOriginal) {
+              biblesList.shift() // remove it
+              changed = true
+          }
+          
+          if (changed) { // update metadata file
+              fs.outputJsonSync(pathToMetaData, _metadata, { spaces: 2 });
+          }
+          
+          biblesList.unshift(origLangBible); // insert original bible into first position
+
+          for (const bible of biblesList) {
+              const bibleId = bible.bibleId || bible.id;
+              let biblePath = bible.path;
               biblePath = cleanupPath(biblePath, repoPath)
               book = getBookOfTheBibleFromFolder(biblePath, bookId)
 
@@ -1433,10 +1460,6 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               }
           }
           
-          if (changed) { // update metadata file
-              fs.outputJsonSync(pathToMetaData, _metadata, { spaces: 2 });
-          }
-
           // @ts-ignore
           results.bibles = bibles
           // @ts-ignore
