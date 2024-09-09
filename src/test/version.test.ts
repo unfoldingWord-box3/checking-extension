@@ -12,7 +12,7 @@ suite('Check Versions', () => {
     vscode.window.showInformationMessage('Version tests done!');
   });
 
-  test('Compare extension and webview-UI versions', () => {
+  test('Extension package version should equal webview-UI package version', () => {
     const extensionManifest = fs.readJsonSync('./package.json');
     const webviewUiManifest = fs.readJsonSync('./webview-ui/package.json');
 
