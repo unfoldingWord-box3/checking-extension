@@ -36,8 +36,17 @@ jobs:
       - name: Install vsce
         run: npm install -g @vscode/vsce
 
-      - name: Install and build webview
-        run: npm run pre-package:extension
+      - name: Build webview
+        run: npm run build:webview
+
+      - name: Install Dependencies and build webview
+        run: npm run pre-package:webview
+
+      - name: Install Extension Dependencies
+        run: npm run install:extension
+
+      - name: Run Unit Tests
+        run: npm run test:unit
 
       - name: Package Extension
         run: yarn run package:extension

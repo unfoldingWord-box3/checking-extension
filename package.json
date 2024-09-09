@@ -195,7 +195,7 @@
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "test:unit": "yarn run compile:debug && vscode-test",
-    "pre-package:extension": "npm run install:webview && npm run build:webview",
+    "pre-package:webview": "npm run install:webview && npm run build:webview",
     "package:extension": "yarn install && vsce package --yarn"
   },
   "devDependencies": {
