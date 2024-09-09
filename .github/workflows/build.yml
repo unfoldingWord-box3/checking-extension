@@ -36,9 +36,6 @@ jobs:
       - name: Install vsce
         run: npm install -g @vscode/vsce
 
-      - name: Build webview
-        run: npm run build:webview
-
       - name: Install Dependencies and build webview
         run: npm run pre-package:webview
 
