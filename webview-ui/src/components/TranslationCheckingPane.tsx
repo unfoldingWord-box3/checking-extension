@@ -24,7 +24,7 @@ import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import isEqual from 'deep-equal'
 
-const showDocument = true // set this to false to disable showing ta or tw articles
+const showDocument = true // set this to false, to disable showing ta or tw articles
 
 // @ts-ignore
 const useStyles = makeStyles(theme => ({

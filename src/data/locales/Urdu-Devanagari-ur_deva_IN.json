@@ -1,4 +1,3 @@
-const locale_ =
 {
   "menu": {
     "no_results": "No results",
@@ -251,5 +250,3 @@ const locale_ =
   "morph_missing": "Morphology not found",
   "unsaved_changes": "You have unsaved changes."
 }
-
-export const locale = locale_

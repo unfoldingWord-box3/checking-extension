@@ -30,7 +30,12 @@ export const resourcesPath = path.join(projectsBasePath, 'cache')
 const updatedResourcesPath = path.join(resourcesPath, "updatedResources.json");
 
 const { lexicons } = require('../data/lexicons')
-const { locales } = require('../data/locales/English-en_US')
+
+const DEFAULT_LOCALE = 'en'
+let translations: object = { }
+let languageCode: string|null = DEFAULT_LOCALE
+let currentLocale:object = {};
+const { locales } = require('../data/locales/locales')
 
 const checkingName = 'translation.checker'
 
@@ -44,6 +49,111 @@ const RESOURCE_ID_MAP = {
 const checkingHelpsResources = [
     { id:'ta' }, { id:'tw' }, { id:'twl', bookRes: true }, { id: 'tn', bookRes: true }]
 
+/**
+ * This parses localization data if not already parsed.
+ */
+export function loadLocalization():void {
+    // check if already initialized
+    if (translations && Object.keys(translations).length) {
+        return 
+    }
+    
+    const keys = Object.keys(locales)
+    if (!keys?.length) {
+        console.error(`loadLocalization - locales not loaded`);
+        return
+    }
+    
+    for (let key of keys) {
+        try {
+            let translation = locales[key];
+            translation = enhanceTranslation(translation, key);
+    
+            const { langCode, shortLangCode } = explodeLocaleName(key);
+            // @ts-ignore
+            translations[langCode] = translation;
+    
+            // include short language names for wider locale compatibility
+            // @ts-ignore
+            if (!translations[shortLangCode]) {
+                // @ts-ignore
+                translations[shortLangCode] = translation;
+            }
+        } catch (e) {
+            console.error(`loadLocalization() - Failed to load localization ${key}: ${e}`);
+        }
+    }
+    
+    setLocale(DEFAULT_LOCALE)
+}
+
+/**
+ * find localization data that matches code, or will fall back to default
+ * @param languageCode
+ */
+export function setLocale(languageCode:string) {
+    // @ts-ignore
+    if (translations[languageCode]) {
+        // @ts-ignore
+        currentLocale = translations[languageCode]
+    } else 
+    if (languageCode) {
+        console.log(`setLocale() - No exact match found for ${languageCode}`);
+        const shortLocale = languageCode.split('_')[0];
+        // @ts-ignore
+        const equivalentLocale = translations[shortLocale]?.['_']?.['locale'];
+
+        if (equivalentLocale) {
+            console.log(`setLocale() - Falling back to ${equivalentLocale}`);
+            languageCode = equivalentLocale;
+            // @ts-ignore
+            currentLocale = translations[shortLocale]
+        } else {
+            languageCode = DEFAULT_LOCALE; // default to `en` if shortLocale match not found
+            // @ts-ignore
+            currentLocale = locale_
+            console.log(`setLocale() - No short match found for ${shortLocale}, Falling back to ${languageCode}`);
+        }
+    }
+}
+
+/**
+ * Splits a locale filename into it's identifiable pieces
+ * @param {string} fileName the locale file name (basename)
+ * @return {{langName, langCode, shortLangCode}}
+ */
+const explodeLocaleName = (fileName:string) => {
+    let title = fileName.replace(/\.json/, '');
+    let langName = title.split('-')[0];
+    let langCode = title.split('-')[1];
+    let shortLangCode = langCode.split('_')[0];
+    return {
+        langName, langCode, shortLangCode,
+    };
+};
+
+/**
+ * Injects additional information into the translation
+ * that should not otherwise be translated. e.g. legal entities
+ * @param {object} translation localized strings
+ * @param {string} fileName the name of the locale file including the file extension.
+ * @param {array} nonTranslatableStrings a list of non-translatable strings to inject
+ * @return {object} the enhanced translation
+ */
+const enhanceTranslation = (translation:object, fileName:string, nonTranslatableStrings = []) => {
+    const {
+        langName, langCode, shortLangCode,
+    } = explodeLocaleName(fileName);
+    return {
+        ...translation,
+        '_': {
+            'language_name': langName,
+            'short_locale': shortLangCode,
+            'locale': langCode,
+            ...nonTranslatableStrings,
+        },
+    };
+};
 
 /**
  * merge helps folder into single json file
@@ -1346,7 +1456,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.lexicons = lexicons
           // @ts-ignore
-          results.locales = locales
+          results.locales = currentLocale
           if (resourceId === 'twl') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               // @ts-ignore

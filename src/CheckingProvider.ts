@@ -34,6 +34,7 @@ import {
     getSavedCatalog,
     initProject,
     isRepoInitialized,
+    loadLocalization,
     resourcesPath,
     saveCatalog,
 } from "./utilities/checkerFileUtils";
@@ -942,6 +943,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
      * Try to get a current document as a scripture TSV object
      */
     private getCheckingResources(document: TextDocument):ResourcesObject {
+        loadLocalization();
         let checks = document.getText();
         if (checks.trim().length === 0) {
             return {};
