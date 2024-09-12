@@ -118,14 +118,15 @@ export function setLocale(languageCode:string) {
 }
 
 /**
- * Splits a locale filename into it's identifiable pieces
- * @param {string} fileName the locale file name (basename)
+ * Splits a locale fullName into it's identifiable pieces
+ * @param {string} fullName the locale name
  * @return {{langName, langCode, shortLangCode}}
  */
-const explodeLocaleName = (fileName:string) => {
-    let title = fileName.replace(/\.json/, '');
-    let langName = title.split('-')[0];
-    let langCode = title.split('-')[1];
+const explodeLocaleName = (fullName:string) => {
+    let title = fullName.replace(/\.json/, '');
+    const parts = title.split('-')
+    let langCode = parts.pop() || '';
+    let langName = parts.join('-');
     let shortLangCode = langCode.split('_')[0];
     return {
         langName, langCode, shortLangCode,
@@ -136,20 +137,21 @@ const explodeLocaleName = (fileName:string) => {
  * Injects additional information into the translation
  * that should not otherwise be translated. e.g. legal entities
  * @param {object} translation localized strings
- * @param {string} fileName the name of the locale file including the file extension.
+ * @param {string} fullName the name of the locale.
  * @param {array} nonTranslatableStrings a list of non-translatable strings to inject
  * @return {object} the enhanced translation
  */
-const enhanceTranslation = (translation:object, fileName:string, nonTranslatableStrings = []) => {
+const enhanceTranslation = (translation:object, fullName:string, nonTranslatableStrings = []) => {
     const {
         langName, langCode, shortLangCode,
-    } = explodeLocaleName(fileName);
+    } = explodeLocaleName(fullName);
     return {
         ...translation,
         '_': {
             'language_name': langName,
             'short_locale': shortLangCode,
             'locale': langCode,
+            'full_name': fullName,
             ...nonTranslatableStrings,
         },
     };
@@ -1457,6 +1459,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.lexicons = lexicons
           // @ts-ignore
           results.locales = currentLocale
+          // @ts-ignore
+          results.localeOptions = Object.keys(locales)
           if (resourceId === 'twl') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               // @ts-ignore

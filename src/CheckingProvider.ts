@@ -37,6 +37,7 @@ import {
     loadLocalization,
     resourcesPath,
     saveCatalog,
+    setLocale,
 } from "./utilities/checkerFileUtils";
 // @ts-ignore
 import { loadResources } from "./utilities/checkingServerUtils";
@@ -783,6 +784,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.log(`firstLoad: ${text}`)
             updateWebview(true)
         }
+        
+        const setLocale_ = (text:string, data:object) => {
+            // @ts-ignore
+            const value = data?.value || '';
+            const code = value.split('-').pop()
+            console.log(`setLocale: ${text},${value}`)
+            setLocale(code)
+            updateWebview(true) // refresh display
+        }
 
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
@@ -793,6 +803,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["saveSelection"]: saveSelection,
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
+                ["setLocale"]: setLocale_,
             };
 
             const commandFunction = commandToFunctionMapping[command];
