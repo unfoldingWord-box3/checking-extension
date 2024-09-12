@@ -31,9 +31,10 @@ const updatedResourcesPath = path.join(resourcesPath, "updatedResources.json");
 
 const { lexicons } = require('../data/lexicons')
 
-const DEFAULT_LOCALE = 'en'
+export const DEFAULT_LOCALE = 'en'
+export const LOCALE_KEY = 'LOCALE_CDOE'
 let translations: object = { }
-let languageCode: string|null = DEFAULT_LOCALE
+export let currentLanguageCode: string|null = null
 let currentLocale:object = {};
 const { locales } = require('../data/locales/locales')
 
@@ -83,8 +84,6 @@ export function loadLocalization():void {
             console.error(`loadLocalization() - Failed to load localization ${key}: ${e}`);
         }
     }
-    
-    setLocale(DEFAULT_LOCALE)
 }
 
 /**
@@ -92,10 +91,12 @@ export function loadLocalization():void {
  * @param languageCode
  */
 export function setLocale(languageCode:string) {
+    loadLocalization() // make sure initialized
     // @ts-ignore
     if (translations[languageCode]) {
         // @ts-ignore
         currentLocale = translations[languageCode]
+        currentLanguageCode = languageCode
     } else 
     if (languageCode) {
         console.log(`setLocale() - No exact match found for ${languageCode}`);
@@ -105,13 +106,13 @@ export function setLocale(languageCode:string) {
 
         if (equivalentLocale) {
             console.log(`setLocale() - Falling back to ${equivalentLocale}`);
-            languageCode = equivalentLocale;
+            currentLanguageCode = equivalentLocale;
             // @ts-ignore
             currentLocale = translations[shortLocale]
         } else {
-            languageCode = DEFAULT_LOCALE; // default to `en` if shortLocale match not found
+            currentLanguageCode = DEFAULT_LOCALE; // default to `en` if shortLocale match not found
             // @ts-ignore
-            currentLocale = locale_
+            currentLocale = translations[currentLanguageCode]
             console.log(`setLocale() - No short match found for ${shortLocale}, Falling back to ${languageCode}`);
         }
     }

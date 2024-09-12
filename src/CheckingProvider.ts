@@ -18,6 +18,8 @@ import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     cleanUpFailedCheck,
+    currentLanguageCode,
+    DEFAULT_LOCALE,
     delay,
     downloadLatestLangHelpsResourcesFromCatalog,
     downloadTargetBible,
@@ -34,7 +36,7 @@ import {
     getSavedCatalog,
     initProject,
     isRepoInitialized,
-    loadLocalization,
+    LOCALE_KEY,
     resourcesPath,
     saveCatalog,
     setLocale,
@@ -91,7 +93,8 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
 export class CheckingProvider implements CustomTextEditorProvider {
 
     public static currentState = {}
-
+    public static secretStorage:SecretStorage|null = null
+    
     constructor(private readonly context: ExtensionContext) {}
 
     public static register(context: ExtensionContext):Disposable[]
@@ -694,15 +697,33 @@ export class CheckingProvider implements CustomTextEditorProvider {
         };
 
         /**
+         * make sure localization is initialized and check for last locale setting
+         */
+        const initCurrentLocale = async () => {
+            if (!currentLanguageCode) {
+                let currentLocale = DEFAULT_LOCALE
+                    const secretStorage = getSecretStorage();
+                    const value = await secretStorage.get(LOCALE_KEY);
+                    if (value) {
+                        currentLocale = value
+                    }
+                
+                setLocale(currentLocale)
+            }
+        }
+
+        /**
          * called whenever source document file path changes or content changes
          * @param firstLoad - true if this is an initial load, otherwise just a change of document content which will by handled by the webview
          */
         const updateWebview = (firstLoad:boolean) => {
-            if (firstLoad) { // only update if file changed
-                webviewPanel.webview.postMessage({
-                    command: "update",
-                    data: this.getCheckingResources(document),
-                } as TranslationCheckingPostMessages);
+            if (firstLoad) { // only update if file location changed
+                initCurrentLocale().then(() => { // make sure initialized first
+                    webviewPanel.webview.postMessage({
+                        command: "update",
+                        data: this.getCheckingResources(document),
+                    } as TranslationCheckingPostMessages);
+                })
             } else {
                 console.log(`updateWebview - not first load`)
             }
@@ -732,14 +753,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         };
 
-        let secretStorage:SecretStorage|null = null
-
         const getSecretStorage = () => {
-            if (!secretStorage) {
-                secretStorage = this.context.secrets;
+            if (!CheckingProvider.secretStorage) {
+                CheckingProvider.secretStorage = this.context.secrets;
             }
 
-            return secretStorage
+            return CheckingProvider.secretStorage
         }
         
         const getSecret = (text:string, data:object) => {
@@ -787,10 +806,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
         const setLocale_ = (text:string, data:object) => {
             // @ts-ignore
-            const value = data?.value || '';
+            const value = data?.value || DEFAULT_LOCALE;
             const code = value.split('-').pop()
             console.log(`setLocale: ${text},${value}`)
             setLocale(code)
+            // save current locale for next run
+            const secretStorage = getSecretStorage();
+            secretStorage.store(LOCALE_KEY,code);
             updateWebview(true) // refresh display
         }
 
@@ -954,7 +976,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
      * Try to get a current document as a scripture TSV object
      */
     private getCheckingResources(document: TextDocument):ResourcesObject {
-        loadLocalization();
         let checks = document.getText();
         if (checks.trim().length === 0) {
             return {};
