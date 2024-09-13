@@ -1,4 +1,3 @@
-const locale_ =
 {
   "menu": {
     "no_results": "No results",
@@ -8,21 +7,15 @@ const locale_ =
     "no_selection": "No selection",
     "verse_edit": "Verse edit",
     "comments": "Comments",
-    "menu": "Menu",
-    "grouping": "Organize by Reference"
+    "menu": "Menu"
   },
   "buttons": {
-    "ok_button": "OK",
     "back_button": "Go Back",
     "cancel_button": "Cancel",
-    "reset_button": "Reset",
     "save_button": "Save",
     "next_button": "Next",
     "discard_changes": "Discard Changes"
   },
-  "alignments_reset_wa_tool": "Changes have been detected in your project which have invalidated some of your alignments.\nThese verses display an icon of a broken chain next to the reference in the side menu.",
-  "invalid_verse_alignments_and_selections": "Changes have been detected in your project which have invalidated some selections and some alignments. These verses display an icon of a broken chain next to the reference in the side menu.",
-  "invalidation_checking": "Checking if this edit conflicts with saved selections and alignments...",
   "quote_invalid": "Invalid Original Language Quote for Check: '${quote}'",
   "nothing_to_select_description": "When selected, the check will be marked as complete. Use when the translation is correct but a selection cannot be made.",
   "selections_invalidated": "Some selections are no longer valid and are removed.",
@@ -56,13 +49,11 @@ const locale_ =
   "next_change_reason": "Next, select reason(s) for change",
   "first_make_change": "First, make changes to verse above",
   "close": "Close",
-  "load": "Load",
   "attention": "Attention:",
   "select_translation": "Please ${span} select ${span} the correct translation for your current check.",
   "can_skip": "If you are unable to perform this check, you may ${span} skip it ${span} and come back to it later.",
   "skip": "Skip",
   "click_show_expanded": "Click to show expanded verses",
-  "expand_verses": "Expand verses",
   "pre_release": "Pre-release",
   "icons": {
     "selections_found": "Selections were found for this check",
@@ -82,14 +73,12 @@ const locale_ =
     "title": "Step 1. Read",
     "expand_hover": "Click to show expanded resource panes",
     "remove_resource": "Click to remove resource",
-    "remove_resource_label": "Remove resource",
     "add_resource": "Click to add a resource",
     "add_resource_label": "Add Resources",
     "select_language": "Select language",
     "gateway_language": "Gateway Language",
     "target_language": "Target Language",
-    "original_language": "Original Language",
-    "select_font_label": "Select Font"
+    "original_language": "Original Language"
   },
   "lemma": "Lemma:",
   "morphology": "Morphology:",
@@ -251,5 +240,3 @@ const locale_ =
   "morph_missing": "Morphology not found",
   "unsaved_changes": "You have unsaved changes."
 }
-
-export const locale = locale_

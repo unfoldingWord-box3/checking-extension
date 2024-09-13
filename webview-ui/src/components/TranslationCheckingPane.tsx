@@ -24,7 +24,7 @@ import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import isEqual from 'deep-equal'
 
-const showDocument = true // set this to false to disable showing ta or tw articles
+const showDocument = true // set this to false, to disable showing ta or tw articles
 
 // @ts-ignore
 const useStyles = makeStyles(theme => ({
@@ -94,6 +94,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
+    // @ts-ignore
+    const languages:string[] = checkingObj.localeOptions || []
     // @ts-ignore
     const origBibleId:string = checkingObj.origBibleId
     // @ts-ignore
@@ -202,7 +204,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         return message;
     }
 
-    return haveResources ? (
+  // @ts-ignore
+  const currentLanguageSelection = translations?.['_']?.['full_name'] || '';
+    
+  return haveResources ? (
       <>
           <AppBar position='static'>
               <Toolbar>
@@ -234,6 +239,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             checkUnsavedChanges={null}
             resetResourceLayout={null}
             showFeedback={null}
+            languages={languages}
+            currentLanguageSelection={currentLanguageSelection}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

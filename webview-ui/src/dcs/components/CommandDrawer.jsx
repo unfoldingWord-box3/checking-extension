@@ -19,6 +19,10 @@ import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authe
 // import FolderIcon from '@material-ui/icons/Folder'
 // import Divider from '@material-ui/core/Divider'
 // import Button from '@material-ui/core/Button'
+import TranslateIcon from '@material-ui/icons/Translate'
+import { FormControl, InputLabel, MenuItem, Select } from "@material-ui/core";
+import { vscode } from "../../utilities/vscode";
+
 
 export default function CommandDrawer({
   open,
@@ -27,6 +31,8 @@ export default function CommandDrawer({
   resetResourceLayout,
   checkUnsavedChanges,
   showFeedback,
+  languages,
+  currentLanguageSelection,
 }) {
   const {
     state: {
@@ -68,7 +74,42 @@ export default function CommandDrawer({
       onClose()
     }
   }
+  
+  function languageSelected(event) {
+    const newSelection = event.target.value || ''
+    console.log(`New language selection ${newSelection}`)
+    showDialogContent({
+      message: null
+    })
+    vscode.postMessage({
+      command: "setLocale",
+      text: "Set Locale",
+      data: { value: newSelection }
+    });
+  }
 
+  function onSelectLocal() {
+    showDialogContent({
+      message:
+        <FormControl fullWidth>
+          <InputLabel id="language-select">Select Language</InputLabel>
+          <Select
+            labelId="language-select"
+            id="language-select"
+            value={currentLanguageSelection}
+            label="Select Language"
+            onChange={languageSelected}
+          >
+            {
+              languages.map(language => 
+                <MenuItem value={language}>{language}</MenuItem>
+              )
+            }
+          </Select>
+        </FormControl>
+    })
+  }
+  
   function onLogIn() {
     showDialogContent({
       message: authenticationComponent
@@ -124,23 +165,33 @@ export default function CommandDrawer({
         {/*  </ListItemIcon>*/}
         {/*  <ListItemText primary={'Bug Report or Feedback'} />*/}
         {/*</ListItem>*/}
-        {user ? ( // if logged in give logout option
-          <ListItem button key={'Logout'} onClick={onLogout}>
-            <ListItemIcon>
-              <ExitToAppIcon />
-            </ListItemIcon>
-            <ListItemText primary={'Logout'} />
-          </ListItem>
-        )
-        : // or if logged in give login option
-        (
-          <ListItem button key={'Login'} onClick={onLogIn}>
-            <ListItemIcon>
-              <ExitToAppIcon />
-            </ListItemIcon>
-            <ListItemText primary={'Login'} />
-          </ListItem>
-        )}
+        <ListItem
+          button
+          key={'Select Locale'}
+          onClick={onSelectLocal}
+        >
+          <ListItemIcon>
+            <TranslateIcon />
+          </ListItemIcon>
+          <ListItemText primary={'Select Locale'} />
+        </ListItem>
+        {/*{user ? ( // if logged in give logout option*/}
+        {/*  <ListItem button key={'Logout'} onClick={onLogout}>*/}
+        {/*    <ListItemIcon>*/}
+        {/*      <ExitToAppIcon />*/}
+        {/*    </ListItemIcon>*/}
+        {/*    <ListItemText primary={'Logout'} />*/}
+        {/*  </ListItem>*/}
+        {/*)*/}
+        {/*: // or if logged in give login option*/}
+        {/*(*/}
+        {/*  <ListItem button key={'Login'} onClick={onLogIn}>*/}
+        {/*    <ListItemIcon>*/}
+        {/*      <ExitToAppIcon />*/}
+        {/*    </ListItemIcon>*/}
+        {/*    <ListItemText primary={'Login'} />*/}
+        {/*  </ListItem>*/}
+        {/*)}*/}
       </List>
     </SwipeableDrawer>
   )
