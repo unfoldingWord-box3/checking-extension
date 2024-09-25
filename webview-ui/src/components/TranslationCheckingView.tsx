@@ -99,9 +99,9 @@ function TranslationCheckingView() {
             setCheckingObj(data);
         }
         const key = getKey(data)
-        secretProvider.getItem(key).then(data => {
+        secretProvider.getItem(key).then(value => {
             // @ts-ignore
-            const contextId = data?.value;
+            const contextId = value;
             if (contextId) {
                 setInitialContextId(contextId)
             }
@@ -141,7 +141,7 @@ function TranslationCheckingView() {
         getItem: async (key:string) => {
             let data = await getSecret(key)
             // @ts-ignore
-            const value = data?.value;
+            const value = data?.valueObject || data?.value;
             return value
         },
         setItem: async (key:string, value:any) => {
@@ -233,9 +233,11 @@ function TranslationCheckingView() {
             text: "Webview save selection",
             data: newState,
         });
-        
-        if (currentContextId && Object.keys(currentContextId).length) {
-            secretProvider.setItem(projectKey, currentContextId);
+
+        // @ts-ignore
+        const nextContextId = newState && newState.nextContextId
+        if (nextContextId && Object.keys(nextContextId).length) {
+            secretProvider.setItem(projectKey, nextContextId);
         }
     }
 

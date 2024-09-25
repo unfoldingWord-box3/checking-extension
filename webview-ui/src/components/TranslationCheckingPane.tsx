@@ -111,6 +111,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const haveChecks = hasResourceData(checks)
     const targetBible = checkingObj.targetBible
 
+    useEffect(() => {
+      setCurrentContextId(initialContextId)
+    }, [initialContextId]);
+      
     const translate = (key:string) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key)
         return translation
