@@ -1459,6 +1459,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.lexicons = lexicons
           // @ts-ignore
+          results.metadata = metadata
+          // @ts-ignore
           results.locales = currentLocale
           // @ts-ignore
           results.localeOptions = Object.keys(locales)
