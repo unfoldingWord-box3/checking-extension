@@ -8,7 +8,8 @@
     "verse_edit": "Verse edit",
     "comments": "Comments",
     "menu": "Menu",
-    "grouping": "Organize by Reference"
+    "grouping": "Organize by Reference",
+    "select_locale": "Select Locale"
   },
   "buttons": {
     "ok_button": "OK",
@@ -17,7 +18,8 @@
     "reset_button": "Reset",
     "save_button": "Save",
     "next_button": "Next",
-    "discard_changes": "Discard Changes"
+    "discard_changes": "Discard Changes",
+    "close_button": "Close"
   },
   "alignments_reset_wa_tool": "Changes have been detected in your project which have invalidated some of your alignments.\nThese verses display an icon of a broken chain next to the reference in the side menu.",
   "invalid_verse_alignments_and_selections": "Changes have been detected in your project which have invalidated some selections and some alignments. These verses display an icon of a broken chain next to the reference in the side menu.",

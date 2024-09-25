@@ -514,7 +514,8 @@ const locales_ =
       "verse_edit": "Verse edit",
       "comments": "Comments",
       "menu": "Menu",
-      "grouping": "Organize by Reference"
+      "grouping": "Organize by Reference",
+      "select_locale": "Select Locale"
     },
     "buttons": {
       "ok_button": "OK",
@@ -523,7 +524,8 @@ const locales_ =
       "reset_button": "Reset",
       "save_button": "Save",
       "next_button": "Next",
-      "discard_changes": "Discard Changes"
+      "discard_changes": "Discard Changes",
+      "close_button": "Close"
     },
     "alignments_reset_wa_tool": "Changes have been detected in your project which have invalidated some of your alignments.\nThese verses display an icon of a broken chain next to the reference in the side menu.",
     "invalid_verse_alignments_and_selections": "Changes have been detected in your project which have invalidated some selections and some alignments. These verses display an icon of a broken chain next to the reference in the side menu.",
@@ -4285,7 +4287,8 @@ const locales_ =
       "verse_edit": "Editar verso",
       "comments": "Comentarios",
       "menu": "Menú",
-      "grouping": "Organize by Reference"
+      "grouping": "Organizar por referencia",
+      "select_locale": "Seleccionar localización"
     },
     "buttons": {
       "ok_button": "Aceptar",
@@ -4294,7 +4297,8 @@ const locales_ =
       "reset_button": "Reiniciar",
       "save_button": "Guardar",
       "next_button": "Siguiente",
-      "discard_changes": "Descartar cambios"
+      "discard_changes": "Descartar cambios",
+      "close_button": "Cerrar"
     },
     "alignments_reset_wa_tool": "Se han detectado cambios en su proyecto que han invalidado algunas de sus alineaciones. Estos versículos tienen un ícono de una cadena rota junto a la referencia en el menú lateral.",
     "invalid_verse_alignments_and_selections": "Se han detectado cambios en su proyecto que han invalidado algunas selecciones y algunas alineaciones. Estos versículos tienen un ícono de una cadena rota junto a la referencia en el menú lateral.",

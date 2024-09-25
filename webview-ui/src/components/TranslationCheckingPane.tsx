@@ -74,21 +74,24 @@ function hasResourceData(resource:object) {
     return false
 }
 
-type GetLexiconDataFunction = (lexiconId:string, entryId:string) => { };
 type SaveSelectionFunction = (resources: ResourcesObject) => void;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
     saveSelection: SaveSelectionFunction;
+    initialContextId: object;
+    projectKey: string;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
-  saveSelection
+  saveSelection,
+  initialContextId,
+  projectKey
  }) => {
     const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
-    const [currentContextId, setCurrentContextId] = useState<object>({});
+    const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
     const [drawerOpen, setOpen] = useState(false)
     const [auth, setAuth] = useState({ })
 
@@ -108,6 +111,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const haveChecks = hasResourceData(checks)
     const targetBible = checkingObj.targetBible
 
+    useEffect(() => {
+      setCurrentContextId(initialContextId)
+    }, [initialContextId]);
+      
     const translate = (key:string) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key)
         return translation
@@ -129,7 +136,9 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         console.log(`_saveSelection - current context data`, currentContextId)
         // @ts-ignore
         const nextContextId = newState && newState.nextContextId
-        currentContextId && setCurrentContextId(nextContextId)
+        if (currentContextId) {
+          setCurrentContextId(nextContextId);
+        }
         // @ts-ignore
         saveSelection(newState)
     }
@@ -241,6 +250,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             showFeedback={null}
             languages={languages}
             currentLanguageSelection={currentLanguageSelection}
+            translate={translate}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

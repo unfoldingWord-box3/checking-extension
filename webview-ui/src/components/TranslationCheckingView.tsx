@@ -9,7 +9,6 @@ import AuthContextProvider from '../dcs/context/AuthContext'
 import type { TnTSV } from "../../../types/TsvTypes"
 import { ResourcesObject } from "../../../types";
 import { makeStyles } from "@material-ui/core";
-import MenuIcon from '@material-ui/icons/Menu'
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
@@ -55,17 +54,58 @@ const useStyles = makeStyles(theme => ({
     },
 }))
 
-let getSecretCallback:any = null
+let _callbacks:object = { } // saves callback by key
+
+function saveCallBack(key: string, callback: any) {
+    // @ts-ignore
+    _callbacks[key] = callback;
+}
+
+function getCallBack(key:string):any {
+    // @ts-ignore
+    const callback = _callbacks?.[key];
+    return callback;
+}
+
+
 
 console.log("TranslationCheckingView.tsx")
 
 function TranslationCheckingView() {
     const [checkingObj, setCheckingObj] = useState<ResourcesObject>({});
+    const [initialContextId, setInitialContextId] = useState<object>({});
+    
+    function getKey(checkingObj:object):string {
+        // @ts-ignore
+        const project = checkingObj?.project || {};
+        // @ts-ignore
+        const bookId = project?.bookId
+        // @ts-ignore
+        const resourceId = project?.resourceId
+        // @ts-ignore
+        const metadata = checkingObj?.metadata || {}
+        // @ts-ignore
+        const languageId = metadata?.targetLanguageId || 'en'
+        // @ts-ignore
+        const gatewayLanguageId = metadata?.gatewayLanguageId || ''
+        const key = `${languageId}_${resourceId}_${gatewayLanguageId}_${bookId}`
+        return key
+    }
+
+    const projectKey = getKey(checkingObj)
 
     async function initData(data: TnTSV) {
         if (!isEqual(checkingObj?.project, data?.project)) {
             setCheckingObj(data);
         }
+        const key = getKey(data)
+        secretProvider.getItem(key).then(value => {
+            // @ts-ignore
+            const contextId = value;
+            if (contextId) {
+                setInitialContextId(contextId)
+            }
+        })
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -77,11 +117,15 @@ function TranslationCheckingView() {
         };
 
         const getSecretResponse = (value: string|undefined) => {
-            if (getSecretCallback) {
-                getSecretCallback(value);
-                getSecretCallback = undefined // clear callback after use
+            // @ts-ignore
+            const key = value?.key
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+                saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`No handler for getSecret response`)
+                console.error(`No handler for getSecret(${key}) response`)
             }
         };
 
@@ -97,7 +141,7 @@ function TranslationCheckingView() {
         getItem: async (key:string) => {
             let data = await getSecret(key)
             // @ts-ignore
-            const value = data?.value;
+            const value = data?.valueObject || data?.value;
             return value
         },
         setItem: async (key:string, value:any) => {
@@ -120,10 +164,9 @@ function TranslationCheckingView() {
         return promise
     }
 
-    // @ts-ignore
     async function getSecret(key:string):Promise<string> {
         const promise = new Promise<string>((resolve) => {
-            getSecretCallback = resolve
+            saveCallBack(key, resolve);
             vscode.postMessage({
                 command: "getSecret",
                 text: "Get Secret",
@@ -190,6 +233,12 @@ function TranslationCheckingView() {
             text: "Webview save selection",
             data: newState,
         });
+
+        // @ts-ignore
+        const nextContextId = newState && newState.nextContextId
+        if (nextContextId && Object.keys(nextContextId).length) {
+            secretProvider.setItem(projectKey, nextContextId);
+        }
     }
 
     /**
@@ -273,6 +322,8 @@ function TranslationCheckingView() {
               <TranslationCheckingPane
                 checkingObj={checkingObj}
                 saveSelection={saveSelection}
+                initialContextId={initialContextId}
+                projectKey={projectKey}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

@@ -33,6 +33,7 @@ export default function CommandDrawer({
   showFeedback,
   languages,
   currentLanguageSelection,
+  translate
 }) {
   const {
     state: {
@@ -92,12 +93,12 @@ export default function CommandDrawer({
     showDialogContent({
       message:
         <FormControl fullWidth>
-          <InputLabel id="language-select">Select Language</InputLabel>
+          <InputLabel id="language-select">{translate("menu.select_locale")}</InputLabel>
           <Select
             labelId="language-select"
             id="language-select"
             value={currentLanguageSelection}
-            label="Select Language"
+            label={translate('menu.select_locale')}
             onChange={languageSelected}
           >
             {
@@ -106,7 +107,8 @@ export default function CommandDrawer({
               )
             }
           </Select>
-        </FormControl>
+        </FormControl>,
+      closeButtonStr: translate('buttons.close_button')
     })
   }
   
@@ -167,13 +169,13 @@ export default function CommandDrawer({
         {/*</ListItem>*/}
         <ListItem
           button
-          key={'Select Locale'}
+          key={translate('menu.select_locale')}
           onClick={onSelectLocal}
         >
           <ListItemIcon>
             <TranslateIcon />
           </ListItemIcon>
-          <ListItemText primary={'Select Locale'} />
+          <ListItemText primary={translate('menu.select_locale')} />
         </ListItem>
         {/*{user ? ( // if logged in give logout option*/}
         {/*  <ListItem button key={'Logout'} onClick={onLogout}>*/}
@@ -204,4 +206,7 @@ CommandDrawer.propTypes = {
   resetResourceLayout: PropTypes.func,
   checkUnsavedChanges: PropTypes.func,
   showFeedback: PropTypes.func,
+  languages: PropTypes.object,
+  currentLanguageSelection: PropTypes.string,
+  translate: PropTypes.func
 }
