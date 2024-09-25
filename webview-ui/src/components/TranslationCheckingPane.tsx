@@ -246,6 +246,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             showFeedback={null}
             languages={languages}
             currentLanguageSelection={currentLanguageSelection}
+            translate={translate}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

@@ -8,7 +8,8 @@
     "verse_edit": "Editar verso",
     "comments": "Comentarios",
     "menu": "Menú",
-    "grouping": "Organize by Reference"
+    "grouping": "Organizar por referencia",
+    "select_locale": "Seleccionar localización"
   },
   "buttons": {
     "ok_button": "Aceptar",
@@ -17,7 +18,8 @@
     "reset_button": "Reiniciar",
     "save_button": "Guardar",
     "next_button": "Siguiente",
-    "discard_changes": "Descartar cambios"
+    "discard_changes": "Descartar cambios",
+    "close_button": "Cerrar"
   },
   "alignments_reset_wa_tool": "Se han detectado cambios en su proyecto que han invalidado algunas de sus alineaciones. Estos versículos tienen un ícono de una cadena rota junto a la referencia en el menú lateral.",
   "invalid_verse_alignments_and_selections": "Se han detectado cambios en su proyecto que han invalidado algunas selecciones y algunas alineaciones. Estos versículos tienen un ícono de una cadena rota junto a la referencia en el menú lateral.",
