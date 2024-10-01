@@ -1,17 +1,20 @@
 // @ts-ignore
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import * as fs from "fs-extra";
+import * as path from "path";
 // @ts-ignore
-import * as ospath from 'ospath';
+import * as ospath from "ospath";
 // @ts-ignore
 import * as usfmjs from "usfm-js";
 // @ts-ignore
-import * as YAML from 'yamljs';
+import * as YAML from "yamljs";
 import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import { BIBLE_BOOKS } from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
+// @ts-ignore
+import * as tsvparser from "uw-tsv-parser";
+
 // helpers
 const {
     apiHelpers,
@@ -23,6 +26,7 @@ const {
 }
 // @ts-ignore
   = require('tc-source-content-updater');
+
 
 const workingPath = path.join(ospath.home(), 'translationCore')
 export const projectsBasePath = path.join(workingPath, 'otherProjects')
@@ -2069,6 +2073,82 @@ export function toInt(value:any):any {
     return (value && typeof value === 'string') ? parseInt(value, 10) : value;
 }
 
+function sortRowsByRef(rows: object[]) {
+    const _rows = rows.sort((a, b) => {
+        // @ts-ignore
+        const aCh = toInt(a.chapter);
+        // @ts-ignore
+        const bCh = toInt(b.chapter);
+        let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
+        if (!comp) {
+            // @ts-ignore
+            const aV = toInt(a.verse);
+            // @ts-ignore
+            const bV = toInt(b.verse);
+            comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+        }
+        return comp;
+    });
+    return _rows;
+}
+
+/**
+ * process the TSV data into index files
+ * @param {string} tsvLines
+ */
+
+export function tsvToObjects(tsvLines:string) {
+    let tsvItems;
+    let parseErrorMsg;
+    let error;
+    let expectedColumns = 0;
+    const tableObject = tsvparser.tsvStringToTable(tsvLines);
+
+    if ( tableObject.errors.length > 0 ) {
+        parseErrorMsg = '';
+        expectedColumns = tableObject.header.length;
+
+        for (let i=0; i<tableObject.errors.length; i++) {
+            let msg;
+            const rownum = tableObject.errors[i][0] - 1; // adjust for data table without header row
+            const colsfound = tableObject.errors[i][1];
+
+            if ( colsfound > expectedColumns ) {
+                msg = 'Row is too long';
+            } else {
+                msg = 'Row is too short';
+            }
+            parseErrorMsg += `\n\n${msg}:`;
+            parseErrorMsg += '\n' + tableObject.data[rownum].join(',');
+        }
+        console.warn(`twArticleHelpers.twlTsvToGroupData() - table parse errors found: ${parseErrorMsg}`);
+    }
+
+    try {
+        tsvItems = tableObject.data.map((line:string[]) => {
+            const tsvItem = {};
+            const l = tableObject.header.length;
+
+            for (let i = 0; i < l; i++) {
+                const key = tableObject.header[i];
+                const value = line[i] || '';
+                // @ts-ignore
+                tsvItem[key] = value.trim();
+            }
+            return tsvItem;
+        });
+    } catch (e) {
+        console.error(`tsvToObjects() - error processing data:`, e);
+        error = e;
+    }
+    return {
+        tsvItems,
+        parseErrorMsg,
+        error,
+        expectedColumns,
+    };
+}
+
 export function checkDataToTwl(checkData:{}) {
     let twl:string[] = []
     let rows:object[] = []
@@ -2124,23 +2204,90 @@ export function checkDataToTwl(checkData:{}) {
     return results
 }
 
-function sortRowsByRef(rows: object[]) {
-    const _rows = rows.sort((a, b) => {
-        // @ts-ignore
-        const aCh = toInt(a.chapter);
-        // @ts-ignore
-        const bCh = toInt(b.chapter);
-        let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
-        if (!comp) {
-            // @ts-ignore
-            const aV = toInt(a.verse);
-            // @ts-ignore
-            const bV = toInt(b.verse);
-            comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+function findSelection(checkData: {}, selection: {}):object|undefined {
+    let found: object|undefined = undefined;
+    // @ts-ignore
+    const parts = selection?.TWLink?.split('/')
+    if (parts?.length) {}
+    const _groupId = parts[parts.length - 1]
+
+    for (const catagoryId of Object.keys(checkData)) {
+        if (catagoryId === "manifest") {
+            continue;
         }
-        return comp;
-    });
-    return _rows;
+
+        // @ts-ignore
+        const groups = checkData[catagoryId]?.groups || {};
+        for (const groupId of Object.keys(groups)) {
+
+            // @ts-ignore
+            const group = groups[groupId];
+
+            for (const item of group) {
+                // @ts-ignore
+                const contextId = item?.contextId;
+                const reference = contextId?.reference;
+                const chapter = reference?.chapter || "";
+                const verse = reference?.verse || "";
+                const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
+
+                const ID = `${contextId?.checkId || ""}`;
+                const category = item?.category || "";
+                const groupId = contextId?.groupId || "";
+                const Tags = `${category}`;
+                const quoteString = contextId?.quoteString || "";
+                const OrigWords = `${quoteString}`;
+                const Occurrence = `${contextId?.occurrence || ""}`;
+                const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
+
+                if (
+                    // @ts-ignore
+                    (ID === selection.ID)
+                    // @ts-ignore
+                    && (Reference === selection.Reference)
+                    // @ts-ignore
+                    && (groupId === _groupId)
+                ) {
+                    found = item
+                    return found
+                }
+         }
+        }
+    }
+    return found;
+}
+
+export function importSelectionsDataIntoCheckData(tsvSelectionData:object[], checkData:{}) {
+    let updatedCount = 0
+    let importedLines = 0
+    let errors:string[]= []
+    const categories = Object.keys(checkData)
+    if (categories?.length > 1) {
+        for (const tsvItem of tsvSelectionData) {
+            importedLines++
+            // @ts-ignore
+            const selections = tsvItem?.selections;
+            if (selections && (typeof selections === 'string')) {
+                const found = findSelection(checkData, tsvItem);
+                if (found) { // if found item to update
+                    // @ts-ignore
+                    found.selections = JSON.parse(selections)
+                    updatedCount++
+                } else {
+                    const tsvItemStr = JSON.stringify(tsvItem)
+                    const error = `importSelectionsDataIntoCheckData: selection not found: ${tsvItemStr}`
+                    console.warn(error)
+                    errors.push(error)
+                }
+            }
+        }
+    }
+    return {
+        errors,
+        importedLines,
+        updatedCount,
+    }
 }
 
 export function checkDataToTn(checkData:{}) {

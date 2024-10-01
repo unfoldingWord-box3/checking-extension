@@ -3215,7 +3215,7 @@ uuid@^3.3.2:
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
 
-uw-tsv-parser@1.0.3:
+uw-tsv-parser@1.0.3, uw-tsv-parser@^1.0.3:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/uw-tsv-parser/-/uw-tsv-parser-1.0.3.tgz#5009a3710d985e1d86a08bbb58a736a9be0c55d5"
   integrity sha512-BqDEayQWdGGsINZlYMzn1+4dAyVtG9zEmNnIv51H/7DquEODEO8hOI1mpNpLlNqGCcXySgTSj2nGhiODefZ4VA==

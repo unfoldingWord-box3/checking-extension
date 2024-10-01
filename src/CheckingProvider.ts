@@ -50,6 +50,7 @@ import {
 } from "./utilities/languages";
 // @ts-ignore
 import isEqual from 'deep-equal'
+import { ALL_BIBLE_BOOKS } from "./utilities/BooksOfTheBible";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -204,7 +205,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.selectGL",
           executeWithRedirecting(async () => {
             console.log("checking-extension.selectGL")
-            const options = await this.getGatewayLangOptions()
+            const options = await this.getGatewayLangSelection()
             const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
             let glOptions = glSelected ? {
                   languageId: options.gwLanguagePick,
@@ -252,20 +253,33 @@ export class CheckingProvider implements CustomTextEditorProvider {
           executeWithRedirecting(async () => {
                 console.log("checking-extension.selectTargetBible")
                 const catalog = getSavedCatalog()
-                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
+                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
                 if (targetLanguagePick && targetOwnerPick && targetBibleIdPick) {
                     const targetBibleOptions = {
                         languageId: targetLanguagePick,
                         owner: targetOwnerPick,
                         bibleId: targetBibleIdPick
                     }
-                    await this.gotoWorkFlowStep("loadTarget");
+                    await this.gotoWorkFlowStep("selectBook");
                     await this.setContext('targetBibleOptions', targetBibleOptions);
                 }
             })
         );
         subscriptions.push(commandRegistration)
 
+        commandRegistration = commands.registerCommand(
+          "checking-extension.selectBook",
+          executeWithRedirecting(async () => {
+                console.log("checking-extension.selectBook")
+                const options = await this.getBookSelection()
+                if (options) {
+                    await this.gotoWorkFlowStep("loadTarget");
+                }
+                await this.setContext('selectedBook', options.bookPick);
+            },
+          ));
+        subscriptions.push(commandRegistration)
+        
         commandRegistration = commands.registerCommand(
           "checking-extension.loadTargetBible",
           async () => {
@@ -493,7 +507,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             glOwner = results.glOptions.owner
         }
         else {
-            const options = await this.getGatewayLangOptions();
+            const options = await this.getGatewayLangSelection();
             if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
                 await showErrorMessage(`Options invalid: ${options}`, true);
                 return null;
@@ -1016,7 +1030,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static async getCheckingOptions() {
-        const options = await this.getGatewayLangOptions();
+        const options = await this.getGatewayLangSelection();
         if (!options) {
             return null
         }
@@ -1026,7 +1040,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             gwLanguagePick,
             gwOwnerPick
         } = options;
-        let { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
+        let { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
 
         return {
             catalog,
@@ -1038,7 +1052,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static async getTargetLanguageOptions(catalog: object[] | null) {
+    private static async getTargetLanguageSelection(catalog: object[] | null) {
         //////////////////////////////////
         // Target language
 
@@ -1159,7 +1173,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
     }
 
-    private static async getGatewayLangOptions() {
+    private static async getGatewayLangSelection() {
         let catalog = getSavedCatalog();
         try {
             if (!catalog) {
@@ -1203,6 +1217,22 @@ export class CheckingProvider implements CustomTextEditorProvider {
             catalog,
             gwLanguagePick,
             gwOwnerPick
+        };
+    }
+
+    private static async getBookSelection() {
+        //TODO blm: get list of books from target manifest
+        const bookIds = Object.keys(ALL_BIBLE_BOOKS)
+        let bookPick = await vscode.window.showQuickPick(
+          bookIds,
+          {
+              placeHolder: "Select the book to check:",
+          },
+        );
+
+        await showInformationMessage(`Book selected ${bookPick}`);
+        return {
+            bookPick
         };
     }
 }

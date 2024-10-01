@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -132,6 +132,19 @@
             "when": "createNewFolder"
           },
           {
+            "id": "selectBook",
+            "title": "Select Checking Book",
+            "description": "Now that we have selected a Gateway Language, let's choose the book of the Bible to check.\n[Select Checking Book](command:checking-extension.selectBook)",
+            "media": {
+              "image": "media/name-project.png",
+              "altText": "Select Checking Book"
+            },
+            "completionEvents": [
+              "onContext:selectedBook",
+              "onContext:projectInitialized"
+            ]
+          },
+          {
             "id": "loadTarget",
             "title": "Download Target Bible",
             "description": "Now that we have selected a Target Bible, let's download the Target Bible.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
@@ -218,6 +231,7 @@
     "eslint-config-eslint": "^11.0.0",
     "eslint-plugin-jsdoc": "^48.10.1",
     "fs-extra": "^11.2.0",
+    "lodash.clonedeep": "^4.5.0",
     "original-fs": "^1.2.0",
     "ospath": "^1.2.2",
     "string-punctuation-tokenizer": "^2.2.0",
@@ -225,6 +239,7 @@
     "tsv-groupdata-parser": "^1.1.0",
     "typescript": "^5.4.5",
     "usfm-js": "^3.4.2",
+    "uw-tsv-parser": "^1.0.3",
     "yamljs": "^0.3.0"
   }
 }
