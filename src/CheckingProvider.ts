@@ -23,6 +23,7 @@ import {
     delay,
     downloadLatestLangHelpsResourcesFromCatalog,
     downloadTargetBible,
+    fetchBibleManifest,
     fileExists,
     findBibleResources,
     findOwnersForLang,
@@ -271,8 +272,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.selectBook",
           executeWithRedirecting(async () => {
                 console.log("checking-extension.selectBook")
-                const options = await this.getBookSelection()
-                if (options) {
+                const targetBibleOptions = this.getContext('targetBibleOptions');
+                const options = await this.getBookSelection(targetBibleOptions)
+                if (options?.bookPick) {
                     await this.gotoWorkFlowStep("loadTarget");
                 }
                 await this.setContext('selectedBook', options.bookPick);
@@ -284,6 +286,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.loadTargetBible",
           async () => {
               console.log("checking-extension.loadTargetBible")
+              const bookId = this.getContext('selectedBook');
               const targetOptions = this.getContext('targetBibleOptions');
               if (targetOptions) {
                   const glOptions = this.getContext('selectedGL');
@@ -294,7 +297,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                       const targetOwner = targetOptions.owner;
                       const repoPath = getRepoPath(targetLanguageId, targetBibleId, glOptions.languageId);
                       await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
-                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, repoPath, catalog);
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, repoPath, catalog, bookId);
                       if (targetFoundPath) {
                           await this.gotoWorkFlowStep("projectInitialize");
                           await showInformationMessage(`Target Bible Loaded`, true);
@@ -1220,17 +1223,25 @@ export class CheckingProvider implements CustomTextEditorProvider {
         };
     }
 
-    private static async getBookSelection() {
-        //TODO blm: get list of books from target manifest
-        const bookIds = Object.keys(ALL_BIBLE_BOOKS)
-        let bookPick = await vscode.window.showQuickPick(
-          bookIds,
-          {
-              placeHolder: "Select the book to check:",
-          },
-        );
+    private static async getBookSelection(targetBibleOptions:{}) {
+        // @ts-ignore
+        const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none');
+        // @ts-ignore
+        const bookIds = manifest?.projects?.map((project: {}) => project.identifier)
+        // const bookIds = Object.keys(ALL_BIBLE_BOOKS)
+        let bookPick:string|undefined = ''
+        if (bookIds?.length) {
+            bookPick = await vscode.window.showQuickPick(
+              bookIds,
+              {
+                  placeHolder: "Select the book to check:",
+              },
+            );
 
-        await showInformationMessage(`Book selected ${bookPick}`);
+            await showInformationMessage(`Book selected ${bookPick}`);
+        } else {
+            await showErrorMessage(`Error getting manifest for bible!`, true);
+        }
         return {
             bookPick
         };

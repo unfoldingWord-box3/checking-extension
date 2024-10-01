@@ -452,6 +452,99 @@ async function getLangResourcesFromCatalog(catalog:any[], languageId:string, own
     return { processed, updatedCatalogResources }
 }
 
+function getDestFolderForRepoFile(resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
+    const destFolder = path.join(resourcesPath, languageId, "bibles", resourceId, `books`, bookId);
+    return destFolder;
+}
+
+async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
+    let downloadUrl = masterBranchUrl + repoFilePath;
+    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+    let destFilePath: string | null = path.join(destFolder, repoFilePath);
+    let contents = ''
+
+    fs.ensureDirSync(destFolder);
+    fs.removeSync(destFilePath); // make sure no file present
+    console.log(`fetching ${downloadUrl}`);
+    const results = await downloadHelpers.download(downloadUrl, destFilePath);
+
+    if (results.status === 200) {
+        contents = fs.readFileSync(destFilePath, "UTF-8")?.toString()
+    } else {
+        destFilePath = null;
+        const message = `Download ${downloadUrl} error, status: ${results.status}`;
+        console.log(message);
+        throw message
+    }
+    return {
+        contents,
+        filePath: destFilePath,
+    };
+}
+
+export async function fetchBibleManifest(baseUrl: string, owner: string, languageId: string, resourceId: string, resourcesPath: string, bookId: string) {
+    if (!baseUrl) {
+        baseUrl = "https://git.door43.org/"; // default
+    }
+    const masterBranchUrl = `${baseUrl}${owner}/${languageId}_${resourceId}/raw/branch/master/`;
+    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+    fs.emptyDirSync(destFolder);
+
+    const repoFilePath = "manifest.yaml";
+    const {
+        contents: manifestYaml,
+        filePath: destFilePath,
+    } = await fetchRepoFile(masterBranchUrl, repoFilePath, resourcesPath, languageId, resourceId, bookId);
+    const manifest = YAML.parse(manifestYaml);
+    return { masterBranchUrl, destFolder, manifest };
+}
+
+/**
+ * search catalog to find and download bible match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ * @param {string} languageId
+ * @param {string} owner
+ * @param {string} resourceId
+ * @param {string} resourcesPath - parent path for resources
+ * @param bookId - fetch only this book
+ * @returns {Promise<*>} -
+ */
+async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:string, resourceId:string, resourcesPath:string, bookId:string) {
+    try {
+        const item = findResource(catalog, languageId, owner, resourceId)
+        if (item) {
+            // example: https://git.door43.org/es-419_gl/es-419_glt/raw/branch/master/manifest.yaml
+            const parts = item.downloadUrl?.split(owner)
+            let baseUrl = ''
+            if (parts?.length) {
+                baseUrl = parts[0]
+            }
+            const {
+                masterBranchUrl,
+                destFolder,
+                manifest,
+            } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId);
+            // @ts-ignore
+            const project = manifest?.projects?.find((project: {}) => project.identifier === bookId)
+            const bookPath = project?.path?.replace('./', '')
+            if (bookPath) {
+                const {
+                    contents: bookContents,
+                    filePath: bookFilePath
+                } = await fetchRepoFile(masterBranchUrl, bookPath, resourcesPath, languageId, resourceId, bookId);
+                if (bookContents && bookFilePath) {
+                    return destFolder;
+                }
+            } else {
+                console.warn(`fetchBibleResourceBook - could not download book ${fs.path(masterBranchUrl, bookPath)}`)
+            }
+        }
+    } catch (err) {
+        console.warn(`fetchBibleResourceBook - could not download resources`, err)
+    }
+    return null
+}
+
 /**
  * search catalog to find and download bible match for owner, languageId, resourceId
  * @param {object[]} catalog - list of items in catalog
@@ -1054,30 +1147,39 @@ function cleanupPath(filePath:string, repoPath:string) {
     return _filePath
 }
 
-export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
+export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[], bookId:string|null) {
     let targetFoundPath = null;
-    try {
-        const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
-        if (foundPath) {
-            targetFoundPath = foundPath;
-        } else {
-            // if folder already exists, remove it first
-            const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
-            const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
-            if (versionPath && fs.pathExistsSync(versionPath)) {
-                fs.removeSync(versionPath);
-            }
 
-            const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
-            if (!results?.destFolder) {
-                console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
-                targetFoundPath = null;
-            } else {
-                targetFoundPath = results.destFolder;
-            }
+    if (bookId) {
+        try {
+            targetFoundPath = await fetchBibleResourceBook(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath, bookId);
+        } catch (e) {
+            console.error(`downloadTargetBible - cannot copy target bible book ${bookId} from: ${repoPath}`, e);
         }
-    } catch (e) {
-        console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
+    } else {
+        try {
+            const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
+            if (foundPath) {
+                targetFoundPath = foundPath;
+            } else {
+                // if folder already exists, remove it first
+                const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
+                const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
+                if (versionPath && fs.pathExistsSync(versionPath)) {
+                    fs.removeSync(versionPath);
+                }
+
+                const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+                if (!results?.destFolder) {
+                    console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
+                    targetFoundPath = null;
+                } else {
+                    targetFoundPath = results.destFolder;
+                }
+            }
+        } catch (e) {
+            console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
+        }
     }
     return targetFoundPath;
 }
@@ -1161,7 +1263,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                 if (!hasBibleFiles) {
                     callback && await callback(`Verifying Target Bible ${targetLanguageId}/${targetBibleId}`)
-                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
+                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources, null);
                     if (!targetFoundPath) {
                         return {
                             success: false,
