@@ -2309,52 +2309,54 @@ export function checkDataToTwl(checkData:{}) {
 function findSelection(checkData: {}, selection: {}):object|undefined {
     let found: object|undefined = undefined;
     // @ts-ignore
-    const parts = selection?.TWLink?.split('/')
-    if (parts?.length) {}
-    const _groupId = parts[parts.length - 1]
-
-    for (const catagoryId of Object.keys(checkData)) {
-        if (catagoryId === "manifest") {
-            continue;
-        }
-
-        // @ts-ignore
-        const groups = checkData[catagoryId]?.groups || {};
-        for (const groupId of Object.keys(groups)) {
-
+    const link = selection?.TWLink || selection?.SupportReference;
+    const parts = link?.split('/')
+    if (parts?.length) {
+        const _groupId = parts[parts.length - 1]
+    
+        for (const catagoryId of Object.keys(checkData)) {
+            if (catagoryId === "manifest") {
+                continue;
+            }
+    
             // @ts-ignore
-            const group = groups[groupId];
-
-            for (const item of group) {
+            const groups = checkData[catagoryId]?.groups || {};
+            for (const groupId of Object.keys(groups)) {
+    
                 // @ts-ignore
-                const contextId = item?.contextId;
-                const reference = contextId?.reference;
-                const chapter = reference?.chapter || "";
-                const verse = reference?.verse || "";
-                const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
-
-                const ID = `${contextId?.checkId || ""}`;
-                const category = item?.category || "";
-                const groupId = contextId?.groupId || "";
-                const Tags = `${category}`;
-                const quoteString = contextId?.quoteString || "";
-                const OrigWords = `${quoteString}`;
-                const Occurrence = `${contextId?.occurrence || ""}`;
-                const selections = item?.selections ? JSON.stringify(item?.selections) : "";
-                const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
-
-                if (
+                const group = groups[groupId];
+    
+                for (const item of group) {
                     // @ts-ignore
-                    (ID === selection.ID)
-                    // @ts-ignore
-                    && (Reference === selection.Reference)
-                    // @ts-ignore
-                    && (groupId === _groupId)
-                ) {
-                    found = item
-                    return found
-                }
-         }
+                    const contextId = item?.contextId;
+                    const reference = contextId?.reference;
+                    const chapter = reference?.chapter || "";
+                    const verse = reference?.verse || "";
+                    const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
+    
+                    const ID = `${contextId?.checkId || ""}`;
+                    const category = item?.category || "";
+                    const groupId = contextId?.groupId || "";
+                    const Tags = `${category}`;
+                    const quoteString = contextId?.quoteString || "";
+                    const OrigWords = `${quoteString}`;
+                    const Occurrence = `${contextId?.occurrence || ""}`;
+                    const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                    const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
+    
+                    if (
+                        // @ts-ignore
+                        (ID === selection.ID)
+                        // @ts-ignore
+                        && (Reference === selection.Reference)
+                        // @ts-ignore
+                        && (groupId === _groupId)
+                    ) {
+                        found = item
+                        return found
+                    }
+               }
+            }
         }
     }
     return found;

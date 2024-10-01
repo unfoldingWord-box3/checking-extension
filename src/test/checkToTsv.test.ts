@@ -25,9 +25,9 @@ import * as tsvparser from "uw-tsv-parser";
 
 const home = ospath.home()
 // to run unit tests in debugger set path to project relative to home
-const projectFolder = path.join(home, 'Development/VsCode/checking-extension')
+// const projectFolder = path.join(home, 'Development/VsCode/checking-extension')
 // to run unit tests regularly, just use `.`
-// const projectFolder = '.'
+const projectFolder = '.'
 const files = fs.readdirSync(projectFolder);
 console.log(files);
 
@@ -46,7 +46,7 @@ suite('Test twl_check to twl selections tsv', () => {
 
     const results = checkDataToTwl(groupData);
     assert.ok(results);
-    fs.outputFileSync(path.join(projectFolder, './testResults_twl.tsv', results, 'UTF-8'));
+    fs.outputFileSync(path.join(projectFolder, './testResults_twl.tsv'), results, 'UTF-8');
   });
 });
 
@@ -148,7 +148,7 @@ suite('Test tn_check to tn selections tsv', () => {
 
     const results = checkDataToTn(groupData);
     assert.ok(results);
-    fs.outputFileSync(path.join(projectFolder, './testResults_tn.tsv', results, 'UTF-8'));
+    fs.outputFileSync(path.join(projectFolder, './testResults_tn.tsv'), results, 'UTF-8');
   });
   
   test('Test Titus import identical selections should not change', async() => {
@@ -195,10 +195,10 @@ suite('Test tn_check to tn selections tsv', () => {
     } = importSelectionsDataIntoCheckData(tsvItems, checkData);
     const sameData = isEqual(checkData, originalCheckData);
     assert.ok(!sameData)
-    assert.equal(updatedCount, 4)
+    assert.equal(updatedCount, 1)
     assert.equal(errors?.length, 0)
-    assert.equal(importedLines, 188)
-    const changedItem = checkData['kt'].groups['christ'][0]
+    assert.equal(importedLines, 156)
+    const changedItem = checkData['grammar'].groups['figs-abstractnouns'][0]
     assert.equal(changedItem.selections, newSelection)
   });
   
