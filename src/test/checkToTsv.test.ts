@@ -23,11 +23,27 @@ import * as vscode from "vscode";
 // @ts-ignore
 import * as tsvparser from "uw-tsv-parser";
 
-const home = ospath.home()
+function autoDetectProjectFolder() {
+  const home = ospath.home();
+  let projectFolder = path.join(__dirname, '..');
+  if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to test folder
+    projectFolder = path.join(projectFolder, "..");
+    if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to parent folder
+      projectFolder = home;
+      if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to home folder
+        projectFolder = "."; // try to use current
+      }
+    }
+  }
+  return projectFolder;
+}
+
+const projectFolder = autoDetectProjectFolder();
+
 // to run unit tests in debugger set path to project relative to home
 // const projectFolder = path.join(home, 'Development/VsCode/checking-extension')
 // to run unit tests regularly, just use `.`
-const projectFolder = '.'
+
 const files = fs.readdirSync(projectFolder);
 console.log(files);
 
