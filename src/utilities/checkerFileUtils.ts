@@ -988,6 +988,7 @@ function isOriginalBible(bibleId: string) {
  * @param {string} languageId
  * @param {string} owner
  * @param {string} resourcesPath - parent path for resources
+ * @param callback
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
 export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
@@ -1066,17 +1067,28 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
-export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath) {
-    return path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_${glLanguageId}`)
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+    let repoFolderName = `${targetLanguageId}_${targetBibleId}_${glLanguageId}`;
+    if (bookId) {
+        repoFolderName += `_${bookId}`
+    }
+    return path.join(projectsPath, repoFolderName)
 }
 
 /**
  * copy bible USFM files
  * @param repoPath
+ * @param bookId
  */
-function getBibleFiles(repoPath: string) {
+function getBibleFiles(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm"));
+        return fs.readdirSync(repoPath).filter((filename: string) => {
+            let validFile = (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm");
+            if (validFile && bookId) {
+                validFile = filename.toLowerCase().includes(bookId)
+            }
+            return validFile
+        });
     }
     return []
 }
@@ -1085,10 +1097,18 @@ function getBibleFiles(repoPath: string) {
  * get list of files with extension of fileType
  * @param repoPath
  * @param fileType
+ * @param bookId
  */
-function getFilesOfType(repoPath: string, fileType: string) {
+function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === fileType));
+        return fs.readdirSync(repoPath).filter((filename: string) => {
+            const fileNameLC = filename.toLowerCase();
+            let validFile = path.extname(fileNameLC) === fileType;
+            if (validFile && bookId) {
+                validFile = fileNameLC.includes(bookId)
+            }
+            return validFile;
+        });
     }
     return []
 }
@@ -1184,6 +1204,20 @@ export async function downloadTargetBible(targetBibleId: string, resourcesBasePa
     return targetFoundPath;
 }
 
+function copyResources(sourceTsvsPath: string, checkingPath: string, bookId:string|null = null, fileType:string = '.json') {
+    fs.ensureDirSync(checkingPath);
+    if (bookId) {
+        const files = getFilesOfType(sourceTsvsPath, fileType, bookId);
+        for(const file of files) {
+            const sourcePath = path.join(sourceTsvsPath, file);
+            const destPath = path.join(checkingPath, file);
+            fs.copySync(sourcePath, destPath); 
+        }
+    } else {
+        fs.copySync(sourceTsvsPath, checkingPath);
+    }
+}
+
 /**
  * Initialize folder of project
  * @param repoPath
@@ -1194,8 +1228,11 @@ export async function downloadTargetBible(targetBibleId: string, resourcesBasePa
  * @param gl_owner
  * @param resourcesBasePath
  * @param sourceResourceId - if null, then init both tn and twl
+ * @param catalog
+ * @param callback
+ * @param bookId
  */
-export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null, bookId:string|null = null) {
     let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
@@ -1208,7 +1245,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
             hasCheckingFiles = false
         }
     }
-    const bibleFiles = getBibleFiles(repoPath)
+    const bibleFiles = getBibleFiles(repoPath, bookId)
     const hasBibleFiles = bibleFiles?.length
     const shouldCreateProject = !projectExists
         || (hasBibleFiles && !hasCheckingFiles)
@@ -1244,15 +1281,15 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                     if (sourceTsvsPath) {
                         const checkingPath = path.join(repoPath, 'checking', resourceId)
-                        fs.ensureDirSync(checkingPath);
-                        fs.copySync(sourceTsvsPath, checkingPath);
+                        const fileType = ".json";
+                        copyResources(sourceTsvsPath, checkingPath, bookId, fileType);
 
                         // create check files from json files
-                        const files = getFilesOfType(checkingPath, ".json");
+                        const files = getFilesOfType(checkingPath, fileType);
                         if (files?.length) {
                             for (const filename of files) {
-                                const bookId = getBookIdFromPath(filename);
-                                const newName = `${bookId}.${resourceId}_check`;
+                                const _bookId = getBookIdFromPath(filename);
+                                const newName = `${_bookId}.${resourceId}_check`;
                                 if (newName !== filename) {
                                     fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
                                 }
@@ -1263,7 +1300,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                 if (!hasBibleFiles) {
                     callback && await callback(`Verifying Target Bible ${targetLanguageId}/${targetBibleId}`)
-                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources, null);
+                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources, bookId);
                     if (!targetFoundPath) {
                         return {
                             success: false,
@@ -1477,7 +1514,7 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
     return { resource, hasResourceFiles };
 }
 
-function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object) {
+function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object, bookId:string|null = null) {
     const sep = path.sep || '/'
     const projectResources = `.${sep}.resources${sep}`;
     const bibleId = bible.bibleId || bible.id;
@@ -1520,8 +1557,22 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                         const src = path.join(replaceHomePath(biblePath));
                         const dest = _newFullPath;
                         const parentDir = path.join(dest, "..");
-                        fs.ensureDirSync(parentDir);
-                        fs.copySync(src, dest);
+
+                        if (bookId) {
+                            fs.ensureDirSync(src);
+                            const files = getFilesOfType(src, ".json");
+                            if (fs.existsSync(path.join(src, bookId))) {
+                                files.push(bookId);
+                            }
+                            for (const file of files) {
+                                const sourcePath = path.join(src, file);
+                                const destPath = path.join(dest, file);
+                                fs.copySync(sourcePath, destPath);
+                            }
+                        } else {
+                            fs.ensureDirSync(parentDir);
+                            fs.copySync(src, dest);
+                        }
                         localChanged = true;
                     }
                     biblePath = newPath;
@@ -1619,7 +1670,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               owner: 'unfoldingWord'
           }
 
-          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata);
+          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata, bookId);
           changed = __ret.changed;
 
           const otherOrigLanguageId = !isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
@@ -1629,11 +1680,13 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               id: otherOrigLanguageBibleId,
               owner: 'unfoldingWord'
           }
-          const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata);
-          changed = ___ret.changed;
+          if(!bookId) {
+              const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata, bookId);
+              changed = ___ret.changed;
+          }
 
           for (const bible of biblesList) {
-              const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata);
+              const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata, bookId);
               changed = __ret.changed;
           }
 

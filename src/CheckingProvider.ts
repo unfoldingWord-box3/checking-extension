@@ -51,7 +51,7 @@ import {
 } from "./utilities/languages";
 // @ts-ignore
 import isEqual from 'deep-equal'
-import { ALL_BIBLE_BOOKS } from "./utilities/BooksOfTheBible";
+import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -320,6 +320,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.initializeChecking",
           async () => {
               console.log("checking-extension.initializeChecking")
+              const bookId = this.getContext('selectedBook');
               const glOptions = this.getContext('selectedGL');
               if (glOptions && glOptions.languageId && glOptions.owner) {
                   const createNewFolder = this.getContext('createNewFolder');
@@ -329,7 +330,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                           return await showErrorMessage(`You must select Target Bible first`, true);
                       } else {
                           const catalog = getSavedCatalog() || []
-                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog);
+                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId);
                           await this.setContext("projectInitialized", repoInitSuccess);
                           if (repoInitSuccess) {
                               // navigate to new folder
@@ -520,7 +521,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             glLanguageId = options.gwLanguagePick
             glOwner = options.gwOwnerPick
         }
-        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
         if (repoInitSuccess) {
             await showInformationMessage(`Checking has been set up in project`);
         } else {
@@ -543,7 +544,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const {
                 repoInitSuccess,
                 repoPath,
-            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
 
             let navigateToFolder = repoInitSuccess;
             if (!repoInitSuccess) {
@@ -563,13 +564,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
         let repoInitSuccess = false;
-        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId);
+        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId, undefined, bookId || '');
         const repoExists = fileExists(repoPath);
         if (!repoExists) {
             if (targetLanguageId && targetBibleId && targetOwner) {
-                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, bookId);
             } else {
                 await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`, true);
             }
@@ -579,13 +580,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { repoInitSuccess, repoPath };
     }
 
-    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
         let repoInitSuccess = false;
 
         if (glLanguageId && glOwner) {
             await showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
             // @ts-ignore
-            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
+            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog, bookId);
             // @ts-ignore
             if (results.success) {
                 let validResources = true
@@ -593,13 +594,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 // verify that we have the necessary resources
                 for (const projectId of ['twl', 'tn']) {
-                    for (const isNT of [false, true]) {
-                        const _bookId = getBookForTestament(repoPath, isNT);
+                    const OT = false;
+                    const NT = true;
+                    let testamentsToCheck = [OT, NT];
+                    if (bookId) {
+                        const _isNT = isNT(bookId)
+                        testamentsToCheck = [_isNT];
+                    }
+                    for (const _isNT of testamentsToCheck) {
+                        const _bookId = bookId || getBookForTestament(repoPath, _isNT);
                         if (_bookId) {
                             const _resources = getResourcesForChecking(repoPath, resourcesPath, projectId, _bookId);
                             // @ts-ignore
                             if (!_resources.validResources) {
-                                const testament = isNT ? 'NT' : 'OT'
+                                const testament = _isNT ? 'NT' : 'OT'
                                 const message = `Missing ${projectId} needed ${testament} resources`;
                                 // @ts-ignore
                                 missingMessage = missingMessage + `${message}\n${_resources.errorMessage}\n`
@@ -663,7 +671,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return promise
     }
 
-    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
+    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null, bookId:string | null):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -683,7 +691,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
+                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId);
                 progressTracker.report({ increment });
                 await delay(100)
                 resolve(results)
