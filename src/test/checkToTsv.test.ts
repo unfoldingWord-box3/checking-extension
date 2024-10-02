@@ -20,18 +20,18 @@ import isEqual from "deep-equal";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 // import * as myExtension from '../extension';
-// @ts-ignore
-import * as tsvparser from "uw-tsv-parser";
+
+const TEST_FILE = './src/test/fixtures/tit.twl_check';
 
 function autoDetectProjectFolder() {
   const home = ospath.home();
-  let projectFolder = path.join(__dirname, '..');
-  if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to test folder
-    projectFolder = path.join(projectFolder, "..");
-    if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to parent folder
+  let projectFolder = path.join(__dirname, '../..');
+  if (!fs.existsSync(path.join(projectFolder, TEST_FILE))) { // check relative to test folder
+    projectFolder = path.join(__dirname, '..');
+    if (!fs.existsSync(path.join(projectFolder, TEST_FILE))) { // check relative to parent folder
       projectFolder = home;
-      if (!fs.existsSync(path.join(projectFolder, "./src/test/fixtures/tit.twl_check"))) { // check relative to home folder
-        projectFolder = "."; // try to use current
+      if (!fs.existsSync(path.join(projectFolder, TEST_FILE))) { // check relative to home folder
+        projectFolder = '.'; // try to use current
       }
     }
   }
