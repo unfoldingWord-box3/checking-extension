@@ -29,6 +29,7 @@ import {
     findOwnersForLang,
     findResourcesForLangAndOwner,
     getBookForTestament,
+    getFileSubPathForResource,
     getLanguagesInCatalog,
     getLatestResourcesCatalog,
     getRepoPath,
@@ -330,13 +331,21 @@ export class CheckingProvider implements CustomTextEditorProvider {
                           return await showErrorMessage(`You must select Target Bible first`, true);
                       } else {
                           const catalog = getSavedCatalog() || []
-                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId);
+                          const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId);
                           await this.setContext("projectInitialized", repoInitSuccess);
                           if (repoInitSuccess) {
                               // navigate to new folder
-                              const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
                               const uri = vscode.Uri.file(repoPath);
-                              await vscode.commands.executeCommand("vscode.openFolder", uri);
+                              await showInformationMessage(`Opening project ${repoPath}`);
+                              vscode.commands.executeCommand("vscode.openFolder", uri);
+                              for (const resourceId of ['twl', 'tn']) {
+                                  const fileSubPath = getFileSubPathForResource(resourceId, bookId)
+                                  const filePathUrl = vscode.Uri.joinPath(uri, fileSubPath)
+                                  const filePath = filePathUrl.fsPath
+                                  showInformationMessage(`Opening file ${filePath}`);
+                                  vscode.commands.executeCommand("vscode.open", filePathUrl);
+                              }
+                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                               return
                           }
                       }
@@ -619,7 +628,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 if (validResources) {
                     repoInitSuccess = true;
-                    await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                 } else {
                     await showErrorMessage(`Missing resources resources at ${repoPath}`, true, missingMessage );
                 }

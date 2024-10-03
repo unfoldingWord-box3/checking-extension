@@ -1218,6 +1218,21 @@ function copyResources(sourceTsvsPath: string, checkingPath: string, bookId:stri
     }
 }
 
+export function getSubFolderForResource(resourceId: string) {
+    return `./checking/${resourceId}`;
+}
+
+export function getFileSubPathForResource(resourceId: string, bookId: string | null) {
+    const folder = getSubFolderForResource(resourceId)
+    const fileName = getFileNameForBook(bookId, resourceId)
+    return path.join(folder, fileName);
+}
+
+
+function getFileNameForBook(_bookId: string | null, resourceId: string) {
+    return `${_bookId}.${resourceId}_check`;
+}
+
 /**
  * Initialize folder of project
  * @param repoPath
@@ -1289,7 +1304,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         if (files?.length) {
                             for (const filename of files) {
                                 const _bookId = getBookIdFromPath(filename);
-                                const newName = `${_bookId}.${resourceId}_check`;
+                                const newName = getFileNameForBook(_bookId, resourceId);
                                 if (newName !== filename) {
                                     fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
                                 }
@@ -1356,7 +1371,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 for (const resourceId of resourceIds) {
                     const checkingPathName = `${resourceId}_checksPath`
                     // @ts-ignore
-                    checkingMetaData[checkingPathName] = `./checking/${resourceId}`
+                    checkingMetaData[checkingPathName] = getSubFolderForResource(resourceId)
                     const tsvSourcePathName = `${resourceId}_helpsPath`
                     // @ts-ignore
                     checkingMetaData[tsvSourcePathName] = removeHomePath(sourceTsvsPaths[resourceId])
