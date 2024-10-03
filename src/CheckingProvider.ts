@@ -335,17 +335,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
                           await this.setContext("projectInitialized", repoInitSuccess);
                           if (repoInitSuccess) {
                               // navigate to new folder
-                              const uri = vscode.Uri.file(repoPath);
+                              const repoPathUri = vscode.Uri.file(repoPath);
                               await showInformationMessage(`Opening project ${repoPath}`);
-                              vscode.commands.executeCommand("vscode.openFolder", uri);
+                              vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                               for (const resourceId of ['twl', 'tn']) {
                                   const fileSubPath = getFileSubPathForResource(resourceId, bookId)
-                                  const filePathUrl = vscode.Uri.joinPath(uri, fileSubPath)
+                                  const filePathUrl = vscode.Uri.joinPath(repoPathUri, fileSubPath)
                                   const filePath = filePathUrl.fsPath
                                   showInformationMessage(`Opening file ${filePath}`);
-                                  vscode.commands.executeCommand("vscode.open", filePathUrl);
+                                  try {
+                                      vscode.commands.executeCommand("vscode.open", filePathUrl).then(() => {
+                                          console.log(`Successfully opened ${filePath}`)
+                                      });
+                                  } catch (e) {
+                                      console.warn(`Could not open ${filePath}`, e)
+                                  }
                               }
-                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                               return
                           }
                       }
