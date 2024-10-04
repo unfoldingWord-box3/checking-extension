@@ -298,7 +298,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                       const targetOwner = targetOptions.owner;
                       const repoPath = getRepoPath(targetLanguageId, targetBibleId, glOptions.languageId);
                       await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
-                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, repoPath, catalog, bookId);
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId);
                       if (targetFoundPath) {
                           await this.gotoWorkFlowStep("projectInitialize");
                           await showInformationMessage(`Target Bible Loaded`, true);
