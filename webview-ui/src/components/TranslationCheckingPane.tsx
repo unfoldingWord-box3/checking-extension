@@ -215,7 +215,25 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
   // @ts-ignore
   const currentLanguageSelection = translations?.['_']?.['full_name'] || '';
-    
+  let projectManifest = null
+  // @ts-ignore
+  let _manifest = checkingObj?.targetBible?.manifest;
+  if (_manifest) {
+    const dublin_core = _manifest?.dublin_core
+    let target_language = { ...dublin_core.language };
+    target_language.book = {
+      name: _manifest.resource_title
+    }
+    _manifest = { // shallow copy
+      ...dublin_core,
+      ..._manifest,
+      target_language
+    }
+  }
+  const initialSettings = {
+    manifest: _manifest
+  }
+  
   return haveResources ? (
       <>
           <AppBar position='static'>
@@ -262,6 +280,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 contextId={contextId}
                 getLexiconData={getLexiconData_}
                 glWordsData={glWordsData}
+                initialSettings={initialSettings}
                 saveSelection={_saveSelection}
                 showDocument={showDocument}
                 targetBible={targetBible}
