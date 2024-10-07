@@ -201,6 +201,7 @@
     "install:webview": "cd webview-ui && pnpm install",
     "build:all": "npm run build:webview && npm run compile",
     "build:all-debug": "npm run build:webview-debug && npm run compile:debug",
+    "build:debug": "npm run compile:debug",
     "start:webview": "cd webview-ui && pnpm run start",
     "build:webview": "cd webview-ui && pnpm run build",
     "build:webview-debug": "cd webview-ui && pnpm run build:dev",

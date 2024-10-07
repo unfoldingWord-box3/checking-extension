@@ -17,6 +17,7 @@ import * as fs from "fs-extra";
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
+    changeTargetVerse,
     cleanUpFailedCheck,
     currentLanguageCode,
     DEFAULT_LOCALE,
@@ -85,6 +86,23 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
     console.error(message)
     await delay(100); // TRICKY: allows UI to update before moving on
 }
+
+async function getWorkSpaceFolder() {
+    let projectPath;
+    let repoFolderExists = false;
+    const workspaceFolder = vscode.workspace.workspaceFolders
+      ? vscode.workspace.workspaceFolders[0]
+      : undefined;
+    if (workspaceFolder) {
+        projectPath = workspaceFolder.uri.fsPath;
+        repoFolderExists = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
+          () => true,
+          () => false,
+        );
+    }
+    return { projectPath, repoFolderExists };
+}
+
 
 /**
  * Provider for tsv editors.
@@ -356,7 +374,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                           }
                       }
                   } else { // initializing existing folder
-                      const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+                      const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
 
                       if (repoFolderExists && projectPath) {
                           const results = isRepoInitialized(projectPath, resourcesPath, null);
@@ -465,7 +483,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     private static async initializeChecker(navigateToFolder = false) {
         await showInformationMessage("initializing Checker");
-        const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+        const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
 
         if (!repoFolderExists) {
             await this.initializeEmptyFolder();
@@ -489,22 +507,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         }
         await showErrorMessage(`repo already exists - but not valid!`, true);
-    }
-
-    private static async getWorkSpaceFolder() {
-        let projectPath;
-        let repoFolderExists = false;
-        const workspaceFolder = vscode.workspace.workspaceFolders
-          ? vscode.workspace.workspaceFolders[0]
-          : undefined;
-        if (workspaceFolder) {
-            projectPath = workspaceFolder.uri.fsPath;
-            repoFolderExists = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
-              () => true,
-              () => false,
-            );
-        }
-        return { projectPath, repoFolderExists };
     }
 
     private static async initializeBibleFolder(results:object, projectPath:string) {
@@ -842,7 +844,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.log(`firstLoad: ${text}`)
             updateWebview(true)
         }
-        
+
         const setLocale_ = (text:string, data:object) => {
             // @ts-ignore
             const value = data?.value || DEFAULT_LOCALE;
@@ -855,6 +857,22 @@ export class CheckingProvider implements CustomTextEditorProvider {
             updateWebview(true) // refresh display
         }
 
+        const changeTargetVerse_ = (text:string, data:object) => {
+            console.log(`changeTargetVerse: ${data}`)
+            // @ts-ignore
+            const { bookId, chapter, verse, newVerseText } = data
+
+            delay(100).then(async () => {
+                const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                if (repoFolderExists && projectPath) {
+                    changeTargetVerse(projectPath, bookId, chapter, verse, newVerseText)
+                } else {
+                    console.warn (`changeTargetVerse_() projectPath '${projectPath}' does not exist`)
+                }
+            })
+            
+        }
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
@@ -865,6 +883,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
+                ["changeTargetVerse"]: changeTargetVerse_,
             };
 
             const commandFunction = commandToFunctionMapping[command];
@@ -1145,7 +1164,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let repoExists = false
         let isValidBible = false
         let isCheckingInitialized = false
-        const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+        const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
         if (repoFolderExists && projectPath) {
             repoExists = true
             const results = isRepoInitialized(projectPath, resourcesPath, null);

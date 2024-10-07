@@ -2561,3 +2561,34 @@ export function checkDataToTn(checkData:{}) {
     }
     return results
 }
+
+export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string) {
+    if (projectPath && bookId && chapter && verse) {
+        const files = getBibleBookFiles(projectPath, bookId)
+        if (files?.length === 1) {
+            const filePath = path.join(projectPath, files[0])
+            const usfmData = fs.readFileSync(filePath, 'utf8');
+            const bookJson = getParsedUSFM(usfmData)
+            const chapterData = bookJson?.chapters?.[chapter]
+            if (chapterData) {
+                chapterData[verse] = {
+                    verseObjects: [
+                        {
+                            type: 'text',
+                            text: newVerseText || ''
+                        }
+                    ]
+                }
+                const newUsfmData = usfmjs.toUSFM(bookJson, { forcedNewLines: true });
+                fs.outputFileSync(filePath, newUsfmData, 'UTF-8');
+            } else {
+                console.warn (`changeTargetVerse() missing chapter:`, { projectPath, bookId, chapter: chapterData, verse})
+            }
+        } else {
+            console.warn (`changeTargetVerse() could not find book for:`, { projectPath, bookId})
+        }
+    } else {
+        console.warn (`changeTargetVerse() missing parameters:`, { projectPath, bookId, chapter, verse, newVerseText})
+    }
+}
+

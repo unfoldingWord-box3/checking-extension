@@ -115,8 +115,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
       
-    const translate = (key:string) => {
-        const translation = TranslationUtils.lookupTranslationForKey(translations, key)
+    const translate = (key:string, data:object) => {
+        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
         return translation
     };
 
@@ -192,6 +192,16 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         if (drawerOpen) {
             setOpen(false)
         }
+    }
+
+    const changeTargetVerse = (chapter:string, verse:string, oldVerseText:string, newVerseText:string) => {
+      if (bookId && chapter && verse) {
+        vscode.postMessage({
+          command: "changeTargetVerse",
+          text: "Change Target Verse",
+          data: { bookId, chapter, verse, newVerseText },
+        });
+      }
     }
     
     const haveCheckingData = hasResourceData(checkingData);
@@ -275,6 +285,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
                 alignedGlBible={alignedGlBible}
                 bibles={bibles}
+                changeTargetVerse={changeTargetVerse}
                 checkingData={checkingData}
                 checkType={checkType}
                 contextId={contextId}
