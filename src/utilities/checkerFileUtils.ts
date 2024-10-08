@@ -1390,8 +1390,18 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         const resource = foundResources[resourceId]
                         let path_ = resource?.path;
                         if (path_) {
-                            // @ts-ignore
-                            const newPath = removeHomePath(path_)
+                            let newPath
+                            if (['ta', 'tw'].includes(resourceId)) {
+                                // copy this resource into project
+                                const subPath = path_.split('cache')[1]
+                                const destFolder = path.join(repoPath, '.resources', subPath)
+                                fs.ensureDirSync(destFolder)
+                                fs.copySync(path_, destFolder)
+                                newPath = destFolder.replace(repoPath, '.')
+                            } else {
+                                // @ts-ignore
+                                newPath = removeHomePath(path_);
+                            }
                             // @ts-ignore
                             resource.path = newPath
                         }
@@ -1502,7 +1512,7 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
                     }
                     const helpsPathKey = `${resourceId}_helpsPath`;
                     if (checkingMetadata?.[helpsPathKey]) {
-                        const helpsPath = replaceHomePath(checkingMetadata[helpsPathKey])
+                        const helpsPath = cleanupPath(checkingMetadata[helpsPathKey], repoPath)
                         const helpsFiles = getFilesOfType(helpsPath, `.json`)
                         translationHelpsLoaded = !!helpsFiles?.length
                         if (!translationHelpsLoaded) {
@@ -1685,7 +1695,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               // @ts-ignore
               results.hasTwls = !! hasResourceFiles
               const twResource = metadata.otherResources['tw']
-              let twPath = replaceHomePath(twResource?.path)
+              let twPath = cleanupPath(twResource?.path, repoPath)
               twPath = twPath && path.join(twPath, 'tw.json')
               // @ts-ignore
               results.tw = twPath && readJsonFileIfExists(twPath)
@@ -1700,7 +1710,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               // @ts-ignore
               results.tn = readJsonFileIfExists(tnPath)
               const taResource = metadata.otherResources['ta']
-              let taPath = replaceHomePath(taResource?.path)
+              let taPath = cleanupPath(taResource?.path, repoPath)
               taPath = taPath && path.join(taPath, 'ta.json')
               // @ts-ignore
               results.ta = taPath && readJsonFileIfExists(taPath)
