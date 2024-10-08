@@ -12,16 +12,18 @@ TODO
 Follow the following steps to see the checking extension in action.
 
 1. Install Extension from .vsix file:
-     - You can install the .vsix file directly from the command line using:
+
+   - You can install the .vsix file directly from the command line using:
          `code --install-extension my-extension-0.0.1.vsix`
-     - Alternatively, you can install it from within VSCode by opening the Extensions view, clicking on the ... at the top-right, and selecting Install from VSIX.... Then navigate to your .vsix file and select it.
+   - Alternatively, you can install it from within VSCode by opening the Extensions view, clicking on the ... at the top-right, and selecting Install from VSIX.... Then navigate to your .vsix file and select it.
 
 2. Build and test the extension. _Replace the `npm` with any package manager of your choice. The extension was developed with the `pnpm` package manager, so scripts in the `package.json` file will favor pnpm._
 
   a. Clone the checking-extension repository to test the extension in:
-       ```bash
-       git clone https://github.com/unfoldingWord-box3/checking-extension.git
-       ```
+
+```bash
+git clone https://github.com/unfoldingWord-box3/checking-extension.git
+```
 
   b. After you have cloned checking-extension, to get the latest code for checking-extension stash any local changes and get latest by doing:
        ```bash
@@ -31,28 +33,26 @@ Follow the following steps to see the checking extension in action.
 
   c. Install dependencies for both the extension and webview (Use the package manager of your choice. If you use pnpm, you can just run `pnpm install:all` in the root directory).
 
-       - Install dependencies in root directory (if pnpm is not found, do `sudo npm install --global pnpm` to install)
-       ```bash
-       pnpm run install:all
-       ```
+```bash
+yarn run install:all
+```
 
-  d. Build the webview so that it renders on extension run
+  d. Build the extension and webview so that it renders on extension run
 
-       - If in the root directory, run:
-       ```bash
-       pnpm run build:webview
-       ```
+```bash
+yarn run build:all-debug
+```
 
   e. Open vscode editor (using `code .` in the current directory or using the UI)
 
-  f. Press `F5` to open a new Extension Development Host window
+  f. Press `F5` to open a new Extension Development Host window.  If you get error that the module could not be installed, try the following which should show the errors:
 
-      - If you get error that the module could not be installed, try:
-       ```bash
-       pnpm run build:all
-       ```
+```bash
+pnpm run build:all-debug
+```
 
-  g. Initialize a project
+  g. Initialize a project:
+
       - Create a new project.  In vscode with no project open, press Command-Shift-P button on Mac or Control-Shift-P on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to create a new checking project.
       - Add checking to an existing project (a folder that already has usfm files and manifest).  With vscode open to project folder, press Command-Shift-P button on Mac or ? on Windows. and search for `Translation Checking Tool: Initialize Project`, then click on it and answer the prompts to select gateway language.  It will create a checking folder and metadata.json.
 

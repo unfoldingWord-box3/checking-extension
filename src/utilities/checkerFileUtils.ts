@@ -1,17 +1,20 @@
 // @ts-ignore
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import * as fs from "fs-extra";
+import * as path from "path";
 // @ts-ignore
-import * as ospath from 'ospath';
+import * as ospath from "ospath";
 // @ts-ignore
 import * as usfmjs from "usfm-js";
 // @ts-ignore
-import * as YAML from 'yamljs';
+import * as YAML from "yamljs";
 import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
-import { BIBLE_BOOKS } from "./BooksOfTheBible";
+import { ALL_BIBLE_BOOKS, BIBLE_BOOKS } from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
+// @ts-ignore
+import * as tsvparser from "uw-tsv-parser";
+
 // helpers
 const {
     apiHelpers,
@@ -23,6 +26,7 @@ const {
 }
 // @ts-ignore
   = require('tc-source-content-updater');
+
 
 const workingPath = path.join(ospath.home(), 'translationCore')
 export const projectsBasePath = path.join(workingPath, 'otherProjects')
@@ -448,6 +452,100 @@ async function getLangResourcesFromCatalog(catalog:any[], languageId:string, own
     return { processed, updatedCatalogResources }
 }
 
+function getDestFolderForRepoFile(resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
+    const destFolder = path.join(resourcesPath, languageId, "bibles", resourceId, `books`, bookId);
+    return destFolder;
+}
+
+async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
+    let downloadUrl = masterBranchUrl + repoFilePath;
+    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+    let destFilePath: string | null = path.join(destFolder, repoFilePath);
+    let contents = ''
+
+    fs.ensureDirSync(destFolder);
+    fs.removeSync(destFilePath); // make sure no file present
+    console.log(`fetching ${downloadUrl}`);
+    const results = await downloadHelpers.download(downloadUrl, destFilePath);
+
+    if (results.status === 200) {
+        contents = fs.readFileSync(destFilePath, "UTF-8")?.toString()
+    } else {
+        destFilePath = null;
+        const message = `Download ${downloadUrl} error, status: ${results.status}`;
+        console.log(message);
+        throw message
+    }
+    return {
+        contents,
+        filePath: destFilePath,
+    };
+}
+
+export async function fetchBibleManifest(baseUrl: string, owner: string, languageId: string, resourceId: string, resourcesPath: string, bookId: string) {
+    if (!baseUrl) {
+        baseUrl = "https://git.door43.org/"; // default
+    }
+    const masterBranchUrl = `${baseUrl}${owner}/${languageId}_${resourceId}/raw/branch/master/`;
+    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+    fs.emptyDirSync(destFolder);
+
+    const repoFilePath = "manifest.yaml";
+    const {
+        contents: manifestYaml,
+        filePath: destFilePath,
+    } = await fetchRepoFile(masterBranchUrl, repoFilePath, resourcesPath, languageId, resourceId, bookId);
+    const manifest = YAML.parse(manifestYaml);
+    return { masterBranchUrl, destFolder, manifest };
+}
+
+/**
+ * search catalog to find and download bible match for owner, languageId, resourceId
+ * @param {object[]} catalog - list of items in catalog
+ * @param {string} languageId
+ * @param {string} owner
+ * @param {string} resourceId
+ * @param {string} resourcesPath - parent path for resources
+ * @param bookId - fetch only this book
+ * @returns {Promise<*>} -
+ */
+async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:string, resourceId:string, resourcesPath:string, bookId:string) {
+    try {
+        const item = findResource(catalog, languageId, owner, resourceId)
+        if (item) {
+            // example: https://git.door43.org/es-419_gl/es-419_glt/raw/branch/master/manifest.yaml
+            const parts = item.downloadUrl?.split(owner)
+            let baseUrl = ''
+            if (parts?.length) {
+                baseUrl = parts[0]
+            }
+            const {
+                masterBranchUrl,
+                destFolder,
+                manifest,
+            } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId);
+            // fs.outputJsonSync(path.join(destFolder, 'manifest.json'), manifest, { spaces: 2 })
+            // @ts-ignore
+            const project = manifest?.projects?.find((project: {}) => project.identifier === bookId)
+            const bookPath = project?.path?.replace('./', '')
+            if (bookPath) {
+                const {
+                    contents: bookContents,
+                    filePath: bookFilePath
+                } = await fetchRepoFile(masterBranchUrl, bookPath, resourcesPath, languageId, resourceId, bookId);
+                if (bookContents && bookFilePath) {
+                    return destFolder;
+                }
+            } else {
+                console.warn(`fetchBibleResourceBook - could not download book ${fs.path(masterBranchUrl, bookPath)}`)
+            }
+        }
+    } catch (err) {
+        console.warn(`fetchBibleResourceBook - could not download resources`, err)
+    }
+    return null
+}
+
 /**
  * search catalog to find and download bible match for owner, languageId, resourceId
  * @param {object[]} catalog - list of items in catalog
@@ -667,14 +765,14 @@ function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageI
             }
         }
 
-        let books = []
+        let bibleBooks = []
         if (checkForUsfm) { // each book is an USFM file
-            books = getBibleFiles(versionPath)
+            bibleBooks = getBibleBookFiles(versionPath)
         } else { // each book is a chapter
-            books = fs.readdirSync(versionPath)
+            bibleBooks = fs.readdirSync(versionPath)
               .filter((file:string) => path.extname(file) !== '.json' && file !== '.DS_Store');
         }
-        if (books?.length) {
+        if (bibleBooks?.length) {
             return versionPath
         } else {
             console.log(`verifyHaveBibleResource() - Could not find files in : ${versionPath}`)
@@ -891,6 +989,7 @@ function isOriginalBible(bibleId: string) {
  * @param {string} languageId
  * @param {string} owner
  * @param {string} resourcesPath - parent path for resources
+ * @param callback
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
 export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null) {
@@ -969,17 +1068,44 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
-export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath) {
-    return path.join(projectsPath, `${targetLanguageId}_${targetBibleId}_${glLanguageId}`)
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+    let repoFolderName = `${targetLanguageId}_${targetBibleId}_${glLanguageId}`;
+    if (bookId) {
+        repoFolderName += `_${bookId}`
+    }
+    return path.join(projectsPath, repoFolderName)
 }
 
 /**
- * copy bible USFM files
+ * get list of bible USFM files
  * @param repoPath
+ * @param bookId
  */
-function getBibleFiles(repoPath: string) {
+function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm"));
+        return fs.readdirSync(repoPath).filter((filename: string) => {
+            let validFile = (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm");
+            if (validFile && bookId) {
+                validFile = filename.toLowerCase().includes(bookId)
+            }
+            return validFile
+        });
+    }
+    return []
+}
+
+/**
+ * get list of bible folders
+ * @param repoPath
+ * @param bookId
+ */
+function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
+    if (fs.pathExistsSync(repoPath)) {
+        const bookIdsToMatch = bookId ? [bookId] : Object.keys(ALL_BIBLE_BOOKS)
+        return fs.readdirSync(repoPath).filter((filename: string) => {
+            const validFolder = bookIdsToMatch.includes(filename)
+            return validFolder
+        });
     }
     return []
 }
@@ -988,10 +1114,18 @@ function getBibleFiles(repoPath: string) {
  * get list of files with extension of fileType
  * @param repoPath
  * @param fileType
+ * @param bookId
  */
-function getFilesOfType(repoPath: string, fileType: string) {
+function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => (path.extname(filename) === fileType));
+        return fs.readdirSync(repoPath).filter((filename: string) => {
+            const fileNameLC = filename.toLowerCase();
+            let validFile = path.extname(fileNameLC) === fileType;
+            if (validFile && bookId) {
+                validFile = fileNameLC.includes(bookId)
+            }
+            return validFile;
+        });
     }
     return []
 }
@@ -1050,32 +1184,69 @@ function cleanupPath(filePath:string, repoPath:string) {
     return _filePath
 }
 
-export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, repoPath: string, updatedCatalogResources: any[]) {
+export async function downloadTargetBible(targetBibleId: string, resourcesBasePath: string, targetLanguageId: string, targetOwner: string, updatedCatalogResources: any[], bookId:string|null) {
     let targetFoundPath = null;
-    try {
-        const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
-        if (foundPath) {
-            targetFoundPath = foundPath;
-        } else {
-            // if folder already exists, remove it first
-            const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
-            const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
-            if (versionPath && fs.pathExistsSync(versionPath)) {
-                fs.removeSync(versionPath);
-            }
 
-            const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
-            if (!results?.destFolder) {
-                console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`);
-                targetFoundPath = null;
-            } else {
-                targetFoundPath = results.destFolder;
-            }
+    if (bookId) {
+        try {
+            targetFoundPath = await fetchBibleResourceBook(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath, bookId);
+        } catch (e) {
+            console.error(`downloadTargetBible - cannot download target bible book ${bookId} from server`, e);
         }
-    } catch (e) {
-        console.error(`downloadTargetBible - cannot copy target bible from: ${repoPath}`, e);
+    } else {
+        try {
+            const foundPath = verifyHaveBibleResource(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, true);
+            if (foundPath) {
+                targetFoundPath = foundPath;
+            } else {
+                // if folder already exists, remove it first
+                const folderPath = path.join(resourcesPath, targetLanguageId, "bibles", targetBibleId); // , `v${resource.version}_${resource.owner}`)
+                const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, targetOwner, false);
+                if (versionPath && fs.pathExistsSync(versionPath)) {
+                    fs.removeSync(versionPath);
+                }
+
+                const results = await fetchBibleResource(updatedCatalogResources, targetLanguageId, targetOwner, targetBibleId, resourcesBasePath);
+                if (!results?.destFolder) {
+                    console.error(`downloadTargetBible - cannot download target bible from server`);
+                    targetFoundPath = null;
+                } else {
+                    targetFoundPath = results.destFolder;
+                }
+            }
+        } catch (e) {
+            console.error(`downloadTargetBible - cannot copy target bible from server`, e);
+        }
     }
     return targetFoundPath;
+}
+
+function copyResources(sourceTsvsPath: string, checkingPath: string, bookId:string|null = null, fileType:string = '.json') {
+    fs.ensureDirSync(checkingPath);
+    if (bookId) {
+        const files = getFilesOfType(sourceTsvsPath, fileType, bookId);
+        for(const file of files) {
+            const sourcePath = path.join(sourceTsvsPath, file);
+            const destPath = path.join(checkingPath, file);
+            fs.copySync(sourcePath, destPath); 
+        }
+    } else {
+        fs.copySync(sourceTsvsPath, checkingPath);
+    }
+}
+
+export function getSubFolderForResource(resourceId: string) {
+    return `./checking/${resourceId}`;
+}
+
+export function getFileSubPathForResource(resourceId: string, bookId: string | null) {
+    const folder = getSubFolderForResource(resourceId)
+    const fileName = getFileNameForBook(bookId, resourceId)
+    return path.join(folder, fileName);
+}
+
+function getFileNameForBook(_bookId: string | null, resourceId: string) {
+    return `${_bookId}.${resourceId}_check`;
 }
 
 /**
@@ -1088,8 +1259,11 @@ export async function downloadTargetBible(targetBibleId: string, resourcesBasePa
  * @param gl_owner
  * @param resourcesBasePath
  * @param sourceResourceId - if null, then init both tn and twl
+ * @param catalog
+ * @param callback
+ * @param bookId
  */
-export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null) {
+export async function initProject(repoPath:string, targetLanguageId:string, targetOwner:string, targetBibleId:string, gl_languageId:string, gl_owner:string, resourcesBasePath:string, sourceResourceId:string|null, catalog:null|any[] = null, callback:Function|null = null, bookId:string|null = null) {
     let errorMsg
     const projectExists = fs.pathExistsSync(repoPath)
     const resourceIds = sourceResourceId ? [sourceResourceId] : ['twl', 'tn']
@@ -1102,10 +1276,14 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
             hasCheckingFiles = false
         }
     }
-    const bibleFiles = getBibleFiles(repoPath)
-    const hasBibleFiles = bibleFiles?.length
+    let bibleBooks = getBibleBookFiles(repoPath, bookId)
+    if (!bibleBooks?.length) {
+        bibleBooks = getBibleBookFolders(repoPath, bookId)
+    }
+    const hasBibleBooks = bibleBooks?.length
+
     const shouldCreateProject = !projectExists
-        || (hasBibleFiles && !hasCheckingFiles)
+        || (hasBibleBooks && !hasCheckingFiles)
 
     if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
@@ -1138,15 +1316,15 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
 
                     if (sourceTsvsPath) {
                         const checkingPath = path.join(repoPath, 'checking', resourceId)
-                        fs.ensureDirSync(checkingPath);
-                        fs.copySync(sourceTsvsPath, checkingPath);
+                        const fileType = ".json";
+                        copyResources(sourceTsvsPath, checkingPath, bookId, fileType);
 
                         // create check files from json files
-                        const files = getFilesOfType(checkingPath, ".json");
+                        const files = getFilesOfType(checkingPath, fileType);
                         if (files?.length) {
                             for (const filename of files) {
-                                const bookId = getBookIdFromPath(filename);
-                                const newName = `${bookId}.${resourceId}_check`;
+                                const _bookId = getBookIdFromPath(filename);
+                                const newName = getFileNameForBook(_bookId, resourceId);
                                 if (newName !== filename) {
                                     fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
                                 }
@@ -1155,16 +1333,38 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     }
                 }
 
-                if (!hasBibleFiles) {
+                if (!hasBibleBooks) {
                     callback && await callback(`Verifying Target Bible ${targetLanguageId}/${targetBibleId}`)
-                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, repoPath, updatedCatalogResources);
+                    const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesBasePath, targetLanguageId, targetOwner, updatedCatalogResources, bookId);
                     if (!targetFoundPath) {
                         return {
                             success: false,
-                            errorMsg: `cannot copy target bible from: ${repoPath}`,
+                            errorMsg: `cannot download target bible from server`,
                         };
                     } else {
-                        fs.copySync(targetFoundPath, repoPath)
+                        // parse USFM
+                        const bibleBooks = getBibleBookFiles(targetFoundPath, bookId);
+                        for (const book of bibleBooks) {
+                            const matchLowerCase = book.toLowerCase()
+                            if (matchLowerCase.includes(bookId)) {
+                                const usfm = fs.readFileSync(path.join(targetFoundPath, book), 'utf8');
+                                const json = getParsedUSFM(usfm)
+                                const targetBookDestPath = path.join(repoPath, bookId || '')
+                                // save each chapter as json file
+                                const bookData = json.chapters;
+                                for (const chapterNum of Object.keys(bookData)) {
+                                    const chapterData = bookData[chapterNum]
+                                    fs.outputJsonSync(path.join(targetBookDestPath, `${chapterNum}.json`), chapterData, { spaces: 2 });
+                                }
+                                // save header as json file
+                                fs.outputJsonSync(path.join(targetBookDestPath, 'headers.json'), json.headers, { spaces: 2 });
+                                // copy manifest
+                                const manifest = getResourceManifest(targetFoundPath)
+                                fs.outputJsonSync(path.join(repoPath, 'manifest.json'), manifest, { spaces: 2 });
+                            }
+                        }
+
+                        // fs.copySync(targetFoundPath, repoPath)
                     }
                     callback && await callback(`Downloaded Target Bible ${targetLanguageId}/${targetBibleId}`)
                 }
@@ -1213,7 +1413,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                 for (const resourceId of resourceIds) {
                     const checkingPathName = `${resourceId}_checksPath`
                     // @ts-ignore
-                    checkingMetaData[checkingPathName] = `./checking/${resourceId}`
+                    checkingMetaData[checkingPathName] = getSubFolderForResource(resourceId)
                     const tsvSourcePathName = `${resourceId}_helpsPath`
                     // @ts-ignore
                     checkingMetaData[tsvSourcePathName] = removeHomePath(sourceTsvsPaths[resourceId])
@@ -1323,7 +1523,7 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
         }
         
         manifest = getResourceManifest(repoPath)
-        const bibleBooks = getBibleFiles(repoPath)
+        const bibleBooks = getBibleBookFiles(repoPath)
         bibleBooksLoaded = !!bibleBooks?.length
     } catch (e) {
         console.error(`isRepoInitialized - error checking repo`, e)
@@ -1371,7 +1571,7 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
     return { resource, hasResourceFiles };
 }
 
-function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object) {
+function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object, bookId:string|null = null) {
     const sep = path.sep || '/'
     const projectResources = `.${sep}.resources${sep}`;
     const bibleId = bible.bibleId || bible.id;
@@ -1414,8 +1614,22 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                         const src = path.join(replaceHomePath(biblePath));
                         const dest = _newFullPath;
                         const parentDir = path.join(dest, "..");
-                        fs.ensureDirSync(parentDir);
-                        fs.copySync(src, dest);
+
+                        if (bookId) {
+                            fs.ensureDirSync(src);
+                            const files = getFilesOfType(src, ".json");
+                            if (fs.existsSync(path.join(src, bookId))) {
+                                files.push(bookId);
+                            }
+                            for (const file of files) {
+                                const sourcePath = path.join(src, file);
+                                const destPath = path.join(dest, file);
+                                fs.copySync(sourcePath, destPath);
+                            }
+                        } else {
+                            fs.ensureDirSync(parentDir);
+                            fs.copySync(src, dest);
+                        }
                         localChanged = true;
                     }
                     biblePath = newPath;
@@ -1513,7 +1727,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               owner: 'unfoldingWord'
           }
 
-          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata);
+          const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata, bookId);
           changed = __ret.changed;
 
           const otherOrigLanguageId = !isNT ? BooksOfTheBible.NT_ORIG_LANG : BooksOfTheBible.OT_ORIG_LANG
@@ -1523,11 +1737,13 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               id: otherOrigLanguageBibleId,
               owner: 'unfoldingWord'
           }
-          const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata);
-          changed = ___ret.changed;
+          if(!bookId) {
+              const ___ret = makeSureBibleIsInProject(otherOrigLangBible, resourcesBasePath, repoPath, changed, metadata, bookId);
+              changed = ___ret.changed;
+          }
 
           for (const bible of biblesList) {
-              const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata);
+              const __ret = makeSureBibleIsInProject(bible, resourcesBasePath, repoPath, changed, metadata, bookId);
               changed = __ret.changed;
           }
 
@@ -1831,7 +2047,7 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
         if (fs.existsSync(biblePath)) {
             const manifest = getResourceManifest(biblePath)
             if (manifest) {
-                const books = getBibleFiles(biblePath)
+                const bibleBooks = getBibleBookFiles(biblePath)
                 let bookPath = path.join(biblePath, bookId);
                 if (fs.existsSync(bookPath)) {
                     const bookData = readHelpsFolder(bookPath)
@@ -1839,7 +2055,7 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
                     bookData.manifest = manifest
                     return bookData
                 } else {
-                    for (const book of books) {
+                    for (const book of bibleBooks) {
                         const matchLowerCase = book.toLowerCase()
                         if (matchLowerCase.includes(bookId)) {
                             const usfm = fs.readFileSync(path.join(biblePath, book), 'utf8');
@@ -1850,7 +2066,7 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
                         }
                     }
                 }
-                if (books.length) {
+                if (bibleBooks.length) {
                     // book not found, but the bible has files
                     return {
                         manifest,
@@ -1968,9 +2184,9 @@ export function delay(ms:number) {
 export function getBookForTestament(repoPath: string, isNT = true):string | null {
     // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
     const testamentBooks = Object.keys(isNT ? BIBLE_BOOKS.newTestament : BIBLE_BOOKS.oldTestament)
-    const files = getBibleFiles(repoPath)
-    for (const file of files) {
-        const name = path.parse(file).name || ''
+    const bibleBooks = getBibleBookFiles(repoPath)
+    for (const bibleBook of bibleBooks) {
+        const name = path.parse(bibleBook).name || ''
         for (const bookId of testamentBooks) {
             if (name.toLowerCase().includes(bookId)) {
                 return bookId
@@ -2069,6 +2285,82 @@ export function toInt(value:any):any {
     return (value && typeof value === 'string') ? parseInt(value, 10) : value;
 }
 
+function sortRowsByRef(rows: object[]) {
+    const _rows = rows.sort((a, b) => {
+        // @ts-ignore
+        const aCh = toInt(a.chapter);
+        // @ts-ignore
+        const bCh = toInt(b.chapter);
+        let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
+        if (!comp) {
+            // @ts-ignore
+            const aV = toInt(a.verse);
+            // @ts-ignore
+            const bV = toInt(b.verse);
+            comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+        }
+        return comp;
+    });
+    return _rows;
+}
+
+/**
+ * process the TSV data into index files
+ * @param {string} tsvLines
+ */
+
+export function tsvToObjects(tsvLines:string) {
+    let tsvItems;
+    let parseErrorMsg;
+    let error;
+    let expectedColumns = 0;
+    const tableObject = tsvparser.tsvStringToTable(tsvLines);
+
+    if ( tableObject.errors.length > 0 ) {
+        parseErrorMsg = '';
+        expectedColumns = tableObject.header.length;
+
+        for (let i=0; i<tableObject.errors.length; i++) {
+            let msg;
+            const rownum = tableObject.errors[i][0] - 1; // adjust for data table without header row
+            const colsfound = tableObject.errors[i][1];
+
+            if ( colsfound > expectedColumns ) {
+                msg = 'Row is too long';
+            } else {
+                msg = 'Row is too short';
+            }
+            parseErrorMsg += `\n\n${msg}:`;
+            parseErrorMsg += '\n' + tableObject.data[rownum].join(',');
+        }
+        console.warn(`twArticleHelpers.twlTsvToGroupData() - table parse errors found: ${parseErrorMsg}`);
+    }
+
+    try {
+        tsvItems = tableObject.data.map((line:string[]) => {
+            const tsvItem = {};
+            const l = tableObject.header.length;
+
+            for (let i = 0; i < l; i++) {
+                const key = tableObject.header[i];
+                const value = line[i] || '';
+                // @ts-ignore
+                tsvItem[key] = value.trim();
+            }
+            return tsvItem;
+        });
+    } catch (e) {
+        console.error(`tsvToObjects() - error processing data:`, e);
+        error = e;
+    }
+    return {
+        tsvItems,
+        parseErrorMsg,
+        error,
+        expectedColumns,
+    };
+}
+
 export function checkDataToTwl(checkData:{}) {
     let twl:string[] = []
     let rows:object[] = []
@@ -2124,23 +2416,92 @@ export function checkDataToTwl(checkData:{}) {
     return results
 }
 
-function sortRowsByRef(rows: object[]) {
-    const _rows = rows.sort((a, b) => {
-        // @ts-ignore
-        const aCh = toInt(a.chapter);
-        // @ts-ignore
-        const bCh = toInt(b.chapter);
-        let comp = (aCh < bCh) ? -1 : (aCh > bCh) ? 1 : 0;
-        if (!comp) {
+function findSelection(checkData: {}, selection: {}):object|undefined {
+    let found: object|undefined = undefined;
+    // @ts-ignore
+    const link = selection?.TWLink || selection?.SupportReference;
+    const parts = link?.split('/')
+    if (parts?.length) {
+        const _groupId = parts[parts.length - 1]
+    
+        for (const catagoryId of Object.keys(checkData)) {
+            if (catagoryId === "manifest") {
+                continue;
+            }
+    
             // @ts-ignore
-            const aV = toInt(a.verse);
-            // @ts-ignore
-            const bV = toInt(b.verse);
-            comp = (aV < bV) ? -1 : (aV > bV) ? 1 : 0;
+            const groups = checkData[catagoryId]?.groups || {};
+            for (const groupId of Object.keys(groups)) {
+    
+                // @ts-ignore
+                const group = groups[groupId];
+    
+                for (const item of group) {
+                    // @ts-ignore
+                    const contextId = item?.contextId;
+                    const reference = contextId?.reference;
+                    const chapter = reference?.chapter || "";
+                    const verse = reference?.verse || "";
+                    const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
+    
+                    const ID = `${contextId?.checkId || ""}`;
+                    const category = item?.category || "";
+                    const groupId = contextId?.groupId || "";
+                    const Tags = `${category}`;
+                    const quoteString = contextId?.quoteString || "";
+                    const OrigWords = `${quoteString}`;
+                    const Occurrence = `${contextId?.occurrence || ""}`;
+                    const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                    const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
+    
+                    if (
+                        // @ts-ignore
+                        (ID === selection.ID)
+                        // @ts-ignore
+                        && (Reference === selection.Reference)
+                        // @ts-ignore
+                        && (groupId === _groupId)
+                    ) {
+                        found = item
+                        return found
+                    }
+               }
+            }
         }
-        return comp;
-    });
-    return _rows;
+    }
+    return found;
+}
+
+export function importSelectionsDataIntoCheckData(tsvSelectionData:object[], checkData:{}) {
+    let updatedCount = 0
+    let importedLines = 0
+    let errors:string[]= []
+    const categories = Object.keys(checkData)
+    if (categories?.length > 1) {
+        for (const tsvItem of tsvSelectionData) {
+            importedLines++
+            // @ts-ignore
+            const selections = tsvItem?.selections;
+            if (selections && (typeof selections === 'string')) {
+                const found = findSelection(checkData, tsvItem);
+                if (found) { // if found item to update
+                    // @ts-ignore
+                    found.selections = JSON.parse(selections)
+                    updatedCount++
+                } else {
+                    const tsvItemStr = JSON.stringify(tsvItem)
+                    const error = `importSelectionsDataIntoCheckData: selection not found: ${tsvItemStr}`
+                    console.warn(error)
+                    errors.push(error)
+                }
+            }
+        }
+    }
+    return {
+        errors,
+        importedLines,
+        updatedCount,
+    }
 }
 
 export function checkDataToTn(checkData:{}) {
@@ -2199,3 +2560,19 @@ export function checkDataToTn(checkData:{}) {
     }
     return results
 }
+
+export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string, newVerseObjects: object) {
+    if (projectPath && bookId && chapter && verse) {
+        const filePath = path.join(projectPath, bookId, `${chapter}.json`)
+        const chapterData = fs.readJsonSync(filePath);
+        if (chapterData) {
+            chapterData[verse] = { verseObjects: newVerseObjects }
+            fs.outputJsonSync(filePath, chapterData, { spaces: 2 });
+        } else {
+            console.warn (`changeTargetVerse() missing chapter:`, { projectPath, bookId, chapter: chapterData, verse})
+        }
+    } else {
+        console.warn (`changeTargetVerse() missing parameters:`, { projectPath, bookId, chapter, verse, newVerseText})
+    }
+}
+

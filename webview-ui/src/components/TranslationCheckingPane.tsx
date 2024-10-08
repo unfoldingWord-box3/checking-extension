@@ -115,8 +115,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
       
-    const translate = (key:string) => {
-        const translation = TranslationUtils.lookupTranslationForKey(translations, key)
+    const translate = (key:string, data:object) => {
+        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
         return translation
     };
 
@@ -193,6 +193,16 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             setOpen(false)
         }
     }
+
+    const changeTargetVerse = (chapter:string, verse:string, newVerseText:string, newVerseObjects: object) => {
+      if (bookId && chapter && verse) {
+        vscode.postMessage({
+          command: "changeTargetVerse",
+          text: "Change Target Verse",
+          data: { bookId, chapter, verse, newVerseText, newVerseObjects },
+        });
+      }
+    }
     
     const haveCheckingData = hasResourceData(checkingData);
     const hasTargetBibleBook = hasResourceData(checkingObj?.targetBible);
@@ -215,7 +225,25 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
   // @ts-ignore
   const currentLanguageSelection = translations?.['_']?.['full_name'] || '';
-    
+  let projectManifest = null
+  // @ts-ignore
+  let _manifest = checkingObj?.targetBible?.manifest;
+  if (_manifest) {
+    const dublin_core = _manifest?.dublin_core
+    let target_language = { ...dublin_core.language };
+    target_language.book = {
+      name: _manifest.resource_title
+    }
+    _manifest = { // shallow copy
+      ...dublin_core,
+      ..._manifest,
+      target_language
+    }
+  }
+  const initialSettings = {
+    manifest: _manifest
+  }
+  
   return haveResources ? (
       <>
           <AppBar position='static'>
@@ -257,11 +285,13 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
                 alignedGlBible={alignedGlBible}
                 bibles={bibles}
+                changeTargetVerse={changeTargetVerse}
                 checkingData={checkingData}
                 checkType={checkType}
                 contextId={contextId}
                 getLexiconData={getLexiconData_}
                 glWordsData={glWordsData}
+                initialSettings={initialSettings}
                 saveSelection={_saveSelection}
                 showDocument={showDocument}
                 targetBible={targetBible}

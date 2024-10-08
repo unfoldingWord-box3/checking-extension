@@ -17,17 +17,20 @@ import * as fs from "fs-extra";
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
+    changeTargetVerse,
     cleanUpFailedCheck,
     currentLanguageCode,
     DEFAULT_LOCALE,
     delay,
     downloadLatestLangHelpsResourcesFromCatalog,
     downloadTargetBible,
+    fetchBibleManifest,
     fileExists,
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
     getBookForTestament,
+    getFileSubPathForResource,
     getLanguagesInCatalog,
     getLatestResourcesCatalog,
     getRepoPath,
@@ -50,6 +53,7 @@ import {
 } from "./utilities/languages";
 // @ts-ignore
 import isEqual from 'deep-equal'
+import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -82,6 +86,23 @@ async function showErrorMessage(message: string, modal: boolean = false, detail:
     console.error(message)
     await delay(100); // TRICKY: allows UI to update before moving on
 }
+
+async function getWorkSpaceFolder() {
+    let projectPath;
+    let repoFolderExists = false;
+    const workspaceFolder = vscode.workspace.workspaceFolders
+      ? vscode.workspace.workspaceFolders[0]
+      : undefined;
+    if (workspaceFolder) {
+        projectPath = workspaceFolder.uri.fsPath;
+        repoFolderExists = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
+          () => true,
+          () => false,
+        );
+    }
+    return { projectPath, repoFolderExists };
+}
+
 
 /**
  * Provider for tsv editors.
@@ -204,7 +225,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.selectGL",
           executeWithRedirecting(async () => {
             console.log("checking-extension.selectGL")
-            const options = await this.getGatewayLangOptions()
+            const options = await this.getGatewayLangSelection()
             const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
             let glOptions = glSelected ? {
                   languageId: options.gwLanguagePick,
@@ -252,14 +273,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
           executeWithRedirecting(async () => {
                 console.log("checking-extension.selectTargetBible")
                 const catalog = getSavedCatalog()
-                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
+                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
                 if (targetLanguagePick && targetOwnerPick && targetBibleIdPick) {
                     const targetBibleOptions = {
                         languageId: targetLanguagePick,
                         owner: targetOwnerPick,
                         bibleId: targetBibleIdPick
                     }
-                    await this.gotoWorkFlowStep("loadTarget");
+                    await this.gotoWorkFlowStep("selectBook");
                     await this.setContext('targetBibleOptions', targetBibleOptions);
                 }
             })
@@ -267,9 +288,24 @@ export class CheckingProvider implements CustomTextEditorProvider {
         subscriptions.push(commandRegistration)
 
         commandRegistration = commands.registerCommand(
+          "checking-extension.selectBook",
+          executeWithRedirecting(async () => {
+                console.log("checking-extension.selectBook")
+                const targetBibleOptions = this.getContext('targetBibleOptions');
+                const options = await this.getBookSelection(targetBibleOptions)
+                if (options?.bookPick) {
+                    await this.gotoWorkFlowStep("loadTarget");
+                    await this.setContext('selectedBook', options.bookPick);
+                }
+            },
+          ));
+        subscriptions.push(commandRegistration)
+        
+        commandRegistration = commands.registerCommand(
           "checking-extension.loadTargetBible",
           async () => {
               console.log("checking-extension.loadTargetBible")
+              const bookId = this.getContext('selectedBook');
               const targetOptions = this.getContext('targetBibleOptions');
               if (targetOptions) {
                   const glOptions = this.getContext('selectedGL');
@@ -280,7 +316,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                       const targetOwner = targetOptions.owner;
                       const repoPath = getRepoPath(targetLanguageId, targetBibleId, glOptions.languageId);
                       await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
-                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, repoPath, catalog);
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId);
                       if (targetFoundPath) {
                           await this.gotoWorkFlowStep("projectInitialize");
                           await showInformationMessage(`Target Bible Loaded`, true);
@@ -303,6 +339,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.initializeChecking",
           async () => {
               console.log("checking-extension.initializeChecking")
+              const bookId = this.getContext('selectedBook');
               const glOptions = this.getContext('selectedGL');
               if (glOptions && glOptions.languageId && glOptions.owner) {
                   const createNewFolder = this.getContext('createNewFolder');
@@ -312,18 +349,32 @@ export class CheckingProvider implements CustomTextEditorProvider {
                           return await showErrorMessage(`You must select Target Bible first`, true);
                       } else {
                           const catalog = getSavedCatalog() || []
-                          const { repoInitSuccess} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog);
+                          const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId);
                           await this.setContext("projectInitialized", repoInitSuccess);
                           if (repoInitSuccess) {
                               // navigate to new folder
-                              const repoPath = getRepoPath(targetOptions.languageId, targetOptions.bibleId || "", glOptions.languageId);
-                              const uri = vscode.Uri.file(repoPath);
-                              await vscode.commands.executeCommand("vscode.openFolder", uri);
+                              const repoPathUri = vscode.Uri.file(repoPath);
+                              await showInformationMessage(`Opening project ${repoPath}`);
+                              vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
+                              for (const resourceId of ['twl', 'tn']) {
+                                  const fileSubPath = getFileSubPathForResource(resourceId, bookId)
+                                  const filePathUrl = vscode.Uri.joinPath(repoPathUri, fileSubPath)
+                                  const filePath = filePathUrl.fsPath
+                                  showInformationMessage(`Opening file ${filePath}`);
+                                  try {
+                                      vscode.commands.executeCommand("vscode.open", filePathUrl).then(() => {
+                                          console.log(`Successfully opened ${filePath}`)
+                                      });
+                                  } catch (e) {
+                                      console.warn(`Could not open ${filePath}`, e)
+                                  }
+                              }
                               return
                           }
                       }
                   } else { // initializing existing folder
-                      const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+                      const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
 
                       if (repoFolderExists && projectPath) {
                           const results = isRepoInitialized(projectPath, resourcesPath, null);
@@ -432,7 +483,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     private static async initializeChecker(navigateToFolder = false) {
         await showInformationMessage("initializing Checker");
-        const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+        const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
 
         if (!repoFolderExists) {
             await this.initializeEmptyFolder();
@@ -458,22 +509,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await showErrorMessage(`repo already exists - but not valid!`, true);
     }
 
-    private static async getWorkSpaceFolder() {
-        let projectPath;
-        let repoFolderExists = false;
-        const workspaceFolder = vscode.workspace.workspaceFolders
-          ? vscode.workspace.workspaceFolders[0]
-          : undefined;
-        if (workspaceFolder) {
-            projectPath = workspaceFolder.uri.fsPath;
-            repoFolderExists = await vscode.workspace.fs.stat(workspaceFolder.uri).then(
-              () => true,
-              () => false,
-            );
-        }
-        return { projectPath, repoFolderExists };
-    }
-
     private static async initializeBibleFolder(results:object, projectPath:string) {
         // @ts-ignore
         const dublin_core = results.manifest?.dublin_core;
@@ -493,7 +528,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             glOwner = results.glOptions.owner
         }
         else {
-            const options = await this.getGatewayLangOptions();
+            const options = await this.getGatewayLangSelection();
             if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
                 await showErrorMessage(`Options invalid: ${options}`, true);
                 return null;
@@ -503,7 +538,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             glLanguageId = options.gwLanguagePick
             glOwner = options.gwOwnerPick
         }
-        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
         if (repoInitSuccess) {
             await showInformationMessage(`Checking has been set up in project`);
         } else {
@@ -526,7 +561,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const {
                 repoInitSuccess,
                 repoPath,
-            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
 
             let navigateToFolder = repoInitSuccess;
             if (!repoInitSuccess) {
@@ -546,13 +581,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
         let repoInitSuccess = false;
-        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId);
+        const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId, undefined, bookId || '');
         const repoExists = fileExists(repoPath);
         if (!repoExists) {
             if (targetLanguageId && targetBibleId && targetOwner) {
-                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog);
+                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, bookId);
             } else {
                 await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`, true);
             }
@@ -562,13 +597,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { repoInitSuccess, repoPath };
     }
 
-    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null) {
+    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
         let repoInitSuccess = false;
 
         if (glLanguageId && glOwner) {
             await showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
             // @ts-ignore
-            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog);
+            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog, bookId);
             // @ts-ignore
             if (results.success) {
                 let validResources = true
@@ -576,13 +611,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 // verify that we have the necessary resources
                 for (const projectId of ['twl', 'tn']) {
-                    for (const isNT of [false, true]) {
-                        const _bookId = getBookForTestament(repoPath, isNT);
+                    const OT = false;
+                    const NT = true;
+                    let testamentsToCheck = [OT, NT];
+                    if (bookId) {
+                        const _isNT = isNT(bookId)
+                        testamentsToCheck = [_isNT];
+                    }
+                    for (const _isNT of testamentsToCheck) {
+                        const _bookId = bookId || getBookForTestament(repoPath, _isNT);
                         if (_bookId) {
                             const _resources = getResourcesForChecking(repoPath, resourcesPath, projectId, _bookId);
                             // @ts-ignore
                             if (!_resources.validResources) {
-                                const testament = isNT ? 'NT' : 'OT'
+                                const testament = _isNT ? 'NT' : 'OT'
                                 const message = `Missing ${projectId} needed ${testament} resources`;
                                 // @ts-ignore
                                 missingMessage = missingMessage + `${message}\n${_resources.errorMessage}\n`
@@ -594,7 +636,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 if (validResources) {
                     repoInitSuccess = true;
-                    await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                 } else {
                     await showErrorMessage(`Missing resources resources at ${repoPath}`, true, missingMessage );
                 }
@@ -646,7 +687,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return promise
     }
 
-    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null):Promise<object> {
+    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null, bookId:string | null):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -666,7 +707,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress);
+                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId);
                 progressTracker.report({ increment });
                 await delay(100)
                 resolve(results)
@@ -803,7 +844,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.log(`firstLoad: ${text}`)
             updateWebview(true)
         }
-        
+
         const setLocale_ = (text:string, data:object) => {
             // @ts-ignore
             const value = data?.value || DEFAULT_LOCALE;
@@ -816,6 +857,22 @@ export class CheckingProvider implements CustomTextEditorProvider {
             updateWebview(true) // refresh display
         }
 
+        const changeTargetVerse_ = (text:string, data:object) => {
+            console.log(`changeTargetVerse: ${data}`)
+            // @ts-ignore
+            const { bookId, chapter, verse, newVerseText, newVerseObjects } = data
+
+            delay(100).then(async () => {
+                const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                if (repoFolderExists && projectPath) {
+                    await changeTargetVerse(projectPath, bookId, chapter, verse, newVerseText, newVerseObjects)
+                } else {
+                    console.warn (`changeTargetVerse_() projectPath '${projectPath}' does not exist`)
+                }
+            })
+            
+        }
+
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
@@ -826,6 +883,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
+                ["changeTargetVerse"]: changeTargetVerse_,
             };
 
             const commandFunction = commandToFunctionMapping[command];
@@ -1016,7 +1074,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static async getCheckingOptions() {
-        const options = await this.getGatewayLangOptions();
+        const options = await this.getGatewayLangSelection();
         if (!options) {
             return null
         }
@@ -1026,7 +1084,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             gwLanguagePick,
             gwOwnerPick
         } = options;
-        let { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageOptions(catalog);
+        let { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
 
         return {
             catalog,
@@ -1038,7 +1096,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static async getTargetLanguageOptions(catalog: object[] | null) {
+    private static async getTargetLanguageSelection(catalog: object[] | null) {
         //////////////////////////////////
         // Target language
 
@@ -1106,7 +1164,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         let repoExists = false
         let isValidBible = false
         let isCheckingInitialized = false
-        const { projectPath, repoFolderExists } = await this.getWorkSpaceFolder();
+        const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
         if (repoFolderExists && projectPath) {
             repoExists = true
             const results = isRepoInitialized(projectPath, resourcesPath, null);
@@ -1159,7 +1217,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
     }
 
-    private static async getGatewayLangOptions() {
+    private static async getGatewayLangSelection() {
         let catalog = getSavedCatalog();
         try {
             if (!catalog) {
@@ -1203,6 +1261,30 @@ export class CheckingProvider implements CustomTextEditorProvider {
             catalog,
             gwLanguagePick,
             gwOwnerPick
+        };
+    }
+
+    private static async getBookSelection(targetBibleOptions:{}) {
+        // @ts-ignore
+        const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none');
+        // @ts-ignore
+        const bookIds = manifest?.projects?.map((project: {}) => project.identifier)
+        // const bookIds = Object.keys(ALL_BIBLE_BOOKS)
+        let bookPick:string|undefined = ''
+        if (bookIds?.length) {
+            bookPick = await vscode.window.showQuickPick(
+              bookIds,
+              {
+                  placeHolder: "Select the book to check:",
+              },
+            );
+
+            await showInformationMessage(`Book selected ${bookPick}`);
+        } else {
+            await showErrorMessage(`Error getting book list for bible!`, true);
+        }
+        return {
+            bookPick
         };
     }
 }
