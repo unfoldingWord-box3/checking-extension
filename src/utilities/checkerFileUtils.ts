@@ -1342,26 +1342,25 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                             errorMsg: `cannot download target bible from server`,
                         };
                     } else {
-                        // convert to USFM
+                        // parse USFM
                         const bibleBooks = getBibleBookFiles(targetFoundPath, bookId);
                         for (const book of bibleBooks) {
                             const matchLowerCase = book.toLowerCase()
                             if (matchLowerCase.includes(bookId)) {
                                 const usfm = fs.readFileSync(path.join(targetFoundPath, book), 'utf8');
                                 const json = getParsedUSFM(usfm)
-                                const targetBookPath = path.join(targetFoundPath, book)
+                                const targetBookDestPath = path.join(repoPath, bookId || '')
                                 // save each chapter as json file
                                 const bookData = json.chapters;
                                 for (const chapterNum of Object.keys(bookData)) {
                                     const chapterData = bookData[chapterNum]
-                                    fs.outputJsonSync(path.join(targetBookPath, "${chapter}.json"), chapterData, { spaces: 2 });
+                                    fs.outputJsonSync(path.join(targetBookDestPath, `${chapterNum}.json`), chapterData, { spaces: 2 });
                                 }
                                 // save header as json file
-                                fs.outputJsonSync(path.join(targetBookPath, 'headers.json'), json.headers, { spaces: 2 });
-                                // copy manifest.json
-                                // const manifest = getResourceManifest(targetFoundPath)
-                                // fs.outputJsonSync(path.join(targetFoundPath, book, 'manifest.json'), manifest, { spaces: 2 });
-                                return bookData
+                                fs.outputJsonSync(path.join(targetBookDestPath, 'headers.json'), json.headers, { spaces: 2 });
+                                // copy manifest
+                                const manifest = getResourceManifest(targetFoundPath)
+                                fs.outputJsonSync(path.join(repoPath, 'manifest.json'), manifest, { spaces: 2 });
                             }
                         }
 
@@ -2562,30 +2561,15 @@ export function checkDataToTn(checkData:{}) {
     return results
 }
 
-export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string) {
+export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string, newVerseObjects: object) {
     if (projectPath && bookId && chapter && verse) {
-        const files = getBibleBookFiles(projectPath, bookId)
-        if (files?.length === 1) {
-            const filePath = path.join(projectPath, files[0])
-            const usfmData = fs.readFileSync(filePath, 'utf8');
-            const bookJson = getParsedUSFM(usfmData)
-            const chapterData = bookJson?.chapters?.[chapter]
-            if (chapterData) {
-                chapterData[verse] = {
-                    verseObjects: [
-                        {
-                            type: 'text',
-                            text: newVerseText || ''
-                        }
-                    ]
-                }
-                const newUsfmData = usfmjs.toUSFM(bookJson, { forcedNewLines: true });
-                fs.outputFileSync(filePath, newUsfmData, 'UTF-8');
-            } else {
-                console.warn (`changeTargetVerse() missing chapter:`, { projectPath, bookId, chapter: chapterData, verse})
-            }
+        const filePath = path.join(projectPath, bookId, `${chapter}.json`)
+        const chapterData = fs.readJsonSync(filePath);
+        if (chapterData) {
+            chapterData[verse] = { verseObjects: newVerseObjects }
+            fs.outputJsonSync(filePath, chapterData, { spaces: 2 });
         } else {
-            console.warn (`changeTargetVerse() could not find book for:`, { projectPath, bookId})
+            console.warn (`changeTargetVerse() missing chapter:`, { projectPath, bookId, chapter: chapterData, verse})
         }
     } else {
         console.warn (`changeTargetVerse() missing parameters:`, { projectPath, bookId, chapter, verse, newVerseText})

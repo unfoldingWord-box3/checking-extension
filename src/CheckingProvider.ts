@@ -295,8 +295,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const options = await this.getBookSelection(targetBibleOptions)
                 if (options?.bookPick) {
                     await this.gotoWorkFlowStep("loadTarget");
+                    await this.setContext('selectedBook', options.bookPick);
                 }
-                await this.setContext('selectedBook', options.bookPick);
             },
           ));
         subscriptions.push(commandRegistration)
@@ -860,12 +860,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const changeTargetVerse_ = (text:string, data:object) => {
             console.log(`changeTargetVerse: ${data}`)
             // @ts-ignore
-            const { bookId, chapter, verse, newVerseText } = data
+            const { bookId, chapter, verse, newVerseText, newVerseObjects } = data
 
             delay(100).then(async () => {
                 const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
                 if (repoFolderExists && projectPath) {
-                    changeTargetVerse(projectPath, bookId, chapter, verse, newVerseText)
+                    await changeTargetVerse(projectPath, bookId, chapter, verse, newVerseText, newVerseObjects)
                 } else {
                     console.warn (`changeTargetVerse_() projectPath '${projectPath}' does not exist`)
                 }
@@ -1281,7 +1281,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
             await showInformationMessage(`Book selected ${bookPick}`);
         } else {
-            await showErrorMessage(`Error getting manifest for bible!`, true);
+            await showErrorMessage(`Error getting book list for bible!`, true);
         }
         return {
             bookPick

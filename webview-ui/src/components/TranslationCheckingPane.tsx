@@ -194,12 +194,12 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         }
     }
 
-    const changeTargetVerse = (chapter:string, verse:string, oldVerseText:string, newVerseText:string) => {
+    const changeTargetVerse = (chapter:string, verse:string, newVerseText:string, newVerseObjects: object) => {
       if (bookId && chapter && verse) {
         vscode.postMessage({
           command: "changeTargetVerse",
           text: "Change Target Verse",
-          data: { bookId, chapter, verse, newVerseText },
+          data: { bookId, chapter, verse, newVerseText, newVerseObjects },
         });
       }
     }
