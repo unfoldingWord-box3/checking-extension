@@ -1390,8 +1390,18 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         const resource = foundResources[resourceId]
                         let path_ = resource?.path;
                         if (path_) {
-                            // @ts-ignore
-                            const newPath = removeHomePath(path_)
+                            let newPath
+                            if (['ta', 'tw'].includes(resourceId)) {
+                                // copy this resource into project
+                                const subPath = path_.split('cache')[1]
+                                const destFolder = path.join(repoPath, '.resources', subPath)
+                                fs.ensureDirSync(destFolder)
+                                fs.copySync(path_, destFolder)
+                                newPath = destFolder.replace(repoPath, '.')
+                            } else {
+                                // @ts-ignore
+                                newPath = removeHomePath(path_);
+                            }
                             // @ts-ignore
                             resource.path = newPath
                         }
