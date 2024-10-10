@@ -9,7 +9,15 @@ import * as usfmjs from "usfm-js";
 import * as YAML from "yamljs";
 import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
-import { ALL_BIBLE_BOOKS, BIBLE_BOOKS } from "./BooksOfTheBible";
+import {
+    ALL_BIBLE_BOOKS,
+    BIBLE_BOOKS,
+    isNT,
+    NT_ORIG_LANG,
+    NT_ORIG_LANG_BIBLE,
+    OT_ORIG_LANG,
+    OT_ORIG_LANG_BIBLE,
+} from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
 // @ts-ignore
@@ -462,14 +470,27 @@ async function getLangResourcesFromCatalog(catalog:any[], languageId:string, own
     return { processed, updatedCatalogResources }
 }
 
-function getDestFolderForRepoFile(resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
-    const destFolder = path.join(resourcesPath, languageId, "bibles", resourceId, `books`, bookId);
+function getDestFolderForRepoFile(resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
+    if (!version || version == 'master') {
+        version = 'master'
+    } else {
+        version = `v${version}`
+    }
+    // @ts-ignore
+    const resourceName = RESOURCE_ID_MAP?.[resourceId]
+    let destFolder;
+    const isResource = Object.keys(RESOURCE_ID_MAP).includes(resourceId)
+    if (isResource) {
+        destFolder = path.join(resourcesPath, languageId, apiHelpers.TRANSLATION_HELPS, resourceName, `${version}_${resourcesHelpers.encodeOwnerStr(owner)}`, "books", bookId);
+    } else {
+        destFolder = path.join(resourcesPath, languageId, "bibles", resourceId, `${version}_${resourcesHelpers.encodeOwnerStr(owner)}`, "books", bookId);
+    }
     return destFolder;
 }
 
-async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string) {
+async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
     let downloadUrl = masterBranchUrl + repoFilePath;
-    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+    const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
     let destFilePath: string | null = path.join(destFolder, repoFilePath);
     let contents = ''
 
@@ -500,13 +521,13 @@ export async function fetchBibleManifest(baseUrl: string, owner: string, languag
     if (version === 'master') {
         rawUrl = `${baseUrl}${owner}/${languageId}_${resourceId}/raw/branch/master/`;
     } else {
-        rawUrl = `${baseUrl}${owner}/${languageId}_${resourceId}/raw/tag/${version}/`;
+        rawUrl = `${baseUrl}${owner}/${languageId}_${resourceId}/raw/tag/v${version}/`;
     }
     const repoFilePath = "manifest.yaml";
     const {
         contents: manifestYaml,
         filePath: destFilePath,
-    } = await fetchRepoFile(rawUrl, repoFilePath, resourcesPath, languageId, resourceId, bookId);
+    } = await fetchRepoFile(rawUrl, repoFilePath, resourcesPath, languageId, resourceId, bookId, version, owner);
     const manifest = YAML.parse(manifestYaml);
     return { rawUrl, manifest, manifestYaml };
 }
@@ -539,7 +560,7 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                 manifest,
                 manifestYaml,
             } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId, version);
-            const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+            const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
             fs.emptyDirSync(destFolder);
             fs.outputFileSync(path.join(destFolder, 'manifest.yaml'), manifestYaml, 'UTF-8')
 
@@ -550,7 +571,7 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                 const {
                     contents: bookContents,
                     filePath: bookFilePath
-                } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId);
+                } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
                 if (bookContents && bookFilePath) {
                     return destFolder;
                 }
@@ -572,7 +593,6 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
  * @param {string} resourceId
  * @param {string} resourcesPath - parent path for resources
  * @param bookId - fetch only this book
- * @returns {Promise<*>} -
  */
 async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:string, resourceId:string, resourcesPath:string, bookId:string, version = 'master') {
     try {
@@ -593,7 +613,7 @@ async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:st
                 manifestYaml,
             } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId, version);
 
-            const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
+            const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
             fs.emptyDirSync(destFolder);
             fs.outputFileSync(path.join(destFolder, 'manifest.yaml'), manifestYaml, 'UTF-8')
 
@@ -604,9 +624,9 @@ async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:st
                 const {
                     contents: bookContents,
                     filePath: bookFilePath
-                } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId);
+                } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
                 if (bookContents && bookFilePath) {
-                    return destFolder;
+                    return { destFolder, manifest };
                 }
             } else {
                 console.warn(`fetchHelpsResourceBook - could not download book ${fs.path(rawUrl, bookPath)}`)
@@ -929,7 +949,7 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
  * @param {string} resourcesPath - parent path for resources
  * @returns {Promise<{updatedCatalogResources, processed: *[]}>}
  */
-export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null, preRelease = false, bibleId = '') {
+export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|any[], languageId:string, owner:string, resourcesPath:string, callback:Function|null = null, preRelease = false, bookId = '') {
     if (!catalog?.length) {
         catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
     }
@@ -966,10 +986,14 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
         const languageId_ = item?.languageId;
         const version = item?.version;
         const owner_ = item?.owner;
-        const expectedRepo = path.join(resourcesPath, languageId_, apiHelpers.TRANSLATION_HELPS, resourceName, `v${version}_${resourcesHelpers.encodeOwnerStr(owner_)}`)
+        const isBookBasedHelps = ['twl', 'tn'].includes(resourceId)
+        let expectedRepo = path.join(resourcesPath, languageId_, apiHelpers.TRANSLATION_HELPS, resourceName, `v${version}_${resourcesHelpers.encodeOwnerStr(owner_)}`)
+        if (bookId && isBookBasedHelps) {
+            expectedRepo = path.join(expectedRepo, 'books', bookId)
+        }
         const files = getFilesOfType(expectedRepo, ".json");
         if (files?.length) {
-            console.log('downloadLatestLangHelpsResourcesFromCatalog - already have', item)
+            console.log('downloadLatestLangHelpsResourcesFromCatalog - already have downloaded', item)
             const resourceObject = {
                 id: item?.resourceId,
                 languageId: item?.languageId,
@@ -980,7 +1004,32 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             callback && await callback(`Starting Download of ${item.languageId}/${item.resourceId} ...`)
-            const resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false, preRelease)
+            let resource_
+            if (bookId && isBookBasedHelps) {
+                // @ts-ignore
+                const { destFolder, manifest } = await fetchHelpsResourceBook(catalog || [], languageId_, owner_, resourceId, resourcesPath, bookId, version) || {};
+                const relation = manifest?.dublin_core?.relation
+                if (relation) {
+                    // make sure we have right version of original bible
+                    const { bibleId: origBibleId, version: origLangVersion } = getTsvOLVersionForBook(relation, bookId)
+                    if (origLangVersion) {
+                        const originalBibleFolder = path.join(resourcesPath, languageId_, 'bibles', origBibleId, `v${origLangVersion}_${resourcesHelpers.encodeOwnerStr(owner_)}`, 'books', bookId)
+                        // TODO: make sure original bible downloaded
+                        const files = getFilesOfType(originalBibleFolder, ".json");
+                        if (!files?.length) {
+                            const _isNT = isNT(bookId)
+                            const origLang = _isNT ? NT_ORIG_LANG : OT_ORIG_LANG
+                            const originalLanguageOwner = apiHelpers.getOwnerForOriginalLanguage(owner_);
+                            const destFolder = await fetchBibleResourceBook(catalog || [], origLang, originalLanguageOwner, origBibleId, resourcesPath, bookId, origLangVersion || '')
+                            
+                            // TODO parse TSV
+                        }
+                    }
+                }
+                // TODO: need to set resource_
+            } else {
+                resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false, preRelease);
+            }
             callback && await callback(`Downloaded ${item.languageId}/${item.resourceId}`)
             if (resource_) {
                 processed.push(resource_)
@@ -2664,3 +2713,33 @@ export async function changeTargetVerse(projectPath:string, bookId:string, chapt
     }
 }
 
+/**
+ * Returns the original language version number needed for tn's group data files.
+ * @param {array} tsvRelations
+ * @param {string} resourceId
+ */
+export function getTsvOLVersion(tsvRelations:string[], resourceId:string) {
+    try {
+        let tsvOLVersion = null;
+
+        if (tsvRelations) {
+            // Get the query string from the tsv_relation array for given resourceId
+            const query = tsvRelations.find((query) => query.includes(resourceId));
+
+            if (query) {
+                // Get version number from query
+                tsvOLVersion = query.split('?v=')[1];
+            }
+        }
+        return tsvOLVersion;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+export function getTsvOLVersionForBook(tsvRelations:string[], bookId:string) {
+    const _isNT = isNT(bookId)
+    const bibleId = _isNT ? NT_ORIG_LANG_BIBLE : OT_ORIG_LANG_BIBLE
+    const version = getTsvOLVersion(tsvRelations, bibleId)
+    return { bibleId, version }
+}

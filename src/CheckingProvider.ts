@@ -248,8 +248,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
               const targetLanguageId = targetOptions.languageId;
               const targetBibleId = targetOptions.bibleId || "";
               const targetOwner = targetOptions.owner;
+              const bookId = this.getContext('selectedBook');
 
-              if (targetLanguageId && targetBibleId && targetOwner) {
+              if (targetLanguageId && targetBibleId && targetOwner && bookId) {
                   const options = await this.getGatewayLangSelection(preRelease)
                   const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
 
@@ -259,7 +260,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     }
                     : null
                   if (glOptions) {
-                      const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, targetBibleId)
+                      const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
                       
                       // @ts-ignore
                       if (results.error) {
@@ -587,7 +588,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess;
     }
 
-    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string, preRelease = false, bibleId = ''):Promise<object> {
+    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string, preRelease = false, bookId = ''):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -610,7 +611,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const catalog = getSavedCatalog(preRelease)
 
                 await delay(100)
-                const results = await downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress, preRelease, bibleId)
+                const results = await downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress, preRelease, bookId)
 
                 progressTracker.report({ increment });
                 await delay(100)
