@@ -537,11 +537,12 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
             const {
                 rawUrl,
                 manifest,
+                manifestYaml,
             } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId, version);
-            // fs.outputJsonSync(path.join(destFolder, 'manifest.json'), manifest, { spaces: 2 })
-
             const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId);
             fs.emptyDirSync(destFolder);
+            fs.outputFileSync(path.join(destFolder, 'manifest.yaml'), manifestYaml, 'UTF-8')
+
             // @ts-ignore
             const project = manifest?.projects?.find((project: {}) => project.identifier === bookId)
             const bookPath = project?.path?.replace('./', '')
