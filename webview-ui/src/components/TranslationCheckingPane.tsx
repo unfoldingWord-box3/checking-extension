@@ -229,10 +229,14 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   // @ts-ignore
   let _manifest = checkingObj?.targetBible?.manifest;
   if (_manifest) {
-    const dublin_core = _manifest?.dublin_core
-    let target_language = { ...dublin_core.language };
-    target_language.book = {
-      name: _manifest.resource_title
+    const dublin_core = _manifest?.dublin_core || {}
+    let target_language = {  }
+    if (dublin_core?.language) {
+      target_language = { ...dublin_core.language };
+      // @ts-ignore
+      target_language.book = {
+        name: _manifest.resource_title,
+      };
     }
     _manifest = { // shallow copy
       ...dublin_core,
