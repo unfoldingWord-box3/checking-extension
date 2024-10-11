@@ -3011,10 +3011,10 @@ tapable@^2.1.1, tapable@^2.2.0:
   resolved "https://registry.yarnpkg.com/tapable/-/tapable-2.2.1.tgz#1967a73ef4060a82f12ab96af86d52fdb76eeca0"
   integrity sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==
 
-tc-source-content-updater@^1.4.25:
-  version "1.4.25"
-  resolved "https://registry.yarnpkg.com/tc-source-content-updater/-/tc-source-content-updater-1.4.25.tgz#8b80e498a298c099270a1fa45ff6a86f4b0d965f"
-  integrity sha512-BH4A8GHSeZRx6t3CHW2IKC4gaZbakEhz91AYb7AEIsE5XDN9klmgigurwfDAq6E/SBzPcHEQGKx9X9xjKzM2BA==
+tc-source-content-updater@1.4.30-beta.4:
+  version "1.4.30-beta.4"
+  resolved "https://registry.yarnpkg.com/tc-source-content-updater/-/tc-source-content-updater-1.4.30-beta.4.tgz#c0592b740e9c1c44a9895852514dd6a0cf02dae2"
+  integrity sha512-ppMX/cieI/wWe4fNRSIQpkKevXTBIM1LawLdFUry9rLpx4ZoM1yasnNEOtanaLwIGzw2T1N3OAq+HMPmst86FQ==
   dependencies:
     adm-zip "^0.4.11"
     agentkeepalive "4.1.0"

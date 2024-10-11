@@ -22,6 +22,8 @@ import { ResourcesObject } from "../../types";
 import { getLanguage } from "./languages";
 // @ts-ignore
 import * as tsvparser from "uw-tsv-parser";
+// @ts-ignore
+import * as tsvGroupdataParser from "tsv-groupdata-parser"
 
 // helpers
 const {
@@ -1023,6 +1025,24 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
                             const destFolder = await fetchBibleResourceBook(catalog || [], origLang, originalLanguageOwner, origBibleId, resourcesPath, bookId, origLangVersion || '')
                             
                             // TODO parse TSV
+
+                            if (resourceId === 'twl') {
+                                // const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputPath);
+                                
+                                // const groupData = await twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputPath);
+                                // convertEllipsisToAmpersand(groupData, tsvPath);
+                                // await formatAndSaveGroupData(groupData, outputPath, bookId);
+                            } else if (resourceId === 'tn') {
+                                // const groupData = tsvGroupdataParser.tsvToGroupData7Cols(filepath, bookId, resourcesPath, resource.languageId, toolName, originalBiblePath, params);
+                                
+                                // if (isSevenCol) {
+                                //     groupData = yield (0, _tsvGroupdataParser.tsvToGroupData7Cols)(filepath, bookId, resourcesPath, resource.languageId, toolName, originalBiblePath, params);
+                                // } else {
+                                //     groupData = yield (0, _tsvGroupdataParser.tsvToGroupData)(filepath, toolName, params, originalBiblePath, resourcesPath, resource.languageId);
+                                // }
+                                // convertEllipsisToAmpersand(groupData, filepath);
+                                // yield (0, _tsvGroupdataParser.formatAndSaveGroupData)(groupData, outputPath, bookId);
+                            }
                         }
                     }
                 }
