@@ -32,6 +32,7 @@ const {
     downloadHelpers,
     resourcesHelpers,
     resourcesDownloadHelpers,
+    tnArticleHelpers,
     twArticleHelpers,
     STAGE
 }   
@@ -943,6 +944,62 @@ function verifyHaveGlResources(languageId:string, owner:string, resourcesPath:st
     return resources
 }
 
+async function parseBookTsv(resourceId: string, bookId: string, item:{}, originalBiblePath: string, tsvFolder: string, tsvPath: string, resourcesPath: string) {
+    let error = false
+    const resourceFiles:string[] = []
+    const outputFolder = path.join(tsvFolder || "", bookId);
+    
+    const bibleBooks = getBibleBookFiles(originalBiblePath, bookId);
+    for (const book of bibleBooks) {
+        const matchLowerCase = book.toLowerCase();
+        if (matchLowerCase.includes(bookId)) {
+            const bookPath = path.join(originalBiblePath, book);
+            parseAndSaveUsfm(bookPath, originalBiblePath, bookId);
+        }
+
+    }
+    if (resourceId === "twl") {
+        try {
+            const project = {
+                identifier: bookId,
+                // @ts-ignore
+                languageId: item.languageId,
+            };
+            const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputFolder);
+            console.log(groupData);
+        } catch (e) {
+            console.error(`parse twl failed`, e);
+            error = true
+        }
+    } else if (resourceId === "tn") {
+        try {
+            const params = { categorized: true };
+            // @ts-ignore
+            const groupData = await tsvGroupdataParser.tsvToGroupData7Cols(tsvPath, bookId, resourcesPath, item.languageId, "translationNotes", originalBiblePath, params);
+            tnArticleHelpers.convertEllipsisToAmpersand(groupData, tsvPath);
+            await tsvGroupdataParser.formatAndSaveGroupData(groupData, outputFolder, bookId);
+        } catch (e) {
+            console.error(`parse tn failed`, e);
+            error = true
+        }
+    }
+    if (!error) {
+        const ignoreIndex = resourceId === 'tn'
+        const contents = readHelpsFolder(outputFolder, bookId, ignoreIndex)
+        const outputPath = path.join(tsvFolder, `${resourceId}_${bookId}.json`)
+        fs.outputJsonSync(outputPath, contents, { spaces: 2 })
+        resourceFiles.push(outputPath)
+    }
+    if (!error) {
+        return {
+            resourcePath: tsvFolder,
+            resourceFiles,
+            byBook: true
+        }
+    }
+    return null
+}
+
 /**
  * search the catalog to find and download the translationHelps resources (ta, tw, tn, twl) along with dependencies
  * @param {object[]} catalog - list of items in catalog
@@ -1006,7 +1063,7 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
         } else {
             console.log('getLatestLangHelpsResourcesFromCatalog - downloading', item)
             callback && await callback(`Starting Download of ${item.languageId}/${item.resourceId} ...`)
-            let resource_
+            let resource_ = null
             if (bookId && isBookBasedHelps) {
                 // @ts-ignore
                 const { destFolder: tsvFolder, manifest, bookFilePath: tsvPath } = await fetchHelpsResourceBook(catalog || [], languageId_, owner_, resourceId, resourcesPath, bookId, version) || {};
@@ -1023,49 +1080,15 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
                             const origLang = _isNT ? NT_ORIG_LANG : OT_ORIG_LANG
                             const originalLanguageOwner = apiHelpers.getOwnerForOriginalLanguage(owner_);
                             const originalBiblePath = await fetchBibleResourceBook(catalog || [], origLang, originalLanguageOwner, origBibleId, resourcesPath, bookId, origLangVersion || '') ||''
-                            
-                            // TODO parse TSV
-
-                            if (resourceId === 'twl') {
-                                try {
-                                    const project = {
-                                        identifier: bookId,
-                                        languageId: item.languageId,
-                                    }
-
-                                    const bibleBooks = getBibleBookFiles(originalBiblePath, bookId);
-                                    for (const book of bibleBooks) {
-                                        const matchLowerCase = book.toLowerCase()
-                                        if (matchLowerCase.includes(bookId)) {
-                                            const bookPath = path.join(originalBiblePath, book);
-                                            parseAndSaveUsfm(bookPath, originalBiblePath, bookId);
-                                        }
-                                    }
-
-                                    const outputFolder = path.join(tsvFolder || '', bookId);
-                                    const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputFolder);
-                                    console.log(groupData)
-                                } catch (e) {
-                                    console.error(`parse twl failed`, e)
-                                }
-                                // const groupData = await twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputPath);
-                                // convertEllipsisToAmpersand(groupData, tsvPath);
-                                // await formatAndSaveGroupData(groupData, outputPath, bookId);
-                            } else if (resourceId === 'tn') {
-                                // const groupData = tsvGroupdataParser.tsvToGroupData7Cols(filepath, bookId, resourcesPath, resource.languageId, toolName, originalBiblePath, params);
-                                
-                                // if (isSevenCol) {
-                                //     groupData = yield (0, _tsvGroupdataParser.tsvToGroupData7Cols)(filepath, bookId, resourcesPath, resource.languageId, toolName, originalBiblePath, params);
-                                // } else {
-                                //     groupData = yield (0, _tsvGroupdataParser.tsvToGroupData)(filepath, toolName, params, originalBiblePath, resourcesPath, resource.languageId);
-                                // }
-                                // convertEllipsisToAmpersand(groupData, filepath);
-                                // yield (0, _tsvGroupdataParser.formatAndSaveGroupData)(groupData, outputPath, bookId);
-                            }
+                            const results = await parseBookTsv(resourceId, bookId, item, originalBiblePath, tsvFolder || '', tsvPath || '', resourcesPath);
+                            resource_ =  results ? {
+                                ...results,
+                                resource: item,
+                                processed: true,
+                            } : null
                         }
                     }
                 }
-                // TODO: need to set resource_
             } else {
                 resource_ = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false, preRelease);
             }
@@ -1083,10 +1106,13 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
                 // @ts-ignore
                 foundResources[resource_.resource.resourceId] = resourceObject
                 const ignoreIndex = resource_.resource.resourceId === 'tn'
-                const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook, ignoreIndex)
-                if (!success) {
-                    console.error('downloadLatestLangHelpsResourcesFromCatalog - could not process', item)
-                    error = true
+                // @ts-ignore
+                if (!resource_?.processed) { // if not already processed
+                    const success = await processHelpsIntoJson(item, resourcesPath, resourcePath, resource_.resourceFiles, resource_.byBook, ignoreIndex);
+                    if (!success) {
+                        console.error("downloadLatestLangHelpsResourcesFromCatalog - could not process", item);
+                        error = true;
+                    }
                 }
             } else {
                 error = true
