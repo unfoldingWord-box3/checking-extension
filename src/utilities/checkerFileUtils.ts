@@ -1041,8 +1041,9 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
                                             parseAndSaveUsfm(bookPath, originalBiblePath, bookId);
                                         }
                                     }
-                                    
-                                    const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, tsvFolder);
+
+                                    const outputFolder = path.join(tsvFolder || '', bookId);
+                                    const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputFolder);
                                     console.log(groupData)
                                 } catch (e) {
                                     console.error(`parse twl failed`, e)
