@@ -628,7 +628,7 @@ async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:st
                     filePath: bookFilePath
                 } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
                 if (bookContents && bookFilePath) {
-                    return { destFolder, manifest };
+                    return { destFolder, manifest, bookFilePath};
                 }
             } else {
                 console.warn(`fetchHelpsResourceBook - could not download book ${fs.path(rawUrl, bookPath)}`)
@@ -1009,7 +1009,7 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
             let resource_
             if (bookId && isBookBasedHelps) {
                 // @ts-ignore
-                const { destFolder, manifest } = await fetchHelpsResourceBook(catalog || [], languageId_, owner_, resourceId, resourcesPath, bookId, version) || {};
+                const { destFolder: tsvFolder, manifest, bookFilePath: tsvPath } = await fetchHelpsResourceBook(catalog || [], languageId_, owner_, resourceId, resourcesPath, bookId, version) || {};
                 const relation = manifest?.dublin_core?.relation
                 if (relation) {
                     // make sure we have right version of original bible
@@ -1022,13 +1022,31 @@ export async function downloadLatestLangHelpsResourcesFromCatalog(catalog:null|a
                             const _isNT = isNT(bookId)
                             const origLang = _isNT ? NT_ORIG_LANG : OT_ORIG_LANG
                             const originalLanguageOwner = apiHelpers.getOwnerForOriginalLanguage(owner_);
-                            const destFolder = await fetchBibleResourceBook(catalog || [], origLang, originalLanguageOwner, origBibleId, resourcesPath, bookId, origLangVersion || '')
+                            const originalBiblePath = await fetchBibleResourceBook(catalog || [], origLang, originalLanguageOwner, origBibleId, resourcesPath, bookId, origLangVersion || '') ||''
                             
                             // TODO parse TSV
 
                             if (resourceId === 'twl') {
-                                // const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputPath);
-                                
+                                try {
+                                    const project = {
+                                        identifier: bookId,
+                                        languageId: item.languageId,
+                                    }
+
+                                    const bibleBooks = getBibleBookFiles(originalBiblePath, bookId);
+                                    for (const book of bibleBooks) {
+                                        const matchLowerCase = book.toLowerCase()
+                                        if (matchLowerCase.includes(bookId)) {
+                                            const bookPath = path.join(originalBiblePath, book);
+                                            parseAndSaveUsfm(bookPath, originalBiblePath, bookId);
+                                        }
+                                    }
+                                    
+                                    const groupData = await twArticleHelpers.twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, tsvFolder);
+                                    console.log(groupData)
+                                } catch (e) {
+                                    console.error(`parse twl failed`, e)
+                                }
                                 // const groupData = await twlTsvToGroupData(tsvPath, project, resourcesPath, originalBiblePath, outputPath);
                                 // convertEllipsisToAmpersand(groupData, tsvPath);
                                 // await formatAndSaveGroupData(groupData, outputPath, bookId);
@@ -1390,6 +1408,20 @@ function getFileNameForBook(_bookId: string | null, resourceId: string) {
     return `${_bookId}.${resourceId}_check`;
 }
 
+function parseAndSaveUsfm(bookPath: string, targetPath: string, bookId: string | null) {
+    const usfm = fs.readFileSync(bookPath, "utf8");
+    const json = getParsedUSFM(usfm);
+    const targetBookDestPath = path.join(targetPath, bookId || "");
+    // save each chapter as json file
+    const bookData = json.chapters;
+    for (const chapterNum of Object.keys(bookData)) {
+        const chapterData = bookData[chapterNum];
+        fs.outputJsonSync(path.join(targetBookDestPath, `${chapterNum}.json`), chapterData, { spaces: 2 });
+    }
+    // save header as json file
+    fs.outputJsonSync(path.join(targetBookDestPath, "headers.json"), json.headers, { spaces: 2 });
+}
+
 /**
  * Initialize folder of project
  * @param repoPath
@@ -1488,20 +1520,12 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         for (const book of bibleBooks) {
                             const matchLowerCase = book.toLowerCase()
                             if (matchLowerCase.includes(bookId)) {
-                                const usfm = fs.readFileSync(path.join(targetFoundPath, book), 'utf8');
-                                const json = getParsedUSFM(usfm)
-                                const targetBookDestPath = path.join(repoPath, bookId || '')
-                                // save each chapter as json file
-                                const bookData = json.chapters;
-                                for (const chapterNum of Object.keys(bookData)) {
-                                    const chapterData = bookData[chapterNum]
-                                    fs.outputJsonSync(path.join(targetBookDestPath, `${chapterNum}.json`), chapterData, { spaces: 2 });
-                                }
-                                // save header as json file
-                                fs.outputJsonSync(path.join(targetBookDestPath, 'headers.json'), json.headers, { spaces: 2 });
+                                const bookPath = path.join(targetFoundPath, book);
+                                const targetPath = repoPath;
+                                parseAndSaveUsfm(bookPath, targetPath, bookId);
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
-                                fs.outputJsonSync(path.join(repoPath, 'manifest.json'), manifest, { spaces: 2 });
+                                fs.outputJsonSync(path.join(targetPath, 'manifest.json'), manifest, { spaces: 2 });
                             }
                         }
 
