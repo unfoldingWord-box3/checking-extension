@@ -579,7 +579,7 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                     return destFolder;
                 }
             } else {
-                console.warn(`fetchBibleResourceBook - could not download book ${fs.path(rawUrl, bookPath)}`)
+                console.warn(`fetchBibleResourceBook - could not download book ${path.join(rawUrl, bookPath)}`)
             }
         }
     } catch (err) {
@@ -632,7 +632,7 @@ async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:st
                     return { destFolder, manifest, bookFilePath};
                 }
             } else {
-                console.warn(`fetchHelpsResourceBook - could not download book ${fs.path(rawUrl, bookPath)}`)
+                console.warn(`fetchHelpsResourceBook - could not download book ${path.join(rawUrl, bookPath)}`)
             }
         }
     } catch (err) {
@@ -1275,7 +1275,17 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                 if (item) {
                     console.log('getLangResourcesFromCatalog - downloading', item)
                     callback && await callback(`Starting Download of ${item.languageId}/${item.resourceId} ...`)
-                    const resource = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false)
+                    let resource = null
+                    if (bookId) {
+                        try {
+                            const bibleFoundPath = await fetchBibleResourceBook(updatedCatalogResources || [], languageId_, owner_, bibleId, resourcesPath, bookId, item.version);
+                            resource = { resourcePath: bibleFoundPath, resourceFiles: [], resource: item, byBook: true}
+                        } catch (e) {
+                            console.error(`getLangResourcesFromCatalog - cannot download target bible book ${bookId} from server`, e);
+                        }
+                    } else {
+                        resource = await downloadAndProcessResource(item, resourcesPath, item.bookRes, false);
+                    }
                     if (resource) {
                         processed.push(resource)
                         fetched = true
@@ -1884,15 +1894,30 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                         const parentDir = path.join(dest, "..");
 
                         if (bookId) {
-                            fs.ensureDirSync(src);
-                            const files = getFilesOfType(src, ".json");
-                            if (fs.existsSync(path.join(src, bookId))) {
-                                files.push(bookId);
+                            fs.ensureDirSync(dest);
+                            let src_ = path.join(src, 'books', bookId, bookId)
+                            let files = getFilesOfType(src_, ".json");
+                            if (!files?.length) { // check to see if we have usfm files that need processing
+                            const parentPath = path.join(src_, '..');
+                                const usfmFiles = getBibleBookFiles(parentPath, bookId)
+                                for (const file of usfmFiles) {
+                                    const bookPath = path.join(parentPath, file)
+                                    parseAndSaveUsfm(bookPath, parentPath, bookId);
+                                }
+                                files = getFilesOfType(src_, ".json");
+                            }
+                            const filenames = [bookId, '../manifest.yaml', '../manifest.json']
+                            for (const filename of filenames) {
+                                if (fs.existsSync(path.join(src_, filename))) {
+                                    files.push(filename);
+                                }
                             }
                             for (const file of files) {
-                                const sourcePath = path.join(src, file);
-                                const destPath = path.join(dest, file);
-                                fs.copySync(sourcePath, destPath);
+                                const sourcePath = path.join(src_, file);
+                                const destPath = path.join(dest, bookId, file);
+                                if (!fs.existsSync(destPath)) {
+                                    fs.copySync(sourcePath, destPath);
+                                }
                             }
                         } else {
                             fs.ensureDirSync(parentDir);
