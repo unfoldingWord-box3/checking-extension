@@ -641,7 +641,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId, preRelease);
+                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId || '', preRelease);
                 progressTracker.report({ increment });
                 await delay(100)
                 resolve(results)
