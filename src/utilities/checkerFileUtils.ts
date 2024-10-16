@@ -850,7 +850,7 @@ function verifyHaveHelpsResource(resource:any, resourcesPath:string, languageId:
  * @param  {object[]} catalog - if given then also validate version is equal to or greater than catalog:any[] version
  * @returns {string|null} - path of resource if found
  */
-function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null, checkForUsfm = false):null|string {
+function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageId:string, owner:string, catalog:null|any[] = null, checkForUsfm = false, bookId = ''):null|string {
     const folderPath = path.join(resourcesPath, languageId, 'bibles', bibleId) // , `v${resource.version}_${resource.owner}`)
     const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false)
 
@@ -872,16 +872,17 @@ function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageI
         }
 
         let bibleBooks = []
+        const checkPath = bookId ? path.join(versionPath, 'books', bookId) : versionPath
         if (checkForUsfm) { // each book is an USFM file
-            bibleBooks = getBibleBookFiles(versionPath)
+            bibleBooks = getBibleBookFiles(checkPath)
         } else { // each book is a chapter
-            bibleBooks = fs.readdirSync(versionPath)
+            bibleBooks = fs.existsSync(checkPath) && fs.readdirSync(checkPath)
               .filter((file:string) => path.extname(file) !== '.json' && file !== '.DS_Store');
         }
         if (bibleBooks?.length) {
             return versionPath
         } else {
-            console.log(`verifyHaveBibleResource() - Could not find files in : ${versionPath}`)
+            console.log(`verifyHaveBibleResource() - Could not find files in : ${checkPath}`)
         }
     } else {
         console.log(`verifyHaveBibleResource() - Could not find folder: ${folderPath}`)
@@ -1247,7 +1248,7 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
             const langId = getLanguageForBible(languageId, bibleId);
             const { languageId_, owner_ } = getLanguageAndOwnerForBible(langId, owner, bibleId)
 
-            const foundPath = verifyHaveBibleResource(bibleId, resourcesPath, languageId_, owner_, catalog)
+            const foundPath = verifyHaveBibleResource(bibleId, resourcesPath, languageId_, owner_, catalog, false, bookId)
             if (foundPath) {
                 fetched = true
                 const bible = {
@@ -1869,11 +1870,11 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     const bibleId = bible.bibleId || bible.id;
     let biblePath = bible.path;
     let localChanged = false;
+    const resourcesSubFolder = `${sep}.resources${sep}`;
     if (!biblePath) {
         // look first in projects folders
         biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner, bible.version || '');
         if (biblePath) {
-            const resourcesSubFolder = `${sep}.resources${sep}`;
             const parts = biblePath.split(resourcesSubFolder)
             if (parts.length >= 2) {
                 biblePath = projectResources + parts[1]
@@ -1889,6 +1890,28 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
             // @ts-ignore
             metadata.otherResources[bibleId] = bible;
         }
+    } else {
+        // check if in project folders
+        const parts = biblePath.split(resourcesSubFolder)
+        let inProject = parts.length >= 2;
+        if (inProject) { // double check that content is there
+            const _biblePath = cleanupPath(biblePath, repoPath);
+            inProject = fs.existsSync(path.join( _biblePath,'manifest.yaml'))
+        }
+        if (!inProject) { // if not in project check if in cache
+            const _biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner, bible.version || '')
+            const testPath = bookId ? path.join(_biblePath, 'books', bookId) : _biblePath
+            if (!isEmptyDir(testPath)) {
+                biblePath = _biblePath
+            } else {
+                biblePath = ''
+            }
+            localChanged = true // need to save bible path
+            bible.path = biblePath;
+            // @ts-ignore
+            metadata.otherResources[bibleId] = bible;
+            
+        }
     }
 
     if (isHomePath(biblePath) || !bible.path || localChanged) {
@@ -1902,7 +1925,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                 const _newFullPath = path.join(repoPath, newPath);
 
                 try {
-                    if (!fs.existsSync(_newFullPath)) {
+                    if (isEmptyDir(_newFullPath)) {
                         const src = path.join(replaceHomePath(biblePath));
                         const dest = _newFullPath;
                         const parentDir = path.join(dest, "..");
@@ -1912,7 +1935,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                             let src_ = path.join(src, 'books', bookId, bookId)
                             let files = getFilesOfType(src_, ".json");
                             if (!files?.length) { // check to see if we have usfm files that need processing
-                            const parentPath = path.join(src_, '..');
+                                const parentPath = path.join(src_, '..');
                                 const usfmFiles = getBibleBookFiles(parentPath, bookId)
                                 for (const file of usfmFiles) {
                                     const bookPath = path.join(parentPath, file)
@@ -1960,6 +1983,18 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         }
     }
     return { bibleId, biblePath, changed: changed || localChanged };
+}
+
+function isEmptyDir(fullPath: string) {
+    if (fs.existsSync(fullPath)) {
+        let files = getFilesOfType(fullPath, ".yaml");
+        if (!files.length) {
+            files = getFilesOfType(fullPath, ".json");
+        }
+        const isEmpty = !files.length
+        return isEmpty
+    }
+    return true
 }
 
 /**
