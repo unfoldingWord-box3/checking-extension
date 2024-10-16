@@ -154,54 +154,46 @@ export class CheckingProvider implements CustomTextEditorProvider {
               console.log(`starting "checking-extension.launchWorkflow"`)
 
               await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-              await this.initializeWorkflow();
+              await this.initializeWorkflow(false);
 
-              const catalog = getSavedCatalog()
+              const catalog = getSavedCatalog(false)
               if (catalog) {
-                  await this.gotoWorkFlowStep('selectGatewayLanguage')
+                  await this.gotoWorkFlowStep('selectTargetBible')
                   await this.setContext('fetchedCatalog', true);
               }
-              const{
-                  repoExists,
-                  isValidBible,
-                  isCheckingInitialized
-              } = await this.checkWorkspace();
-              if (repoExists) {
-                  if (!isValidBible) {
-                      await this.setContext('createNewFolder', false);
-                      await this.setContext('selectedFolder', true);
-                  } else if (isCheckingInitialized) {
-                      await this.setContext('createNewFolder', false);
-                      await this.setContext('selectedFolder', true);
-                      await showInformationMessage(`Current Project already has checking setup!`, true);
-                  } else { // validBible, but not initialized
-                      await this.setContext('createNewFolder', false);
-                      await this.setContext('selectedFolder', true);
-                  }
-              } else { // current folder
-                  await this.setContext('createNewFolder', true);
-                  await this.setContext('selectedFolder', true);
-
-              }
+              await this.setContext('createNewFolder', true);
           },
         ));
         subscriptions.push(commandRegistration)
 
         commandRegistration = commands.registerCommand(
-          "checking-extension.selectFolder",
+          "checking-extension.launchWorkflowPre",
           executeWithRedirecting(async () => {
-              console.log("checking-extension.selectFolder")
-              await delay(100)
-              const newProject = ! await this.promptUpdateSpecificFolder()
-              const catalog = getSavedCatalog()
-              if (catalog) {
-                  await this.gotoWorkFlowStep('selectGatewayLanguage')
-              }
-              await this.setContext('fetchedCatalog', !!catalog);
-              await this.setContext('createNewFolder', newProject);
-              await this.setContext('selectedFolder', !newProject);
-          },
-        ));
+                console.log(`starting "checking-extension.launchWorkflowPre - using PreRelease Resources"`)
+
+                await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+                await this.initializeWorkflow(true);
+
+                const catalog = getSavedCatalog(true)
+                if (catalog) {
+                    await this.gotoWorkFlowStep('selectTargetBible')
+                    await this.setContext('fetchedCatalog', true);
+                }
+                await this.setContext('createNewFolder', true);
+            },
+          ));
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.useReleased",
+          executeWithRedirecting(async () => {
+                console.log(`starting "checking-extension.useReleased"`)
+
+                await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
+                await this.setContext("preRelease", false);
+                await this.gotoWorkFlowStep('fetchCatalog')
+            },
+          ));
         subscriptions.push(commandRegistration)
 
         commandRegistration = commands.registerCommand(
@@ -209,12 +201,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
           executeWithRedirecting(async () => {
                 console.log("checking-extension.downloadCatalog")
                 await delay(100)
-                const catalog = await getLatestResourcesCatalog(resourcesPath)
+                const preRelease = this.getContext('preRelease');
+                const catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
                 if (!catalog) {
                     showErrorMessage(`Error Downloading Updated Resource Catalog!`, true);
                 } else {
-                    saveCatalog(catalog)
-                    await this.gotoWorkFlowStep('selectGatewayLanguage')
+                    saveCatalog(catalog, preRelease)
+                    await this.gotoWorkFlowStep('selectTargetBible')
                     await this.setContext('fetchedCatalog', true);
                 }
             },
@@ -222,85 +215,71 @@ export class CheckingProvider implements CustomTextEditorProvider {
         subscriptions.push(commandRegistration)
 
         commandRegistration = commands.registerCommand(
+          "checking-extension.selectTargetBible",
+          executeWithRedirecting(async () => {
+              console.log("checking-extension.selectTargetBible")
+              const preRelease = this.getContext('preRelease')
+              const catalog = getSavedCatalog(preRelease)
+              const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
+              if (targetLanguagePick && targetOwnerPick && targetBibleIdPick) {
+                  const targetBibleOptions = {
+                      languageId: targetLanguagePick,
+                      owner: targetOwnerPick,
+                      bibleId: targetBibleIdPick
+                  }
+
+                  const options = await this.getBookSelection(targetBibleOptions)
+                  if (options?.bookPick) {
+                      await this.gotoWorkFlowStep("selectGatewayLanguage");
+                      await this.setContext('selectedBook', options.bookPick);
+                  }
+                  await this.setContext('targetBibleOptions', targetBibleOptions);
+              }
+          })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
           "checking-extension.selectGL",
           executeWithRedirecting(async () => {
-            console.log("checking-extension.selectGL")
-            const options = await this.getGatewayLangSelection()
-            const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
-            let glOptions = glSelected ? {
-                  languageId: options.gwLanguagePick,
-                  owner: options.gwOwnerPick
+              console.log("checking-extension.selectGL")
+              const preRelease = this.getContext('preRelease')
+              const targetOptions = this.getContext('targetBibleOptions') || {};
+              const targetLanguageId = targetOptions.languageId;
+              const targetBibleId = targetOptions.bibleId || "";
+              const targetOwner = targetOptions.owner;
+              const bookId = this.getContext('selectedBook');
+
+              if (targetLanguageId && targetBibleId && targetOwner && bookId) {
+                  const options = await this.getGatewayLangSelection(preRelease)
+                  const glSelected = !!(options && options.gwLanguagePick && options.gwOwnerPick)
+
+                  let glOptions = glSelected ? {
+                        languageId: options.gwLanguagePick,
+                        owner: options.gwOwnerPick
+                    }
+                    : null
+                  if (glOptions) {
+                      const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
+                      
+                      // @ts-ignore
+                      if (results.error) {
+                          await showErrorMessage(`Error Downloading Gateway Language resources!`, true);
+                      } else {
+                          await this.gotoWorkFlowStep("loadTarget");
+                          await this.setContext("loadedGlResources", true);
+                          await showInformationMessage(`Gateway Language Resources Loaded`, true);
+                      }
+                      // await this.gotoWorkFlowStep("loadGlResources");
+                      await this.setContext('selectedGL', glOptions);
+                  }
+              } else {
+                  await showErrorMessage(`Target Bible has not been selected!`, true);
               }
-              : null
-              if (glOptions) {
-                  await this.gotoWorkFlowStep("loadGlResources");
-              }
-              await this.setContext('selectedGL', glOptions);
           },
         ));
         subscriptions.push(commandRegistration)
 
-        commandRegistration = commands.registerCommand(
-          "checking-extension.loadGlResources",
-          async () => {
-              console.log("checking-extension.loadGlResources")
-              const glOptions = this.getContext('selectedGL');
-              if (glOptions) {
-                  const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner, resourcesPath)
-
-                  // @ts-ignore
-                  if (results.error) {
-                      await showErrorMessage(`Error Downloading Gateway Language resources!`, true);
-                  } else {
-                      const createNewFolder = this.getContext('createNewFolder');
-                      if (createNewFolder) {
-                          await this.gotoWorkFlowStep("selectTargetBible");
-                      } else {
-                          await this.gotoWorkFlowStep("projectInitialized");
-                      }
-                      await this.setContext("loadedGlResources", true);
-                      await showInformationMessage(`Gateway Language Resources Loaded`, true);
-                  }
-              } else {
-                  await showErrorMessage(`You must select Gateway Language first`, true);
-              }
-          },
-        );
-        subscriptions.push(commandRegistration)
-
-        commandRegistration = commands.registerCommand(
-          "checking-extension.selectTargetBible",
-          executeWithRedirecting(async () => {
-                console.log("checking-extension.selectTargetBible")
-                const catalog = getSavedCatalog()
-                const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
-                if (targetLanguagePick && targetOwnerPick && targetBibleIdPick) {
-                    const targetBibleOptions = {
-                        languageId: targetLanguagePick,
-                        owner: targetOwnerPick,
-                        bibleId: targetBibleIdPick
-                    }
-                    await this.gotoWorkFlowStep("selectBook");
-                    await this.setContext('targetBibleOptions', targetBibleOptions);
-                }
-            })
-        );
-        subscriptions.push(commandRegistration)
-
-        commandRegistration = commands.registerCommand(
-          "checking-extension.selectBook",
-          executeWithRedirecting(async () => {
-                console.log("checking-extension.selectBook")
-                const targetBibleOptions = this.getContext('targetBibleOptions');
-                const options = await this.getBookSelection(targetBibleOptions)
-                if (options?.bookPick) {
-                    await this.gotoWorkFlowStep("loadTarget");
-                    await this.setContext('selectedBook', options.bookPick);
-                }
-            },
-          ));
-        subscriptions.push(commandRegistration)
-        
         commandRegistration = commands.registerCommand(
           "checking-extension.loadTargetBible",
           async () => {
@@ -309,18 +288,42 @@ export class CheckingProvider implements CustomTextEditorProvider {
               const targetOptions = this.getContext('targetBibleOptions');
               if (targetOptions) {
                   const glOptions = this.getContext('selectedGL');
-                  if (glOptions) {
-                      const catalog = getSavedCatalog() || [];
+                  const preRelease = this.getContext('preRelease')
+                  if (glOptions && glOptions.languageId && glOptions.owner) {
+                      const catalog = getSavedCatalog(preRelease) || [];
                       const targetLanguageId = targetOptions.languageId;
                       const targetBibleId = targetOptions.bibleId || "";
                       const targetOwner = targetOptions.owner;
                       const repoPath = getRepoPath(targetLanguageId, targetBibleId, glOptions.languageId);
                       await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
-                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId);
+                      const targetFoundPath = await downloadTargetBible(targetOptions.bibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId, 'master');
                       if (targetFoundPath) {
-                          await this.gotoWorkFlowStep("projectInitialize");
-                          await showInformationMessage(`Target Bible Loaded`, true);
                           console.log(`checking-extension.loadTargetBible - target Bible is at ${targetFoundPath}`)
+
+                          const catalog = getSavedCatalog(preRelease) || []
+                          const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId, preRelease);
+                          await this.setContext("projectInitialized", repoInitSuccess);
+
+                          if (repoInitSuccess) {
+                              // navigate to new folder
+                              const repoPathUri = vscode.Uri.file(repoPath);
+                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
+                              vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+ 
+                              // for (const resourceId of ['twl', 'tn']) {
+                              //     const fileSubPath = getFileSubPathForResource(resourceId, bookId)
+                              //     const filePathUrl = vscode.Uri.joinPath(repoPathUri, fileSubPath)
+                              //     const filePath = filePathUrl.fsPath
+                              //     showInformationMessage(`Opening file ${filePath}`);
+                              //     try {
+                              //         vscode.commands.executeCommand("vscode.open", filePathUrl).then(() => {
+                              //             console.log(`Successfully opened ${filePath}`)
+                              //         });
+                              //     } catch (e) {
+                              //         console.warn(`Could not open ${filePath}`, e)
+                              //     }
+                              // }                              
+                          }
                       } else {
                           await showErrorMessage(`Target Bible Failed to Load`, true);
                       }
@@ -334,86 +337,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
           },
         );
         subscriptions.push(commandRegistration)
-
-        commandRegistration = commands.registerCommand(
-          "checking-extension.initializeChecking",
-          async () => {
-              console.log("checking-extension.initializeChecking")
-              const bookId = this.getContext('selectedBook');
-              const glOptions = this.getContext('selectedGL');
-              if (glOptions && glOptions.languageId && glOptions.owner) {
-                  const createNewFolder = this.getContext('createNewFolder');
-                  if (createNewFolder) { // create a new folder
-                      const targetOptions = this.getContext('targetBibleOptions');
-                      if (!(targetOptions && targetOptions.languageId && targetOptions.bibleId && targetOptions.owner)) {
-                          return await showErrorMessage(`You must select Target Bible first`, true);
-                      } else {
-                          const catalog = getSavedCatalog() || []
-                          const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetOptions.languageId, targetOptions.bibleId, glOptions.languageId, targetOptions.owner, glOptions.owner, catalog, bookId);
-                          await this.setContext("projectInitialized", repoInitSuccess);
-                          if (repoInitSuccess) {
-                              // navigate to new folder
-                              const repoPathUri = vscode.Uri.file(repoPath);
-                              await showInformationMessage(`Opening project ${repoPath}`);
-                              vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
-                              await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
-                              for (const resourceId of ['twl', 'tn']) {
-                                  const fileSubPath = getFileSubPathForResource(resourceId, bookId)
-                                  const filePathUrl = vscode.Uri.joinPath(repoPathUri, fileSubPath)
-                                  const filePath = filePathUrl.fsPath
-                                  showInformationMessage(`Opening file ${filePath}`);
-                                  try {
-                                      vscode.commands.executeCommand("vscode.open", filePathUrl).then(() => {
-                                          console.log(`Successfully opened ${filePath}`)
-                                      });
-                                  } catch (e) {
-                                      console.warn(`Could not open ${filePath}`, e)
-                                  }
-                              }
-                              return
-                          }
-                      }
-                  } else { // initializing existing folder
-                      const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
-
-                      if (repoFolderExists && projectPath) {
-                          const results = isRepoInitialized(projectPath, resourcesPath, null);
-                          // @ts-ignore
-                          const isValidBible = results.repoExists && results.manifest?.dublin_core;
-                          const initBibleRepo = isValidBible && !results.metaDataInitialized
-                            && !results.checksInitialized && results.bibleBooksLoaded;
-                          if (initBibleRepo) {
-                              // @ts-ignore
-                              results.glOptions = glOptions
-                              const repoInitSuccess = await this.initializeBibleFolder(results, projectPath);
-                              await this.setContext("projectInitialized", repoInitSuccess);
-                              return
-                          } else if (results.repoExists) {
-                              if (results.metaDataInitialized && results.checksInitialized) {
-                                  return await showErrorMessage(`repo already has checking setup!`, true);
-                              }
-                              return await showErrorMessage(`Project already exists - but not valid! ${projectPath}`, true);
-                          }
-                      }
-                      return await showErrorMessage(`project folder not selected`, true);
-                  }
-              } else {
-                  await showErrorMessage(`You must select Gateway Language first`, true);
-              }
-          },
-        );
-        subscriptions.push(commandRegistration)
-
         return subscriptions;
     }
 
-    private static async initializeWorkflow() {
+    private static async initializeWorkflow(preRelease = false) {
         await delay(100);
         await vscode.commands.executeCommand("resetGettingStartedProgress");
         await delay(100);
 
         // initialize configurations
-        const catalog = getSavedCatalog();
+        const catalog = getSavedCatalog(preRelease);
         await this.setContext("createNewFolder", true);
         await this.setContext("selectedFolder", false);
         await this.setContext("fetchedCatalog", !!catalog);
@@ -423,6 +356,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await this.setContext("targetBibleOptions", null);
         await this.setContext("targetBibleLoaded", false);
         await this.setContext("projectInitialized", false);
+        await this.setContext("preRelease", !!preRelease);
         await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
         await delay(100);
     }
@@ -509,7 +443,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await showErrorMessage(`repo already exists - but not valid!`, true);
     }
 
-    private static async initializeBibleFolder(results:object, projectPath:string) {
+    private static async initializeBibleFolder(results:object, projectPath:string, preRelease = false) {
         // @ts-ignore
         const dublin_core = results.manifest?.dublin_core;
         const targetLanguageId = dublin_core?.language?.identifier;
@@ -521,14 +455,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
         // @ts-ignore
         if (results?.glOptions) {
-            catalog = getSavedCatalog()
+            catalog = getSavedCatalog(preRelease)
             // @ts-ignore
             glLanguageId = results.glOptions.languageId
             // @ts-ignore
             glOwner = results.glOptions.owner
         }
         else {
-            const options = await this.getGatewayLangSelection();
+            const options = await this.getGatewayLangSelection(preRelease);
             if (!(options && options.gwLanguagePick && options.gwOwnerPick)) {
                 await showErrorMessage(`Options invalid: ${options}`, true);
                 return null;
@@ -538,7 +472,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             glLanguageId = options.gwLanguagePick
             glOwner = options.gwOwnerPick
         }
-        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
+        const repoInitSuccess = await this.doRepoInit(projectPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null, preRelease);
         if (repoInitSuccess) {
             await showInformationMessage(`Checking has been set up in project`);
         } else {
@@ -547,7 +481,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess
     }
 
-    private static async initializeEmptyFolder() {
+    private static async initializeEmptyFolder(preRelease = false) {
         const options = await this.getCheckingOptions();
         if (options && options.gwLanguagePick && options.gwOwnerPick) {
             const {
@@ -561,7 +495,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const {
                 repoInitSuccess,
                 repoPath,
-            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null);
+            } = await this.doRepoInitAll(targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, null, preRelease);
 
             let navigateToFolder = repoInitSuccess;
             if (!repoInitSuccess) {
@@ -581,13 +515,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
-    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
+    private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false) {
         let repoInitSuccess = false;
         const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId, undefined, bookId || '');
         const repoExists = fileExists(repoPath);
         if (!repoExists) {
             if (targetLanguageId && targetBibleId && targetOwner) {
-                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, bookId);
+                repoInitSuccess = await this.doRepoInit(repoPath, targetLanguageId, targetBibleId, glLanguageId, targetOwner, glOwner, catalog, bookId, preRelease);
             } else {
                 await showErrorMessage(`Cannot create project, target language not selected ${{ targetLanguageId, targetBibleId, targetOwner }}`, true);
             }
@@ -597,13 +531,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { repoInitSuccess, repoPath };
     }
 
-    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null) {
+    private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false) {
         let repoInitSuccess = false;
 
         if (glLanguageId && glOwner) {
             await showInformationMessage(`Initializing project which can take a while if resources have to be downloaded, at ${repoPath}`);
             // @ts-ignore
-            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog, bookId);
+            const results = await this.initProjectWithProgress(repoPath, targetLanguageId, targetOwner, targetBibleId, glLanguageId, glOwner, catalog, bookId, preRelease);
             // @ts-ignore
             if (results.success) {
                 let validResources = true
@@ -654,7 +588,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess;
     }
 
-    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string):Promise<object> {
+    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string, preRelease = false, bookId = ''):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -674,10 +608,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const catalog = getSavedCatalog()
+                const catalog = getSavedCatalog(preRelease)
 
                 await delay(100)
-                const results = downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress)
+                const results = await downloadLatestLangHelpsResourcesFromCatalog(catalog, languageId, owner, resourcesPath, updateProgress, preRelease, bookId)
 
                 progressTracker.report({ increment });
                 await delay(100)
@@ -687,7 +621,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return promise
     }
 
-    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null, bookId:string | null):Promise<object> {
+    private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -707,7 +641,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment });
                 await delay(100)
-                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId);
+                const results = await initProject(repoPath, targetLanguageId, targetOwner || "", targetBibleId || "", glLanguageId, glOwner || "", resourcesPath, null, catalog, updateProgress, bookId || '', preRelease);
                 progressTracker.report({ increment });
                 await delay(100)
                 resolve(results)
@@ -1134,7 +1068,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
     }
 
-    private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string) {
+    private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {
         return new Promise((resolve) => {
             window.showInformationMessage("Checking DCS for GLs - can take minutes");
             vscode.window.withProgress({
@@ -1152,7 +1086,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
                 progressTracker.report({ increment: 25 });
                 await delay(100)
-                const catalog = await getLatestResourcesCatalog(resourcesPath)
+                const catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
                 progressTracker.report({ increment: 10 });
                 await delay(100)
                 resolve(catalog)
@@ -1163,7 +1097,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     private static async checkWorkspace( ) {
         let repoExists = false
         let isValidBible = false
-        let isCheckingInitialized = false
+        let isCheckingInitialized = true
         const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
         if (repoFolderExists && projectPath) {
             repoExists = true
@@ -1217,15 +1151,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         
     }
 
-    private static async getGatewayLangSelection() {
-        let catalog = getSavedCatalog();
+    private static async getGatewayLangSelection(preRelease = false) {
+        let catalog = getSavedCatalog(preRelease);
         try {
             if (!catalog) {
                 await showInformationMessage("Checking DCS for GLs - can take minutes");
                 // @ts-ignore
-                catalog = await this.getDoor43ResourcesCatalogWithProgress(resourcesPath);
+                catalog = await this.getDoor43ResourcesCatalogWithProgress(resourcesPath, preRelease = false);
                 // @ts-ignore
-                saveCatalog(catalog);
+                saveCatalog(catalog, preRelease);
                 await showInformationMessage(`Retrieved DCS catalog ${catalog?.length} items`);
             } else {
                 await showInformationMessage(`Using cached DCS catalog ${catalog?.length} items`);
@@ -1266,7 +1200,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     private static async getBookSelection(targetBibleOptions:{}) {
         // @ts-ignore
-        const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none');
+        const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none', 'master');
         // @ts-ignore
         const bookIds = manifest?.projects?.map((project: {}) => project.identifier)
         // const bookIds = Object.keys(ALL_BIBLE_BOOKS)

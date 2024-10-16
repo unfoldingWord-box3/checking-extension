@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -21,6 +21,10 @@
       {
         "title": "Translation Checking: Launch Initialize",
         "command": "checking-extension.launchWorkflow"
+      },
+      {
+        "title": "Translation Checking: Launch Initialize - WARNING Prerelease Resources",
+        "command": "checking-extension.launchWorkflowPre"
       }
     ],
     "customEditors": [
@@ -51,103 +55,58 @@
         "description": "A checking workflow.\nTo clear the workflow, do `CTRL-SIHFT-P` (on Mac do`CMD-SHIFT-P`) and select `Developer: Reset Welcome Page Walkthrough Progress`",
         "steps": [
           {
-            "id": "selectedFolder",
-            "title": "Select Project Folder",
-            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
+            "id": "preReleaseContent",
+            "title": "WARNING using Pre-Release Resources",
+            "description": "WARNING using Pre-Release Resources.\n[Use only Released Content](command:checking-extension.useReleased)",
             "media": {
               "image": "media/folder-active.png",
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext:selectedFolder",
-              "onContext:projectInitialized"
+              "onContext:fetchedCatalog"
             ],
-            "when": "!createNewFolder"
-          },
-          {
-            "id": "createNewProject",
-            "title": "Create new Project",
-            "description": "First, let's open a folder where your new Codex project will be initialized.\n[Select Project Folder](command:checking-extension.selectFolder)",
-            "media": {
-              "image": "media/folder-active.png",
-              "altText": "Select Project Folder"
-            },
-            "completionEvents": [
-              "onContext:createNewFolder",
-              "onContext:projectInitialized"
-            ],
-            "when": "createNewFolder"
+            "when": "preRelease"
           },
           {
             "id": "fetchCatalog",
-            "title": "Fetch Resource Catalog",
-            "description": "We need to download Resource Catalog.\n[Download Catalog](command:checking-extension.downloadCatalog)",
+            "title": "Fetch Latest Resource List/Catalog",
+            "description": "If you want to get the latest Resources List/Catalog.  This may take a few minutes on slow connections.\n[Download Catalog](command:checking-extension.downloadCatalog)",
             "media": {
               "image": "media/folder-active.png",
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext:fetchedCatalog",
-              "onContext:projectInitialized"
-            ]
-          },
-          {
-            "id": "selectGatewayLanguage",
-            "title": "Select gateway Language",
-            "description": "Now that we have a folder, let's choose the Gateway Language options.\n[Select gateway Language](command:checking-extension.selectGL)",
-            "media": {
-              "image": "media/name-project.png",
-              "altText": "Select gateway Language"
-            },
-            "completionEvents": [
-              "onContext:selectedGL",
-              "onContext:projectInitialized"
-            ]
-          },
-          {
-            "id": "loadGlResources",
-            "title": "Download Gateway Language Resources",
-            "description": "Now that we have selected a Gateway Language, let's download the checking resources.\n[Download Resources](command:checking-extension.loadGlResources)",
-            "media": {
-              "image": "media/name-project.png",
-              "altText": "Download Gateway Language Resources"
-            },
-            "completionEvents": [
-              "onContext:loadedGlResources",
-              "onContext:projectInitialized"
+              "onContext:fetchedCatalog"
             ]
           },
           {
             "id": "selectTargetBible",
             "title": "Select Target Bible",
-            "description": "Now that we have Gateway Language Resources, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
+            "description": "Now that we have the Resource List/Catalog, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
             "media": {
               "image": "media/name-project.png",
               "altText": "Select target Language"
             },
             "completionEvents": [
-              "onContext:targetBibleOptions",
-              "onContext:projectInitialized"
-            ],
-            "when": "createNewFolder"
+              "onContext:targetBibleOptions"
+            ]
           },
           {
-            "id": "selectBook",
-            "title": "Select Checking Book",
-            "description": "Now that we have selected a Gateway Language, let's choose the book of the Bible to check.\n[Select Checking Book](command:checking-extension.selectBook)",
+            "id": "selectGatewayLanguage",
+            "title": "Select Gateway Language & Download Resources",
+            "description": "Now that we have selected the Target Bible, let's choose the Gateway Language options.  Then we download GL resources\n[Select gateway Language](command:checking-extension.selectGL)",
             "media": {
               "image": "media/name-project.png",
-              "altText": "Select Checking Book"
+              "altText": "Select gateway Language"
             },
             "completionEvents": [
-              "onContext:selectedBook",
-              "onContext:projectInitialized"
+              "onContext:selectedGL"
             ]
           },
           {
             "id": "loadTarget",
-            "title": "Download Target Bible",
-            "description": "Now that we have selected a Target Bible, let's download the Target Bible.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
+            "title": "Download Target Bible and Create Project",
+            "description": "Now that we have downloaded the Gateway Language Resources, let's download the Target Bible and create the checking project.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
             "media": {
               "image": "media/name-project.png",
               "altText": "Download Target Language"
@@ -155,34 +114,7 @@
             "completionEvents": [
               "onContext:targetBibleLoaded",
               "onContext:projectInitialized"
-            ],
-            "when": "createNewFolder"
-          },
-          {
-            "id": "projectInitialized",
-            "title": "Project Initialized for Checking",
-            "description": "Project is now ready for Checking",
-            "media": {
-              "image": "media/name-project.png",
-              "altText": "Download Target Language"
-            },
-            "completionEvents": [
-              "onContext:projectInitialized"
-            ],
-            "when": "projectInitialized"
-          },
-          {
-            "id": "projectInitialize",
-            "title": "Initialize Project Checking",
-            "description": "Now that we have checking resources downloaded, let's initialize the project for checking.\n[Initialize Checking](command:checking-extension.initializeChecking)",
-            "media": {
-              "image": "media/name-project.png",
-              "altText": "Download Target Language"
-            },
-            "completionEvents": [
-              "onContext:projectInitialized"
-            ],
-            "when": "!projectInitialized"
+            ]
           }
         ]
       }
@@ -236,8 +168,8 @@
     "original-fs": "^1.2.0",
     "ospath": "^1.2.2",
     "string-punctuation-tokenizer": "^2.2.0",
-    "tc-source-content-updater": "^1.4.25",
-    "tsv-groupdata-parser": "^1.1.0",
+    "tc-source-content-updater": "1.4.30",
+    "tsv-groupdata-parser": "^1.1.1",
     "typescript": "^5.4.5",
     "usfm-js": "^3.4.2",
     "uw-tsv-parser": "^1.0.3",
