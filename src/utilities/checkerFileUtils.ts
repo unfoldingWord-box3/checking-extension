@@ -579,7 +579,7 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                     return destFolder;
                 }
             } else {
-                console.warn(`fetchBibleResourceBook - could not download book ${path.join(rawUrl, bookPath)}`)
+                console.warn(`fetchBibleResourceBook - could not download book ${path.join(rawUrl)}`)
             }
         }
     } catch (err) {
@@ -1290,16 +1290,20 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
                     if (resource) {
                         processed.push(resource)
                         fetched = true
-                        // @ts-ignore
-                        foundResources[bibleId] = resource.resourcePath
+                        const _bible = {
+                            bibleId: bibleId,
+                            languageId: languageId_,
+                            owner: owner_,
+                            path: resource.resourcePath
+                        };
 
                         if (!isOriginalBible(bibleId)) {
                             // @ts-ignore
-                            foundResources.bibles.push({
-                                id: bibleId,
-                                path: resource.resourcePath
-                            })
+                            foundResources.bibles.push(_bible)
                         }
+
+                        // @ts-ignore
+                        foundResources[bibleId] = _bible
                     } else {
                         console.error('getLangResourcesFromCatalog - Resource item not downloaded', { languageId_, owner_, bibleId })
                     }
