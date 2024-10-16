@@ -82,7 +82,7 @@
           {
             "id": "selectTargetBible",
             "title": "Select Target Bible",
-            "description": "Now that we have Gateway Language Resources, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
+            "description": "Now that we have the Resource List/Catalog, let's choose the Target Bible.\n[Select Target Bible](command:checking-extension.selectTargetBible)",
             "media": {
               "image": "media/name-project.png",
               "altText": "Select target Language"
@@ -94,7 +94,7 @@
           {
             "id": "selectGatewayLanguage",
             "title": "Select Gateway Language & Download Resources",
-            "description": "Now that we have a folder, let's choose the Gateway Language options.  Then we download GL resources\n[Select gateway Language](command:checking-extension.selectGL)",
+            "description": "Now that we have selected the Target Bible, let's choose the Gateway Language options.  Then we download GL resources\n[Select gateway Language](command:checking-extension.selectGL)",
             "media": {
               "image": "media/name-project.png",
               "altText": "Select gateway Language"
@@ -106,7 +106,7 @@
           {
             "id": "loadTarget",
             "title": "Download Target Bible and Create Project",
-            "description": "Now that we have downloaded all the necessary resources, let's download the Target Bible.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
+            "description": "Now that we have downloaded the Gateway Language Resources, let's download the Target Bible and create the checking project.\n[Download Target Bible](command:checking-extension.loadTargetBible)",
             "media": {
               "image": "media/name-project.png",
               "altText": "Download Target Language"
