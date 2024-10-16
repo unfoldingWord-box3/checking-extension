@@ -1555,6 +1555,15 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     const shouldCreateProject = !projectExists
         || (hasBibleBooks && !hasCheckingFiles)
 
+    // create metadata
+    const checkingMetaData = {
+        resourceType: "Translation Checker",
+        targetLanguageId,
+        gatewayLanguageId: gl_languageId,
+        gatewayLanguageOwner: gl_owner,
+        resourcesBasePath: removeHomePath(resourcesBasePath),
+    };
+
     if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
         console.error(`initProject - Missing GL info:`, { gl_owner, gl_languageId});
@@ -1585,6 +1594,18 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     }
 
                     if (sourceTsvsPath) {
+                        let manifestPath = sourceTsvsPath
+                        if (bookId) {
+                            manifestPath = path.join(sourceTsvsPath, "books", bookId);
+                        }
+                        const _manifest = getResourceManifest(manifestPath)
+                        // @ts-ignore
+                        const relation = _manifest?.dublin_core?.relation
+                        if (relation) {
+                            const key = `${resourceId}_relation`
+                            // @ts-ignore
+                            checkingMetaData[key] = relation
+                        }
                         const checkingPath = path.join(repoPath, 'checking', resourceId)
                         const fileType = ".json";
                         copyResources(sourceTsvsPath, checkingPath, bookId, fileType);
@@ -1669,16 +1690,9 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         }
                     }
                 }
-                    
-                // create metadata
-                const checkingMetaData = {
-                    resourceType: "Translation Checker",
-                    targetLanguageId,
-                    gatewayLanguageId: gl_languageId,
-                    gatewayLanguageOwner: gl_owner,
-                    resourcesBasePath: removeHomePath(resourcesBasePath),
-                    otherResources: foundResources,
-                };
+                
+                // @ts-ignore
+                checkingMetaData.otherResources = foundResources;
                 const metadata = {
                     [checkingName]: checkingMetaData
                 }
@@ -1691,7 +1705,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     checkingMetaData[tsvSourcePathName] = removeHomePath(sourceTsvsPaths[resourceId])
                 }
                 
-                const outputPath = path.join(repoPath, `metadata.json`)
+                const outputPath = path.join(repoPath, 'metadata.json')
                 fs.outputJsonSync(outputPath, metadata, { spaces: 2 })
             }
             return {
@@ -1857,7 +1871,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     let localChanged = false;
     if (!biblePath) {
         // look first in projects folders
-        biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner);
+        biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner, bible.version || '');
         if (biblePath) {
             const resourcesSubFolder = `${sep}.resources${sep}`;
             const parts = biblePath.split(resourcesSubFolder)
@@ -1866,7 +1880,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
             }
         }
         if (!biblePath) { // look in resources cache
-            biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner);
+            biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner, bible.version || '');
         }
         
         if (biblePath) {
@@ -1883,7 +1897,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         if (matchedBase || !bible.path || localChanged) {
             const cacheFolder = `${sep}cache${sep}`;
             const parts = biblePath.split(cacheFolder);
-            if (parts.length >= 2) {
+            if (parts.length >= 2) { // if path is from cache rather than in project, we need to copy it over
                 const newPath = projectResources + parts[1];
                 const _newFullPath = path.join(repoPath, newPath);
 
@@ -1931,7 +1945,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                     // @ts-ignore
                     metadata.otherResources[bibleId] = bible;
                 } catch (e) {
-                    console.warn(`getResourcesForChecking - could not copy resource from ${biblePath} to ${newPath}`);
+                    console.warn(`makeSureBibleIsInProject - could not copy resource from ${biblePath} to ${newPath}`);
                     let parts = biblePath.split(sep);
                     while (parts.length) {
                         const checkPath = parts.join(sep);
@@ -1971,6 +1985,14 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           results.locales = currentLocale
           // @ts-ignore
           results.localeOptions = Object.keys(locales)
+          
+          // get the dependent original bibles for resource
+          const key = `${resourceId}_relation`
+          // @ts-ignore
+          const relation = metadata[key]
+          const dependency = relation && getTsvOLVersionForBook(relation, bookId)
+          const originalLangVersion = dependency?.version
+        
           if (resourceId === 'twl') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
               // @ts-ignore
@@ -2017,7 +2039,8 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           const origLangBible = {
               languageId: origLanguageId,
               id: origLanguageBibleId,
-              owner: 'unfoldingWord'
+              owner: 'unfoldingWord',
+              version: originalLangVersion
           }
 
           const __ret = makeSureBibleIsInProject(origLangBible, resourcesBasePath, repoPath, changed, metadata, bookId);
@@ -2374,8 +2397,18 @@ export function getBookOfTheBibleFromFolder(biblePath:string, bookId:string) {
     return null
 }
 
-export function getPathForBible(resourcesPath: string, languageId: string, bibleId: string, owner: string) {
-    const folderPath = path.join(resourcesPath, languageId, "bibles", bibleId); // , `v${resource.version}_${resource.owner}`)
+export function getPathForBible(resourcesPath: string, languageId: string, bibleId: string, owner: string, version = '') {
+    let folderPath = path.join(resourcesPath, languageId, "bibles", bibleId); // , `v${resource.version}_${resource.owner}`)
+
+    if (version) {
+        folderPath = path.join(resourcesPath, languageId, "bibles", bibleId, `v${version}_${resourcesHelpers.encodeOwnerStr(owner)}`);
+        if (fs.existsSync(folderPath)) {
+            return folderPath
+        }
+        return null
+    }
+
+    // if no version given, the use latest
     const versionPath = resourcesHelpers.getLatestVersionInPath(folderPath, owner, false);
     return versionPath;
 }

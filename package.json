@@ -63,7 +63,7 @@
               "altText": "Select Project Folder"
             },
             "completionEvents": [
-              "onContext:preRelease"
+              "onContext:fetchedCatalog"
             ],
             "when": "preRelease"
           },
