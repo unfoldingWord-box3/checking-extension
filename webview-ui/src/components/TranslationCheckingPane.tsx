@@ -228,6 +228,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   let projectManifest = null
   // @ts-ignore
   let _manifest = checkingObj?.targetBible?.manifest;
+  const resourceTitle = _manifest?.resource_title || '';
   if (_manifest) {
     const dublin_core = _manifest?.dublin_core || {}
     let target_language = {  }
@@ -235,7 +236,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       target_language = { ...dublin_core.language };
       // @ts-ignore
       target_language.book = {
-        name: _manifest.resource_title,
+        name: resourceTitle,
       };
     }
     _manifest = { // shallow copy
@@ -270,6 +271,14 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                       >
                           {`${APP_NAME} - v${APP_VERSION}`}
                       </Typography>
+                    <Typography
+                      variant='h1'
+                      className={classes.title}
+                      onClick={() => {
+                      }}
+                    >
+                      {`${resourceTitle}`}
+                    </Typography>
                   </div>
               </Toolbar>
           </AppBar>
