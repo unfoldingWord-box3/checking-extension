@@ -74,18 +74,18 @@ function hasResourceData(resource:object) {
     return false
 }
 
-type SaveSelectionFunction = (resources: ResourcesObject) => void;
+type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
-    saveSelection: SaveSelectionFunction;
+    saveCheckingData: saveCheckingDataFunction;
     initialContextId: object;
     projectKey: string;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
-  saveSelection,
+  saveCheckingData,
   initialContextId,
   projectKey
  }) => {
@@ -127,20 +127,20 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         return { [lexiconId]: { [entryId]: entryData } };
     };
 
-    const _saveSelection = (newState:object) => {
+    const _saveCheckingData = (newState:object) => {
         // @ts-ignore
-        const selections = newState && newState.selections
-        console.log(`_saveSelection - new selections`, selections)
+        const selections = newState?.selections
+        console.log(`_saveCheckingData - new selections`, selections)
         // @ts-ignore
-        const currentContextId = newState && newState.currentContextId
-        console.log(`_saveSelection - current context data`, currentContextId)
+        const currentContextId = newState?.currentCheck?.contextId
+        console.log(`_saveCheckingData - current context data`, currentContextId)
         // @ts-ignore
-        const nextContextId = newState && newState.nextContextId
+        const nextContextId = newState?.nextContextId
         if (currentContextId) {
           setCurrentContextId(nextContextId);
         }
         // @ts-ignore
-        saveSelection(newState)
+        saveCheckingData && saveCheckingData(newState)
     }
 
     const contextId = currentContextId || {}
@@ -305,7 +305,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 getLexiconData={getLexiconData_}
                 glWordsData={glWordsData}
                 initialSettings={initialSettings}
-                saveSelection={_saveSelection}
+                saveCheckingData={_saveCheckingData}
                 showDocument={showDocument}
                 targetBible={targetBible}
                 targetLanguageDetails={targetLanguageDetails}
