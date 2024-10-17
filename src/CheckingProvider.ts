@@ -190,8 +190,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 console.log(`starting "checking-extension.useReleased"`)
 
                 await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
-                await this.setContext("preRelease", false);
                 await this.gotoWorkFlowStep('fetchCatalog')
+
+                await this.setContext("preRelease", false);
+                const catalog = getSavedCatalog(false)
+                if (catalog) {
+                    await this.setContext('fetchedCatalog', true);
+                }
             },
           ));
         subscriptions.push(commandRegistration)

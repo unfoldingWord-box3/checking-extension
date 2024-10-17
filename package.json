@@ -57,7 +57,20 @@
           {
             "id": "preReleaseContent",
             "title": "WARNING using Pre-Release Resources",
-            "description": "WARNING using Pre-Release Resources.\n[Use only Released Content](command:checking-extension.useReleased)",
+            "description": "WARNING using Pre-Release Resources.\n[Switch to use only Released Content](command:checking-extension.useReleased)",
+            "media": {
+              "image": "media/folder-active.png",
+              "altText": "Select Project Folder"
+            },
+            "completionEvents": [
+              "onContext:fetchedCatalog"
+            ],
+            "when": "preRelease"
+          },
+          {
+            "id": "fetchCatalogPreRelease",
+            "title": "Fetch Latest PreRelease Resource List/Catalog",
+            "description": "If you want to get the latest Pre-Release Resources List/Catalog.  This may take a few minutes on slow connections.\n[Download Pre-Release Catalog](command:checking-extension.downloadCatalog)",
             "media": {
               "image": "media/folder-active.png",
               "altText": "Select Project Folder"
@@ -77,7 +90,8 @@
             },
             "completionEvents": [
               "onContext:fetchedCatalog"
-            ]
+            ],
+            "when": "!preRelease"
           },
           {
             "id": "selectTargetBible",
