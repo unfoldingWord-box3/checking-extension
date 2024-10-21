@@ -711,10 +711,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         const saveCheckingData = (text:string, newState:{}) => {
             // @ts-ignore
-            const selections =  newState?.selections
-            console.log(`saveSelection - new selections`, selections)
-            // @ts-ignore
             const currentCheck = newState?.currentCheck;
+            // @ts-ignore
+            const selections =  currentCheck?.selections
+            console.log(`saveSelection - new selections`, selections)
             // @ts-ignore
             const currentContextId = currentCheck?.contextId
             console.log(`saveSelection - current context data`, currentContextId)

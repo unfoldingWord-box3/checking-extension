@@ -136,7 +136,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         console.log(`_saveCheckingData - current context data`, currentContextId)
         // @ts-ignore
         const nextContextId = newState?.nextContextId
-        if (currentContextId) {
+        if (currentContextId && nextContextId) {
           setCurrentContextId(nextContextId);
         }
         // @ts-ignore
