@@ -2928,8 +2928,8 @@ export function checkDataToTn(checkData:{}) {
 
 export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string, newVerseObjects: object) {
     if (projectPath && bookId && chapter && verse) {
-        const filePath = path.join(projectPath, bookId, `${chapter}.json`)
-        const chapterData = fs.readJsonSync(filePath);
+        const filePath = path.join(projectPath, 'targetBible', bookId, `${chapter}.json`)
+        const chapterData = readJsonFileIfExists(filePath);
         if (chapterData) {
             chapterData[verse] = { verseObjects: newVerseObjects }
             fs.outputJsonSync(filePath, chapterData, { spaces: 2 });

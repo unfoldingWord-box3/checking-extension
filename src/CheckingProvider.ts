@@ -314,20 +314,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
                               const repoPathUri = vscode.Uri.file(repoPath);
                               await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
                               vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
- 
-                              // for (const resourceId of ['twl', 'tn']) {
-                              //     const fileSubPath = getFileSubPathForResource(resourceId, bookId)
-                              //     const filePathUrl = vscode.Uri.joinPath(repoPathUri, fileSubPath)
-                              //     const filePath = filePathUrl.fsPath
-                              //     showInformationMessage(`Opening file ${filePath}`);
-                              //     try {
-                              //         vscode.commands.executeCommand("vscode.open", filePathUrl).then(() => {
-                              //             console.log(`Successfully opened ${filePath}`)
-                              //         });
-                              //     } catch (e) {
-                              //         console.warn(`Could not open ${filePath}`, e)
-                              //     }
-                              // }                              
                           }
                       } else {
                           await showErrorMessage(`Target Bible Failed to Load`, true);
