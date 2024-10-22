@@ -1644,7 +1644,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                             const matchLowerCase = book.toLowerCase()
                             if (matchLowerCase.includes(bookId)) {
                                 const bookPath = path.join(targetFoundPath, book);
-                                const targetPath = repoPath;
+                                const targetPath = path.join(repoPath, 'targetBible');
                                 parseAndSaveUsfm(bookPath, targetPath, bookId);
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
@@ -2152,7 +2152,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.bibles = bibles
           // @ts-ignore
-          results.targetBible = getBookOfTheBibleFromFolder(repoPath, bookId)
+          results.targetBible = getBookOfTheBibleFromFolder(path.join(repoPath, 'targetBible'), bookId)
           // add target bible to start of bibles list
           const targetBible = {
               // @ts-ignore

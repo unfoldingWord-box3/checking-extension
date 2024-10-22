@@ -192,11 +192,11 @@ function TranslationCheckingView() {
         };
     }, []);
 
-    function saveSelection(newState:{}) { // send message back to extension to save new selection to file
+    function saveCheckingData(newState:{}) { // send message back to extension to save new selection to file
         // @ts-ignore
-        const newSelections = newState && newState.selections
+        const newSelections = newState?.selections
         // @ts-ignore
-        const currentContextId = newState && newState.currentContextId
+        const currentContextId = newState?.currentCheck?.contextId
         // @ts-ignore
         const checks = checkingObj?.checks;
         // @ts-ignore
@@ -219,8 +219,11 @@ function TranslationCheckingView() {
             const newGroup = [ ...newGroups[groupId] ]
             // @ts-ignore
             newGroups[groupId] = newGroup
-            // @ts-ignore
-            const newItem = { ...newGroup[index] }
+            const newItem = {
+                // @ts-ignore
+                ...newGroup[index],
+                ...check,
+            }
             // @ts-ignore
             newGroup[index] = newItem
             // @ts-ignore
@@ -229,8 +232,8 @@ function TranslationCheckingView() {
         }
 
         vscode.postMessage({
-            command: "saveSelection",
-            text: "Webview save selection",
+            command: "saveCheckingData",
+            text: "Webview save check settings",
             data: newState,
         });
 
@@ -321,7 +324,7 @@ function TranslationCheckingView() {
               {/*<StoreContextProvider>*/}
               <TranslationCheckingPane
                 checkingObj={checkingObj}
-                saveSelection={saveSelection}
+                saveCheckingData={saveCheckingData}
                 initialContextId={initialContextId}
                 projectKey={projectKey}
               />

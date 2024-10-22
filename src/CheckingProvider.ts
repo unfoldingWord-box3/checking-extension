@@ -709,26 +709,37 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         };
 
-        const saveSelection = (text:string, newState:{}) => {
+        const saveCheckingData = (text:string, newState:{}) => {
             // @ts-ignore
-            const selections = newState && newState.selections
+            const currentCheck = newState?.currentCheck;
+            // @ts-ignore
+            const selections =  currentCheck?.selections
             console.log(`saveSelection - new selections`, selections)
             // @ts-ignore
-            const currentContextId = newState && newState.currentContextId
+            const currentContextId = currentCheck?.contextId
             console.log(`saveSelection - current context data`, currentContextId)
-            // @ts-ignore
-            const checkingData = newState && newState.currentCheckingData
 
             let checks = document.getText();
             if (checks.trim().length) {
                 const checkingData = JSON.parse(checks);
                 let foundCheck = this.findCheckToUpdate(currentContextId, checkingData);
-
+                
                 if (foundCheck) {
-                    console.log(`saveSelection - found match`, foundCheck);
+                    console.log(`saveCheckingData - found match`, foundCheck);
+                    // update data in found match
                     // @ts-ignore
                     foundCheck.selections = selections
+                    // @ts-ignore
+                    foundCheck.reminders = currentCheck?.reminders
+                    // @ts-ignore
+                    foundCheck.comments = currentCheck?.comments
+                    // @ts-ignore
+                    foundCheck.nothingToSelect = currentCheck?.nothingToSelect
+                    // @ts-ignore
+                    foundCheck.verseEdits = currentCheck?.verseEdits
                     this.updateChecks(document, checkingData) // save with updated
+                } else {
+                    console.error(`saveCheckingData - did not find match`, foundCheck);
                 }
             }
         };
@@ -818,7 +829,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["loaded"]: firstLoad,
-                ["saveSelection"]: saveSelection,
+                ["saveCheckingData"]: saveCheckingData,
                 ["getSecret"]: getSecret,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
