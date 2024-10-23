@@ -7,7 +7,13 @@ import * as ospath from "ospath";
 import * as usfmjs from "usfm-js";
 // @ts-ignore
 import * as YAML from "yamljs";
-import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
+import {
+    delay,
+    getFilesOfType,
+    objectNotEmpty,
+    readHelpsFolder,
+    readJsonFile
+} from "./fileUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import {
     ALL_BIBLE_BOOKS,
@@ -46,13 +52,6 @@ export const resourcesPath = path.join(projectsBasePath, 'cache')
 
 const { lexicons } = require('../data/lexicons')
 
-export const DEFAULT_LOCALE = 'en'
-export const LOCALE_KEY = 'LOCALE_CDOE'
-let translations: object = { }
-export let currentLanguageCode: string|null = null
-let currentLocale:object = {};
-const { locales } = require('../data/locales/locales')
-
 const checkingName = 'translation.checker'
 
 const RESOURCE_ID_MAP = {
@@ -64,114 +63,6 @@ const RESOURCE_ID_MAP = {
 
 const checkingHelpsResources = [
     { id:'ta' }, { id:'tw' }, { id:'twl', bookRes: true }, { id: 'tn', bookRes: true }]
-
-/**
- * This parses localization data if not already parsed.
- */
-export function loadLocalization():void {
-    // check if already initialized
-    if (translations && Object.keys(translations).length) {
-        return 
-    }
-    
-    const keys = Object.keys(locales)
-    if (!keys?.length) {
-        console.error(`loadLocalization - locales not loaded`);
-        return
-    }
-    
-    for (let key of keys) {
-        try {
-            let translation = locales[key];
-            translation = enhanceTranslation(translation, key);
-    
-            const { langCode, shortLangCode } = explodeLocaleName(key);
-            // @ts-ignore
-            translations[langCode] = translation;
-    
-            // include short language names for wider locale compatibility
-            // @ts-ignore
-            if (!translations[shortLangCode]) {
-                // @ts-ignore
-                translations[shortLangCode] = translation;
-            }
-        } catch (e) {
-            console.error(`loadLocalization() - Failed to load localization ${key}: ${e}`);
-        }
-    }
-}
-
-/**
- * find localization data that matches code, or will fall back to default
- * @param languageCode
- */
-export function setLocale(languageCode:string) {
-    loadLocalization() // make sure initialized
-    // @ts-ignore
-    if (translations[languageCode]) {
-        // @ts-ignore
-        currentLocale = translations[languageCode]
-        currentLanguageCode = languageCode
-    } else 
-    if (languageCode) {
-        console.log(`setLocale() - No exact match found for ${languageCode}`);
-        const shortLocale = languageCode.split('_')[0];
-        // @ts-ignore
-        const equivalentLocale = translations[shortLocale]?.['_']?.['locale'];
-
-        if (equivalentLocale) {
-            console.log(`setLocale() - Falling back to ${equivalentLocale}`);
-            currentLanguageCode = equivalentLocale;
-            // @ts-ignore
-            currentLocale = translations[shortLocale]
-        } else {
-            currentLanguageCode = DEFAULT_LOCALE; // default to `en` if shortLocale match not found
-            // @ts-ignore
-            currentLocale = translations[currentLanguageCode]
-            console.log(`setLocale() - No short match found for ${shortLocale}, Falling back to ${languageCode}`);
-        }
-    }
-}
-
-/**
- * Splits a locale fullName into it's identifiable pieces
- * @param {string} fullName the locale name
- * @return {{langName, langCode, shortLangCode}}
- */
-const explodeLocaleName = (fullName:string) => {
-    let title = fullName.replace(/\.json/, '');
-    const parts = title.split('-')
-    let langCode = parts.pop() || '';
-    let langName = parts.join('-');
-    let shortLangCode = langCode.split('_')[0];
-    return {
-        langName, langCode, shortLangCode,
-    };
-};
-
-/**
- * Injects additional information into the translation
- * that should not otherwise be translated. e.g. legal entities
- * @param {object} translation localized strings
- * @param {string} fullName the name of the locale.
- * @param {array} nonTranslatableStrings a list of non-translatable strings to inject
- * @return {object} the enhanced translation
- */
-const enhanceTranslation = (translation:object, fullName:string, nonTranslatableStrings = []) => {
-    const {
-        langName, langCode, shortLangCode,
-    } = explodeLocaleName(fullName);
-    return {
-        ...translation,
-        '_': {
-            'language_name': langName,
-            'short_locale': shortLangCode,
-            'locale': langCode,
-            'full_name': fullName,
-            ...nonTranslatableStrings,
-        },
-    };
-};
 
 /**
  * merge helps folder into single json file
@@ -224,6 +115,21 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
 
     console.error(`processHelpsIntoJson - failed to process folder`, folderPath)
     return false
+}
+
+/**
+ * fetches all the resources for doing checking.
+ * @param filePath path to the file.
+ * @returns A resource collection object.
+ */
+export function loadResources(filePath: string):null|ResourcesObject {
+    if (filePath) {
+        const resources = loadResourcesFromPath(filePath, resourcesPath)
+        return resources
+    }
+    throw new Error(
+      `loadResources() - invalid checking filePath "${filePath}", cannot find project folder`,
+    );
 }
 
 /**
@@ -890,7 +796,6 @@ function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageI
     return null
 }
 
-
 /**
  * look in resourcesPath to make sure we have all the GL translationHelps resources needed for GL
  * @param {string} languageId
@@ -1367,44 +1272,6 @@ function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
 }
 
 /**
- * get list of files with extension of fileType
- * @param repoPath
- * @param fileType
- * @param bookId
- */
-function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null) {
-    if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => {
-            const fileNameLC = filename.toLowerCase();
-            let validFile = path.extname(fileNameLC) === fileType;
-            if (validFile && bookId) {
-                validFile = fileNameLC.includes(bookId)
-            }
-            return validFile;
-        });
-    }
-    return []
-}
-
-/**
- * copy files from one folder to destination
- * @param sourcePath
- * @param destPath
- * @param files
- */
-function copyFiles(sourcePath: string, destPath: string, files: string[]) {
-    try {
-        fs.ensureDirSync(destPath)
-        for (const file of files) {
-            fs.copyFileSync(path.join(sourcePath, file), path.join(destPath, file))
-        }
-    } catch (e) {
-        console.error(`copyFiles failed`, e)
-        return false
-    }
-}
-
-/**
  * replace the home path with '~'
  * @param filePath
  */
@@ -1730,15 +1597,6 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
         success: false,
         errorMsg
     };
-
-}
-
-function readJsonFileIfExists(jsonPath:string) {
-    if (fs.existsSync(jsonPath)) {
-        const data = fs.readJsonSync(jsonPath)
-        return data
-    }
-    return null
 }
 
 function updatedResourcesPath(preRelease:boolean) {
@@ -1756,10 +1614,6 @@ export function getSavedCatalog(preRelease = false):null|object[] {
     const fileExists = fs.existsSync(_updatedResourcesPath);
     const updatedResources = fileExists ? fs.readJsonSync(_updatedResourcesPath) : null
     return updatedResources
-}
-
-export function fileExists(filePath:string) {
-    return !!fs.existsSync(filePath)
 }
 
 /**
@@ -1858,7 +1712,7 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
     const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
     const checkType = `.${resourceId}_check`;
     const twlPath = path.join(checksPath, `${bookId}${checkType}`);
-    let resource = readJsonFileIfExists(twlPath);
+    let resource = readJsonFile(twlPath);
     let hasResourceFiles = hasResourceData(resource);
     if (!hasResourceFiles) { // if we don't have checking the specific book, check to see if we have checks for other books at least
         const files = getFilesOfType(checksPath, checkType);
@@ -1905,7 +1759,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         if (!inProject) { // if not in project check if in cache
             const _biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner, bible.version || '')
             const testPath = bookId ? path.join(_biblePath, 'books', bookId) : _biblePath
-            if (!isEmptyDir(testPath)) {
+            if (!isEmptyResourceDir(testPath)) {
                 biblePath = _biblePath
             } else {
                 biblePath = ''
@@ -1929,7 +1783,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                 const _newFullPath = path.join(repoPath, newPath);
 
                 try {
-                    if (isEmptyDir(_newFullPath)) {
+                    if (isEmptyResourceDir(_newFullPath)) {
                         const src = path.join(replaceHomePath(biblePath));
                         const dest = _newFullPath;
                         const parentDir = path.join(dest, "..");
@@ -1989,7 +1843,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     return { bibleId, biblePath, changed: changed || localChanged };
 }
 
-function isEmptyDir(fullPath: string) {
+function isEmptyResourceDir(fullPath: string) {
     if (fs.existsSync(fullPath)) {
         let files = getFilesOfType(fullPath, ".yaml");
         if (!files.length) {
@@ -2042,7 +1896,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               let twPath = cleanupPath(twResource?.path, repoPath)
               twPath = twPath && path.join(twPath, 'tw.json')
               // @ts-ignore
-              results.tw = twPath && readJsonFileIfExists(twPath)
+              results.tw = twPath && readJsonFile(twPath)
           } else
           if (resourceId === 'tn') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
@@ -2052,12 +1906,12 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               // @ts-ignore
               results.hasTns = !! hasResourceFiles
               // @ts-ignore
-              results.tn = readJsonFileIfExists(tnPath)
+              results.tn = readJsonFile(tnPath)
               const taResource = metadata.otherResources['ta']
               let taPath = cleanupPath(taResource?.path, repoPath)
               taPath = taPath && path.join(taPath, 'ta.json')
               // @ts-ignore
-              results.ta = taPath && readJsonFileIfExists(taPath)
+              results.ta = taPath && readJsonFile(taPath)
           }
 
           // @ts-ignore
@@ -2535,17 +2389,6 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
     return null
 }
 
-/**
- * wraps timer in a Promise to make an async function that continues after a specific number of milliseconds.
- * @param {number} ms
- * @returns {Promise<unknown>}
- */
-export function delay(ms:number) {
-    return new Promise((resolve) =>
-      setTimeout(resolve, ms)
-    );
-}
-
 export function getBookForTestament(repoPath: string, isNT = true):string | null {
     // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
     const testamentBooks = Object.keys(isNT ? BIBLE_BOOKS.newTestament : BIBLE_BOOKS.oldTestament)
@@ -2628,12 +2471,6 @@ export function flattenGroupData(groupsData:{}) {
         }
     }
 
-    // let sortedGroups = { }
-    // for (const key of Object.keys(mergedGroups).sort()) {
-    //     // @ts-ignore
-    //     sortedGroups[key] = mergedGroups[key]
-    // }
-
     return mergedGroups;
 }
 
@@ -2673,7 +2510,6 @@ function sortRowsByRef(rows: object[]) {
  * process the TSV data into index files
  * @param {string} tsvLines
  */
-
 export function tsvToObjects(tsvLines:string) {
     let tsvItems;
     let parseErrorMsg;
@@ -2810,14 +2646,14 @@ function findSelection(checkData: {}, selection: {}):object|undefined {
                     const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
     
                     const ID = `${contextId?.checkId || ""}`;
-                    const category = item?.category || "";
+                    // const category = item?.category || "";
                     const groupId = contextId?.groupId || "";
-                    const Tags = `${category}`;
+                    // const Tags = `${category}`;
                     const quoteString = contextId?.quoteString || "";
-                    const OrigWords = `${quoteString}`;
-                    const Occurrence = `${contextId?.occurrence || ""}`;
-                    const selections = item?.selections ? JSON.stringify(item?.selections) : "";
-                    const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
+                    // const OrigWords = `${quoteString}`;
+                    // const Occurrence = `${contextId?.occurrence || ""}`;
+                    // const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                    // const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
     
                     if (
                         // @ts-ignore
@@ -2929,7 +2765,7 @@ export function checkDataToTn(checkData:{}) {
 export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string, newVerseObjects: object) {
     if (projectPath && bookId && chapter && verse) {
         const filePath = path.join(projectPath, 'targetBible', bookId, `${chapter}.json`)
-        const chapterData = readJsonFileIfExists(filePath);
+        const chapterData = readJsonFile(filePath);
         if (chapterData) {
             chapterData[verse] = { verseObjects: newVerseObjects }
             fs.outputJsonSync(filePath, chapterData, { spaces: 2 });
