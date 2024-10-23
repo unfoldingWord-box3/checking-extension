@@ -5,7 +5,7 @@ export const DEFAULT_LOCALE = 'en'
 export const LOCALE_KEY = 'LOCALE_CDOE'
 
 let translations: object = { }
-let currentLocale:object = {};
+let currentLocale:object = { };
 let currentLanguageCode: string|null = null
 
 export const getCurrentLocale = () => {
