@@ -1233,11 +1233,16 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
-export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+export function getRepoFileName(targetLanguageId: string, targetBibleId: string, glLanguageId: string, bookId: string) {
     let repoFolderName = `${targetLanguageId}_${targetBibleId}_${glLanguageId}`;
     if (bookId) {
-        repoFolderName += `_${bookId}`
+        repoFolderName += `_${bookId}`;
     }
+    return repoFolderName;
+}
+
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+    const repoFolderName = getRepoFileName(targetLanguageId, targetBibleId, glLanguageId, bookId);
     return path.join(projectsPath, repoFolderName)
 }
 
