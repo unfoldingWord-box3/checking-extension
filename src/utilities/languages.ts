@@ -6,7 +6,19 @@ export const LOCALE_KEY = 'LOCALE_CDOE'
 
 let translations: object = { }
 let currentLocale:object = {};
-export let currentLanguageCode: string|null = null
+let currentLanguageCode: string|null = null
+
+export const getCurrentLocale = () => {
+  return currentLocale
+}
+
+export function getLocales() {
+  return locales;
+}
+
+export const getCurrentLanguageCode = () => {
+  return currentLanguageCode
+}
 
 export const getLanguage = (languageId:string) => {
   let _language
@@ -97,7 +109,8 @@ export function loadLocalization():void {
     return
   }
 
-  const keys = Object.keys(locales)
+  const _locales = getLocales();
+  const keys = Object.keys(_locales)
   if (!keys?.length) {
     console.error(`loadLocalization - locales not loaded`);
     return
@@ -105,7 +118,7 @@ export function loadLocalization():void {
 
   for (let key of keys) {
     try {
-      let translation = locales[key];
+      let translation = _locales[key];
       translation = enhanceTranslation(translation, key);
 
       const { langCode, shortLangCode } = explodeLocaleName(key);
