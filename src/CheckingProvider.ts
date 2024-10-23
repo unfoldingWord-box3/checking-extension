@@ -19,13 +19,9 @@ import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
-    currentLanguageCode,
-    DEFAULT_LOCALE,
-    delay,
     downloadLatestLangHelpsResourcesFromCatalog,
     downloadTargetBible,
     fetchBibleManifest,
-    fileExists,
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
@@ -39,13 +35,20 @@ import {
     getSavedCatalog,
     initProject,
     isRepoInitialized,
-    LOCALE_KEY,
+    loadResources,
     resourcesPath,
     saveCatalog,
+} from "./utilities/resourceUtils";
+import {
+    delay,
+    fileExists
+} from "./utilities/fileUtils";
+import {
+    currentLanguageCode,
+    DEFAULT_LOCALE,
+    LOCALE_KEY,
     setLocale,
-} from "./utilities/checkerFileUtils";
-// @ts-ignore
-import { loadResources } from "./utilities/checkingServerUtils";
+} from "./utilities/languages";
 import {
     getGatewayLanguages,
     getLanguageCodeFromPrompts,
