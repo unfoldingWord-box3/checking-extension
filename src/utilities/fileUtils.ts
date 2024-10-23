@@ -1,6 +1,7 @@
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as crypto from "node:crypto";
 
 export function readJsonFile(jsonPath:string) {
   if (fs.existsSync(jsonPath)) {
@@ -29,6 +30,28 @@ export function objectNotEmpty(data: {}) {
 
 export function fileExists(filePath:string) {
   return !!fs.existsSync(filePath)
+}
+
+export function getChecksum(filePath:string) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+
+    // @ts-ignore
+    stream.on('data', (data) => {
+      hash.update(data);
+    });
+
+    // @ts-ignore
+    stream.on('end', () => {
+      resolve(hash.digest('hex'));
+    });
+
+    // @ts-ignore
+    stream.on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 
 /**
