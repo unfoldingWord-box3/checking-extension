@@ -167,6 +167,23 @@ export default function CommandDrawer({
         {/*  </ListItemIcon>*/}
         {/*  <ListItemText primary={'Bug Report or Feedback'} />*/}
         {/*</ListItem>*/}
+        {user ? ( // if logged in give logout option
+          <ListItem button key={'Logout'} onClick={onLogout}>
+            <ListItemIcon>
+              <ExitToAppIcon />
+            </ListItemIcon>
+            <ListItemText primary={'Logout'} />
+          </ListItem>
+        )
+        : // or if logged in give login option
+        (
+          <ListItem button key={'Login'} onClick={onLogIn}>
+            <ListItemIcon>
+              <ExitToAppIcon />
+            </ListItemIcon>
+            <ListItemText primary={'Login'} />
+          </ListItem>
+        )}
         <ListItem
           button
           key={translate('menu.select_locale')}

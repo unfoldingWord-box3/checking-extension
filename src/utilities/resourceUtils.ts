@@ -25,7 +25,11 @@ import {
     OT_ORIG_LANG_BIBLE,
 } from "./BooksOfTheBible";
 import { ResourcesObject } from "../../types";
-import { getLanguage } from "./languages";
+import {
+    getCurrentLocale,
+    getLanguage,
+    getLocales,
+} from "./languages";
 // @ts-ignore
 import * as tsvparser from "uw-tsv-parser";
 // @ts-ignore
@@ -1875,9 +1879,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.metadata = metadata
           // @ts-ignore
-          results.locales = currentLocale
+          results.locales = getCurrentLocale()
           // @ts-ignore
-          results.localeOptions = Object.keys(locales)
+          results.localeOptions = Object.keys(getLocales())
           
           // get the dependent original bibles for resource
           const key = `${resourceId}_relation`

@@ -44,8 +44,8 @@ import {
     fileExists
 } from "./utilities/fileUtils";
 import {
-    currentLanguageCode,
     DEFAULT_LOCALE,
+    getCurrentLanguageCode,
     LOCALE_KEY,
     setLocale,
 } from "./utilities/languages";
@@ -669,7 +669,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
          * make sure localization is initialized and check for last locale setting
          */
         const initCurrentLocale = async () => {
-            if (!currentLanguageCode) {
+            if (!getCurrentLanguageCode()) {
                 let currentLocale = DEFAULT_LOCALE
                     const secretStorage = getSecretStorage();
                     const value = await secretStorage.get(LOCALE_KEY);
