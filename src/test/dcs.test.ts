@@ -36,6 +36,8 @@ function autoDetectProjectFolder() {
 }
 
 const projectFolder = autoDetectProjectFolder();
+const envPath = path.join(projectFolder, '.env.json')
+const env = require(envPath)
 
 suite('Tests', () => {
   test('Test CRC', async () => {
@@ -46,8 +48,8 @@ suite('Tests', () => {
 });
 
 const server = 'https://git.door43.org'
-const token = ''
-const owner = '';
+const token = env.TOKEN;
+const owner = env.USER;
 const targetLanguageId = 'pigeon';
 const targetBibleId = 'ult';
 const glLanguageId = 'en';
