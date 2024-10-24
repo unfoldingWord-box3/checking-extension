@@ -49,7 +49,7 @@ const {
 // @ts-ignore
   = require('tc-source-content-updater');
 
-
+const SEP = path.sep || '/'
 const workingPath = path.join(ospath.home(), 'translationCore')
 export const projectsBasePath = path.join(workingPath, 'otherProjects')
 export const resourcesPath = path.join(projectsBasePath, 'cache')
@@ -1732,12 +1732,11 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
 }
 
 function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object, bookId:string|null = null) {
-    const sep = path.sep || '/'
-    const projectResources = `.${sep}.resources${sep}`;
+    const projectResources = `.${SEP}.resources${SEP}`;
     const bibleId = bible.bibleId || bible.id;
     let biblePath = bible.path;
     let localChanged = false;
-    const resourcesSubFolder = `${sep}.resources${sep}`;
+    const resourcesSubFolder = `${SEP}.resources${SEP}`;
     if (!biblePath) {
         // look first in projects folders
         biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner, bible.version || '');
@@ -1782,10 +1781,10 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     }
 
     if (isHomePath(biblePath) || !bible.path || localChanged) {
-        const matchBase = `~${sep}translationCore${sep}otherProjects${sep}cache${sep}`;
+        const matchBase = `~${SEP}translationCore${SEP}otherProjects${SEP}cache${SEP}`;
         const matchedBase = biblePath.substring(0, matchBase.length) === matchBase;
         if (matchedBase || !bible.path || localChanged) {
-            const cacheFolder = `${sep}cache${sep}`;
+            const cacheFolder = `${SEP}cache${SEP}`;
             const parts = biblePath.split(cacheFolder);
             if (parts.length >= 2) { // if path is from cache rather than in project, we need to copy it over
                 const newPath = projectResources + parts[1];
@@ -1836,9 +1835,9 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                     metadata.otherResources[bibleId] = bible;
                 } catch (e) {
                     console.warn(`makeSureBibleIsInProject - could not copy resource from ${biblePath} to ${newPath}`);
-                    let parts = biblePath.split(sep);
+                    let parts = biblePath.split(SEP);
                     while (parts.length) {
-                        const checkPath = parts.join(sep);
+                        const checkPath = parts.join(SEP);
                         const exists = fs.existsSync(checkPath);
                         if (exists) {
                             break;
