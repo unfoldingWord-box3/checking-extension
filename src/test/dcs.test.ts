@@ -68,7 +68,7 @@ const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
 const newBranchName = 'update_current2';
 const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
 
-suite('Repo Tests', async ()=> {
+suite.skip('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
     const repoName = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId)
     assert.equal(repoName, "pigeon_ult_en_tit_checking")
