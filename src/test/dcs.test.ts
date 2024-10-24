@@ -42,6 +42,7 @@ const env = { TOKEN: 'null', USER: 'null' } // require(envPath)
 suite('Tests', () => {
   test('Test CRC', async () => {
     const filePath = path.join(projectFolder, './src/test/fixtures/tit.tn_check');
+    assert.ok(fs.existsSync(filePath))
     const checksum = await getChecksum(filePath)
     assert.equal(checksum, 'b28d94cdc04a30619fb81aabd3500eaf885824b835ecd1e061f11e69fe336225')
   });
