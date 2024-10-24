@@ -65,10 +65,10 @@ const targetBibleId = 'ult';
 const glLanguageId = 'en';
 const bookId = 'tit';
 const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
-const newBranchName = 'update_current';
+const newBranchName = 'update_current2';
 const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
 
-suite.skip('Repo Tests', async ()=> {
+suite('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
     const repoName = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId)
     assert.equal(repoName, "pigeon_ult_en_tit_checking")
