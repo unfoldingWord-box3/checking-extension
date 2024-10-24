@@ -414,6 +414,7 @@ async function checkBranchExists(server: string, owner: string, repo: string, br
 
 interface CreatePullRequestResponse {
   id: number;
+  number: number;
   url: string;
   // Add other fields as needed
 }
@@ -447,6 +448,35 @@ type NestedObject = {
     [innerKey: string]: any;
   };
 };
+
+interface MergePullRequestResponse {
+  message: string;
+  url: string;
+  // Add other fields as needed
+}
+
+async function squashMergePullRequest(server: string, owner: string, repo: string, pullNumber: number, autoDelete: boolean, token: string): Promise<MergePullRequestResponse> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}/pulls/${pullNumber}/merge`;
+  const data = {
+    Do: "squash",
+    MergeMessageField: `Squash merge pull request #${pullNumber}`,
+    delete_branch_after_merge: autoDelete,
+  };
+
+  try {
+    const response = await axios.post(url, data, {
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    // @ts-ignore
+    console.error(`Error: ${error.message}`);
+    throw error;
+  }
+}
 
 const dcsStatusFile = '.dcs_upload_status'
 
@@ -563,7 +593,11 @@ export async function updateFilesInBranch(server: string, owner: string, repo: s
   const title = `Merge ${branch} into master`;
   const body = `This pull request merges ${branch} into master.`;
   const pr = await createPullRequest(server, owner, repo, branch, 'master', title, body, token)
-  console.log(`updateFilesInBranch - Pull request created: #${pr.id} - ${pr.url}`);
+  console.log(`updateFilesInBranch - Pull request created: #${pr.number} - ${pr.url}`);
+
+  console.log(`updateFilesInBranch - merging PR #${pr.number}`)
+  const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token)
+  console.log(`updateFilesInBranch - merged PR`)
 
   // save latest upload data
   fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), uploadedFiles)
