@@ -57,7 +57,7 @@ export function getAllFiles(basePath: string, arrayOfFiles: string[] = [], subPa
   return arrayOfFiles;
 }
 
-export function getChecksum(filePath:string) {
+export function getChecksum(filePath:string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
     const stream = fs.createReadStream(filePath);
