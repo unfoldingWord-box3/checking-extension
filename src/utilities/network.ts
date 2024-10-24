@@ -3,7 +3,11 @@ import { getRepoFileName, projectsBasePath } from "./resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from 'path';
-import { getAllFiles, getChecksum } from "./fileUtils";
+import {
+  getAllFiles,
+  getChecksum,
+  readJsonFile
+} from "./fileUtils";
 
 interface TreeItem {
   path: string;
@@ -38,6 +42,27 @@ export async function getRepoTree(server: string, owner: string, repo: string, s
     console.error(errorMsg);
     // @ts-ignore
     return { error: errorMsg};
+  }
+}
+
+export async function checkRepoExists(server: string, owner: string, repo: string, token: string): Promise<boolean> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}`;
+
+  try {
+    await axios.get(url, {
+      headers: {
+        'Authorization': `token ${token}`
+      }
+    });
+    return true; // Repository exists
+  } catch (error) {
+    // @ts-ignore
+    if (error.response && error.response.status === 404) {
+      return false; // Repository does not exist
+    } else {
+      console.error(`Error: ${error.message}`);
+      throw error;
+    }
   }
 }
 
@@ -365,55 +390,115 @@ export async function deleteRepoFile(server: string, owner: string, repo: string
   }
 }
 
+async function checkBranchExists(server: string, owner: string, repo: string, branch: string, token: string): Promise<boolean> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}/branches/${branch}`;
+
+  try {
+    await axios.get(url, {
+      headers: {
+        'Authorization': `token ${token}`
+      }
+    });
+    return true; // Branch exists
+  } catch (error) {
+    // @ts-ignore
+    if (error.response && error.response.status === 404) {
+      return false; // Branch does not exist
+    } else {
+      // @ts-ignore
+      console.error(`Error: ${error.message}`);
+      throw error;
+    }
+  }
+}
+
 type NestedObject = {
   [key: string]: {
     [innerKey: string]: any;
   };
 };
 
+const dcsStatusFile = '.dcs_upload_status'
+
 export async function updateFilesInBranch(server: string, owner: string, repo: string, branch: string, token: string, localRepoPath:string): Promise<NestedObject> {
+  const repoExists = await checkRepoExists(server, owner, repo, token)
+  if (!repoExists) {
+    const results = await createCheckingRepository(server, owner, repo, token)
+    if (results?.error) {
+      throw results?.error
+    }
+  }
+
+  const branchExists = await checkBranchExists(server, owner, repo, branch, token)
+  if (!branchExists) {
+    const results = await createRepoBranch(server, owner, repo, branch, token)
+    if (results?.error) {
+      throw results?.error
+    }
+  }
+  
   const localFiles = getAllFiles(localRepoPath);
   const results = await getRepoTree(server, owner, repo, branch, token)
   const handledFiles: NestedObject = {}
-  const uploadedFiles: NestedObject = {}
+  const uploadedFiles: NestedObject = readJsonFile(path.join(localRepoPath, dcsStatusFile)) || {}
   for(const file of results?.tree || []) {
     // @ts-ignore
     handledFiles[file.path] = file
   }
   
   for (const localFile of localFiles) {
+    if (localFile === dcsStatusFile) { // skip over DCS data file
+      continue
+    }
+
     const fullFilePath = path.join(localRepoPath, localFile)
     console.log(fullFilePath)
     let doUpload = false
+    let skip = false
+    let localChecksum: string = ''
 
     const remoteFileData = handledFiles[localFile];
     const isOnDcs = !!remoteFileData
     if (!isOnDcs) {
       doUpload = true
+    } else {
+      localChecksum = await getChecksum(fullFilePath)
+      const lastUploadData = uploadedFiles[localFile]
+      const lastSha = lastUploadData?.sha
+      if ((lastUploadData?.checksum === localChecksum) && (remoteFileData?.sha === lastSha)) {
+        // if checksum unchanged and sha unchanged, then skip this file
+        skip = true
+      }
     }
-    
-    //TODO other logic if unchanged (checksum and sha)
 
     let results = null
-    if (doUpload) {
-      results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token)
-    } else {
-      const sha = remoteFileData?.sha || ''
-      results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha)
-    }
-    
-    if (!results?.error) {
-      const fileData = results.content;
-      const checksum = await getChecksum(fullFilePath)
-      uploadedFiles[localFile] = { 
-        ...fileData,
-        checksum
+    if (!skip) {
+      if (doUpload) {
+        results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
+      } else {
+        const sha = remoteFileData?.sha || "";
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha);
       }
-      if (isOnDcs) {
-        delete handledFiles[localFile]
+
+      if (!results?.error) {
+        // @ts-ignore
+        const fileData = results.content;
+        const checksum = await getChecksum(fullFilePath)
+        const newFileData = {
+          ...fileData,
+          checksum
+        };
+        // @ts-ignore
+        delete newFileData['content']
+        uploadedFiles[localFile] = newFileData
+        if (isOnDcs) {
+          delete handledFiles[localFile]
+        }
+      } else {
+        console.warn(results?.error)
       }
     } else {
-      console.warn(results?.error)
+      delete handledFiles[localFile]
     }
   }
 
@@ -429,6 +514,9 @@ export async function updateFilesInBranch(server: string, owner: string, repo: s
       }
     }
   }
+
+  // update with latest data
+  fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), uploadedFiles)
   
   console.log(results)
   // @ts-ignore
