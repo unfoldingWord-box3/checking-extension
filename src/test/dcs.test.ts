@@ -37,7 +37,7 @@ function autoDetectProjectFolder() {
 
 const projectFolder = autoDetectProjectFolder();
 const envPath = path.join(projectFolder, '.env.json')
-const env = { TOKEN: null, USER: null } // require(envPath)
+const env = { TOKEN: 'null', USER: 'null' } // require(envPath)
 
 suite('Tests', () => {
   test('Test CRC', async () => {
