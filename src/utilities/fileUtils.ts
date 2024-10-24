@@ -2,6 +2,7 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as crypto from "node:crypto";
+const SEP = path.sep || '/'
 
 export function readJsonFile(jsonPath:string) {
   if (fs.existsSync(jsonPath)) {
@@ -30,6 +31,30 @@ export function objectNotEmpty(data: {}) {
 
 export function fileExists(filePath:string) {
   return !!fs.existsSync(filePath)
+}
+
+function getSubPath(basePath:string, subPath:string):string {
+  if (basePath) {
+    return basePath + SEP + subPath
+  }
+  return subPath
+}
+
+export function getAllFiles(basePath: string, arrayOfFiles: string[] = [], subPath = ''): string[] {
+  const currentPath = path.join(basePath, subPath);
+  const files = fs.readdirSync(currentPath);
+
+  files.forEach((file:string) => {
+    const filePath = path.join(currentPath, file);
+    const _subPath = getSubPath(subPath, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      getAllFiles(basePath, arrayOfFiles, _subPath);
+    } else {
+      arrayOfFiles.push(_subPath);
+    }
+  });
+
+  return arrayOfFiles;
 }
 
 export function getChecksum(filePath:string) {

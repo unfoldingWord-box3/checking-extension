@@ -1,3 +1,7 @@
+// ############################
+// for development of DCS
+// ############################
+
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as assert from 'assert';
@@ -8,13 +12,18 @@ import * as ospath from "ospath";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
-import { getChecksum } from "../utilities/fileUtils";
+import {
+  getAllFiles,
+  getChecksum,
+  readJsonFile
+} from "../utilities/fileUtils";
 import {
   createRepoBranch,
   createCheckingRepository,
   getRepoName,
   getRepoTree,
-  createRepoFromFile,
+  uploadRepoFileFromPath,
+  updateFilesInBranch,
 } from "../utilities/network";
 // import * as myExtension from '../extension';
 
@@ -37,7 +46,7 @@ function autoDetectProjectFolder() {
 
 const projectFolder = autoDetectProjectFolder();
 const envPath = path.join(projectFolder, '.env.json')
-const env = { TOKEN: 'null', USER: 'null' } // require(envPath)
+const env = readJsonFile(envPath) || {}
 
 suite('Tests', () => {
   test('Test CRC', async () => {
@@ -56,6 +65,8 @@ const targetBibleId = 'ult';
 const glLanguageId = 'en';
 const bookId = 'tit';
 const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
+const newBranchName = 'update_current';
+const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
 
 suite.skip('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
@@ -72,22 +83,35 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test createRepoBranch', async () => {
-    const newBranch = 'update_current';
+    const newBranch = newBranchName;
     const branch = await createRepoBranch(server, owner, repo, newBranch, token)
     assert.ok(!branch.error)
     assert.equal(branch.name, newBranch)
   })
 
   test('Test createRepoFile', async () => {
-    const branch = 'update_current';
+    const branch = newBranchName;
     const filePath = path.join(projectFolder, './src/test/fixtures/tit.tn_check');
     
     const branchFilePath = 'fixtures/tit.tn_check';
-    const results = await createRepoFromFile(server, owner, repo, branch, branchFilePath, filePath, token)
+    const results = await uploadRepoFileFromPath(server, owner, repo, branch, branchFilePath, filePath, token)
     assert.ok(!results.error)
     assert.ok(results.content.html_url)
     assert.equal(results.content.name, branchFilePath)
- 
+  })
+
+  test('Test getAllFiles', async () => {
+    const files = getAllFiles(testRepoPath);
+    assert.ok(files.length)
+    for (const file of files) {
+      const fullFilePath = path.join(testRepoPath, file);
+      assert.ok(fs.existsSync(fullFilePath))
+    }
+  })
+
+  test('Test updateFilesInBranch', async () => {
+    const results = await updateFilesInBranch(server, owner, repo, newBranchName, token, testRepoPath)
+    console.log(results)
   })
 
   test.skip('Test createRepository', async () => {
