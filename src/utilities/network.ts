@@ -672,31 +672,109 @@ async function deleteTheBranchAndPR(server: string, owner: string, repo: string,
   return false
 }
 
+async function updateFilesInBranch(localFiles: string[], localRepoPath: string, handledFiles: NestedObject, uploadedFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string) {
+  for (const localFile of localFiles) {
+    if ((localFile === dcsStatusFile) || (localFile === ".DS_Store")) { // skip over DCS data file, and system files
+      continue;
+    }
+
+    const fullFilePath = path.join(localRepoPath, localFile);
+    let doUpload = false;
+    let skip = false;
+    let localChecksum: string = "";
+
+    const remoteFileData = handledFiles[localFile];
+    const isOnDcs = !!remoteFileData;
+    if (!isOnDcs) {
+      doUpload = true;
+    } else {
+      localChecksum = await getChecksum(fullFilePath);
+      const lastUploadData = uploadedFiles[localFile];
+      const lastSha = lastUploadData?.sha;
+      if ((lastUploadData?.checksum === localChecksum) && (remoteFileData?.sha === lastSha)) {
+        // if checksum unchanged and sha unchanged, then skip this file
+        skip = true;
+      }
+    }
+
+    let results = null;
+    if (!skip) {
+      if (doUpload) {
+        console.log(`updateFilesInBranch - uploading file ${localFile}`);
+        results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
+      } else {
+        console.log(`updateFilesInBranch - updating changed file ${localFile}`);
+        const sha = remoteFileData?.sha || "";
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha);
+      }
+
+      if (!results?.error) {
+        // @ts-ignore
+        const fileData = results.content;
+        const checksum = await getChecksum(fullFilePath);
+        const newFileData = {
+          ...fileData,
+          checksum,
+        };
+        // @ts-ignore
+        delete newFileData["content"];
+        uploadedFiles[localFile] = newFileData;
+        if (isOnDcs) {
+          delete handledFiles[localFile];
+        }
+      } else {
+        console.error(results?.error);
+      }
+    } else {
+      delete handledFiles[localFile];
+    }
+  }
+
+  for (const file of Object.keys(handledFiles)) {
+    const fileData = handledFiles[file];
+    const fileType = fileData?.type;
+    if (fileType === "file" || fileType === "blob") {
+      console.log(`updateFilesInBranch - deleting ${file}`);
+
+      const sha = fileData?.sha || "";
+      const results = await deleteRepoFile(server, owner, repo, branch, file, token, sha);
+
+      if (results?.error) {
+        console.log(results);
+      }
+    }
+  }
+}
+
+async function makeSureBranchExists(server: string, owner: string, repo: string, token: string, branch: string) {
+  let newRepo = false;
+  const repoExists = await checkRepoExists(server, owner, repo, token);
+  if (!repoExists) {
+    console.log(`updateFilesInBranch - creating repo ${owner}/${repo}`);
+    const results = await createCheckingRepository(server, owner, repo, token);
+    if (results?.error) {
+      console.error(`updateFilesInBranch - error creating repo`);
+      throw results?.error;
+    }
+    newRepo = true;
+  }
+
+  const branchExists = await checkBranchExists(server, owner, repo, branch, token);
+  if (!branchExists) {
+    console.log(`updateFilesInBranch - creating repo branch ${branch}`);
+    const results = await createRepoBranch(server, owner, repo, branch, token);
+    if (results?.error) {
+      console.error(`updateFilesInBranch - error creating branch ${branch}`);
+      throw results?.error;
+    }
+  }
+  return newRepo;
+}
+
 export async function updateFilesInDCS(server: string, owner: string, repo: string, branch: string, token: string, localRepoPath:string): Promise<NestedObject> {
   console.log(`updateFilesInBranch - updating repo ${owner}/${repo}`)
   const lastRepo: DcsUploadStatus = readJsonFile(path.join(localRepoPath, dcsStatusFile)) || {}
-
-  let newRepo = false
-  const repoExists = await checkRepoExists(server, owner, repo, token)
-  if (!repoExists) {
-    console.log(`updateFilesInBranch - creating repo ${owner}/${repo}`)
-    const results = await createCheckingRepository(server, owner, repo, token)
-    if (results?.error) {
-      console.error(`updateFilesInBranch - error creating repo`)
-      throw results?.error
-    }
-    newRepo = true
-  }
-
-  const branchExists = await checkBranchExists(server, owner, repo, branch, token)
-  if (!branchExists) {
-    console.log(`updateFilesInBranch - creating repo branch ${branch}`)
-    const results = await createRepoBranch(server, owner, repo, branch, token)
-    if (results?.error) {
-      console.error(`updateFilesInBranch - error creating branch ${branch}`)
-      throw results?.error
-    }
-  }
+  let newRepo = await makeSureBranchExists(server, owner, repo, token, branch);
 
   // @ts-ignore
   const lastCommit: string = lastRepo?.commit
@@ -723,78 +801,8 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
     // @ts-ignore
     handledFiles[file.path] = file
   }
-  
-  for (const localFile of localFiles) {
-    if ((localFile === dcsStatusFile) || (localFile === '.DS_Store')) { // skip over DCS data file, and system files
-      continue
-    }
 
-    const fullFilePath = path.join(localRepoPath, localFile)
-    let doUpload = false
-    let skip = false
-    let localChecksum: string = ''
-
-    const remoteFileData = handledFiles[localFile];
-    const isOnDcs = !!remoteFileData
-    if (!isOnDcs) {
-      doUpload = true
-    } else {
-      localChecksum = await getChecksum(fullFilePath)
-      const lastUploadData = uploadedFiles[localFile]
-      const lastSha = lastUploadData?.sha
-      if ((lastUploadData?.checksum === localChecksum) && (remoteFileData?.sha === lastSha)) {
-        // if checksum unchanged and sha unchanged, then skip this file
-        skip = true
-      }
-    }
-
-    let results = null
-    if (!skip) {
-      if (doUpload) {
-        console.log(`updateFilesInBranch - uploading file ${localFile}`)
-        results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
-      } else {
-        console.log(`updateFilesInBranch - updating changed file ${localFile}`)
-        const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha);
-      }
-
-      if (!results?.error) {
-        // @ts-ignore
-        const fileData = results.content;
-        const checksum = await getChecksum(fullFilePath)
-        const newFileData = {
-          ...fileData,
-          checksum
-        };
-        // @ts-ignore
-        delete newFileData['content']
-        uploadedFiles[localFile] = newFileData
-        if (isOnDcs) {
-          delete handledFiles[localFile]
-        }
-      } else {
-        console.error(results?.error)
-      }
-    } else {
-      delete handledFiles[localFile]
-    }
-  }
-
-  for (const file of Object.keys(handledFiles)) {
-    const fileData = handledFiles[file]
-    const fileType = fileData?.type;
-    if (fileType === 'file' || fileType === 'blob') {
-      console.log(`updateFilesInBranch - deleting ${file}`)
-
-      const sha = fileData?.sha || ''
-      const results = await deleteRepoFile(server, owner, repo, branch, file, token, sha)
-
-      if (results?.error) {
-        console.log (results)
-      }
-    }
-  }
+  await updateFilesInBranch(localFiles, localRepoPath, handledFiles, uploadedFiles, server, owner, repo, branch, token);
 
   console.log(`updateFilesInBranch - creating PR`)
   const title = `Merge ${branch} into master`;
