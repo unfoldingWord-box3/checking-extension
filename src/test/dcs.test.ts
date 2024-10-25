@@ -23,7 +23,9 @@ import {
   getRepoName,
   getRepoTree,
   uploadRepoFileFromPath,
-  updateFilesInBranch,
+  updateFilesInDCS,
+  uploadRepoToDCS,
+  getChangedFiles,
 } from "../utilities/network";
 // import * as myExtension from '../extension';
 
@@ -109,8 +111,18 @@ suite.skip('Repo Tests', async ()=> {
     }
   })
 
-  test('Test updateFilesInBranch', async () => {
-    const results = await updateFilesInBranch(server, owner, repo, newBranchName, token, testRepoPath)
+  test('Test getChangedFiles', async () => {
+    const results = await getChangedFiles(server, owner, repo, 8, token)
+    console.log(results)
+  })
+
+  test('Test updateFilesInDCS', async () => {
+    const results = await updateFilesInDCS(server, owner, repo, newBranchName, token, testRepoPath)
+    console.log(results)
+  })
+
+  test('Test uploadRepoToDCS', async () => {
+    const results = await uploadRepoToDCS(server, owner, repo, token, testRepoPath, targetLanguageId, targetBibleId, glLanguageId, bookId)
     console.log(results)
   })
 

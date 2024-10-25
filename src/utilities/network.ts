@@ -8,6 +8,7 @@ import {
   getChecksum,
   readJsonFile
 } from "./fileUtils";
+import { ResourcesObject } from "../../types";
 
 interface TreeItem {
   path: string;
@@ -390,7 +391,7 @@ export async function deleteRepoFile(server: string, owner: string, repo: string
   }
 }
 
-async function checkBranchExists(server: string, owner: string, repo: string, branch: string, token: string): Promise<boolean> {
+export async function checkBranchExists(server: string, owner: string, repo: string, branch: string, token: string): Promise<boolean> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/branches/${branch}`;
 
   try {
@@ -414,12 +415,14 @@ async function checkBranchExists(server: string, owner: string, repo: string, br
 
 interface CreatePullRequestResponse {
   id: number;
+  mergeable: boolean;
+  merged: boolean;
   number: number;
   url: string;
   // Add other fields as needed
 }
 
-async function createPullRequest(server: string, owner: string, repo: string, branchToMergeFrom: string, branchToMergeInto: string, title: string, body: string, token: string): Promise<CreatePullRequestResponse> {
+export async function createPullRequest(server: string, owner: string, repo: string, branchToMergeFrom: string, branchToMergeInto: string, title: string, body: string, token: string): Promise<CreatePullRequestResponse> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/pulls`;
   const data = {
     head: branchToMergeFrom,
@@ -443,6 +446,41 @@ async function createPullRequest(server: string, owner: string, repo: string, br
   }
 }
 
+interface ChangedFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  // Add other fields as needed
+}
+
+export async function getChangedFiles(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  pullRequestId: number,
+  accessToken: string
+): Promise<ChangedFile[]> {
+  try {
+    const url = `${server}/api/v1/repos/${repoOwner}/${repoName}/pulls/${pullRequestId}/files`;
+    const response = await axios.get(
+      url,
+      {
+        headers: {
+          Authorization: `token ${accessToken}`,
+        },
+      }
+    );
+    // console.log(response)
+    return response.data as ChangedFile[];
+  } catch (error) {
+    // @ts-ignore
+    console.error('Error getting changed files:', error);
+    throw error;
+  }
+}
+
 type NestedObject = {
   [key: string]: {
     [innerKey: string]: any;
@@ -455,7 +493,7 @@ interface MergePullRequestResponse {
   // Add other fields as needed
 }
 
-async function squashMergePullRequest(server: string, owner: string, repo: string, pullNumber: number, autoDelete: boolean, token: string): Promise<MergePullRequestResponse> {
+export async function squashMergePullRequest(server: string, owner: string, repo: string, pullNumber: number, autoDelete: boolean, token: string): Promise<MergePullRequestResponse> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/pulls/${pullNumber}/merge`;
   const data = {
     Do: "squash",
@@ -478,10 +516,166 @@ async function squashMergePullRequest(server: string, owner: string, repo: strin
   }
 }
 
+interface PullRequest {
+  id: number;
+  title: string;
+  body: string;
+  state: string;
+  created_at: string;
+  updated_at: string;
+  error?: string;
+  status?: number;
+  // Add other fields as needed
+}
+
+interface UpdatePullRequestData {
+  title?: string;
+  body?: string;
+  state?: string;
+  // Add other fields as needed
+}
+
+export async function updatePullRequest(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  pullRequestId: number,
+  accessToken: string,
+  updateData: UpdatePullRequestData
+): Promise<PullRequest> {
+  try {
+    const url = `${server}/api/v1/repos/${repoOwner}/${repoName}/pulls/${pullRequestId}`;
+    const response = await axios.patch(
+      url,
+      updateData,
+      {
+        headers: {
+          Authorization: `token ${accessToken}`,
+        },
+      }
+    );
+    return response.data as PullRequest;
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
+  }
+}
+
+export async function deleteBranch(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  branchName: string,
+  accessToken: string
+): Promise<boolean> {
+  try {
+    const url = `${server}/api/v1/repos/${repoOwner}/${repoName}/branches/${branchName}`;
+    const response = await axios.delete(
+      url,
+      {
+        headers: {
+          Authorization: `token ${accessToken}`,
+        },
+      }
+    );
+    return true
+  } catch (error) {
+    console.error('Error deleting branch:', error);
+  }
+  return false
+}
+
+interface Branch {
+  name: string;
+  commit: {
+    id: string;
+    message: string;
+    url: string;
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    committer: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    // Add other fields as needed
+  };
+  // Add other fields as needed
+}
+
+async function getRepoBranch(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  branchName: string,
+  accessToken: string
+): Promise<Branch> {
+  try {
+    const url = `${server}/api/v1/repos/${repoOwner}/${repoName}/branches/${branchName}`;
+    const response = await axios.get(
+      url,
+      {
+        headers: {
+          Authorization: `token ${accessToken}`,
+        },
+      }
+    );
+    return response.data as Branch;
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      // @ts-ignore
+      error: message,
+      status: status
+    }
+  }
+}
+
+type DcsUploadStatus = {
+  files: NestedObject;
+  commit: ResourcesObject
+}
+
 const dcsStatusFile = '.dcs_upload_status'
 
-export async function updateFilesInBranch(server: string, owner: string, repo: string, branch: string, token: string, localRepoPath:string): Promise<NestedObject> {
+async function deleteTheBranchAndPR(server: string, owner: string, repo: string, pr: CreatePullRequestResponse, token: string, branch: string) {
+  const updateData = {
+    state: 'closed'
+  };
+  console.log(`updateFilesInBranch - closing PR #${pr.number}`)
+  const results = await updatePullRequest(server, owner, repo, pr.number, token, updateData);
+  if (results.error) {
+    console.error(`updateFilesInBranch - PR closing failed`);
+  } else {
+    console.log(`updateFilesInBranch - deleting branch`);
+    const success = await deleteBranch(server, owner, repo, branch, token);
+    if (!success) {
+      console.error(`updateFilesInBranch - branch  ${branch} deletion failed`);
+    } else {
+      return true;
+    }
+  }
+  return false
+}
+
+export async function updateFilesInDCS(server: string, owner: string, repo: string, branch: string, token: string, localRepoPath:string): Promise<NestedObject> {
   console.log(`updateFilesInBranch - updating repo ${owner}/${repo}`)
+  const lastRepo: DcsUploadStatus = readJsonFile(path.join(localRepoPath, dcsStatusFile)) || {}
+
   let newRepo = false
   const repoExists = await checkRepoExists(server, owner, repo, token)
   if (!repoExists) {
@@ -503,11 +697,24 @@ export async function updateFilesInBranch(server: string, owner: string, repo: s
       throw results?.error
     }
   }
-  
+
+  // @ts-ignore
+  const lastCommit: string = lastRepo?.commit
+  const branchCurrent = await getRepoBranch(server, owner, repo, 'master', token)
+  const currentCommit = branchCurrent?.commit?.id || null
+
+  // validate the last update against the current branch commit
+  const masterChanged = lastCommit &&  (currentCommit !== lastCommit)
+  if (masterChanged) {
+    const message = `updateFilesInBranch - master branch changed`;
+    console.error(message)
+    throw message
+  }
+
   const localFiles = getAllFiles(localRepoPath);
   const results = await getRepoTree(server, owner, repo, branch, token)
   const handledFiles: NestedObject = {}
-  let uploadedFiles: NestedObject = readJsonFile(path.join(localRepoPath, dcsStatusFile)) || {}
+  let uploadedFiles: NestedObject = lastRepo?.files || {}
   if (newRepo) { // if new repo then upload everything
     uploadedFiles = {}
   }
@@ -544,10 +751,10 @@ export async function updateFilesInBranch(server: string, owner: string, repo: s
     let results = null
     if (!skip) {
       if (doUpload) {
-        console.log(`updateFilesInBranch - uploading ${localFile}`)
+        console.log(`updateFilesInBranch - uploading file ${localFile}`)
         results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
       } else {
-        console.log(`updateFilesInBranch - updating ${localFile}`)
+        console.log(`updateFilesInBranch - updating changed file ${localFile}`)
         const sha = remoteFileData?.sha || "";
         results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha);
       }
@@ -595,18 +802,62 @@ export async function updateFilesInBranch(server: string, owner: string, repo: s
   const pr = await createPullRequest(server, owner, repo, branch, 'master', title, body, token)
   console.log(`updateFilesInBranch - Pull request created: #${pr.number} - ${pr.url}`);
 
-  console.log(`updateFilesInBranch - merging PR #${pr.number}`)
-  const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token)
-  console.log(`updateFilesInBranch - merged PR`)
-
-  // save latest upload data
-  fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), uploadedFiles)
+  let updateSavedData = false
+  let mergeComplete = false
+  
+  const prStatus = await getChangedFiles(server, owner, repo, pr.number, token)
+  if (!prStatus?.length) {
+    console.log(`updateFilesInBranch - PR #${pr.number} has no changes, deleting PR`)
+    mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+  } else {
+    if (!pr.mergeable) {
+      console.warn(`updateFilesInBranch - PR #${pr.number} is not mergeable`);
+    } else if (pr.merged) {
+      console.warn(`updateFilesInBranch - PR #${pr.number} has already been merged, deleting PR`);
+      mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+    } else {
+      console.log(`updateFilesInBranch - merging PR #${pr.number}`);
+      const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token);
+      console.log(`updateFilesInBranch - merged PR`);
+      mergeComplete = true;
+      updateSavedData = true;
+    }
+  }
+  
+  if (updateSavedData) {
+    const branch = await getRepoBranch(server, owner, repo, 'master', token)
+    const commit = branch?.commit?.id || null
+    // save latest upload data
+    const newDcsStatus = {
+      files: uploadedFiles,
+      commit,
+    };
+    fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), newDcsStatus);
+  }
   
   console.log(results)
   // @ts-ignore
   return {
     ...results,
     localFiles,
-    uploadedFiles
+    uploadedFiles,
+    // @ts-ignore
+    mergeComplete,
   } 
+}
+
+export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string, targetLanguageId:string, targetBibleId:string, glLanguageId:string, bookId: string = ''): Promise<boolean> {
+  const branch = getNewBranchName(targetLanguageId, targetBibleId, glLanguageId, bookId)
+  try {
+    const results = await updateFilesInDCS(server, owner, repo, branch, token, localRepoPath);
+    if (!results.error) {
+      return true
+    } else {
+      console.error(`uploadRepoToDCS - upload error: ${results.error}`)
+    }
+  } catch (e) {
+    // @ts-ignore
+    console.error(`uploadRepoToDCS - exception: ${e.toString()}`)
+  }
+  return false
 }
