@@ -48,7 +48,7 @@ export async function getRepoTree(server: string, owner: string, repo: string, s
   }
 }
 
-export async function checkRepoExists(server: string, owner: string, repo: string, token: string): Promise<boolean> {
+export async function checkIfRepoExists(server: string, owner: string, repo: string, token: string): Promise<boolean> {
   const url = `${server}/api/v1/repos/${owner}/${repo}`;
 
   try {
@@ -861,7 +861,7 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
   if (branchAlreadyExists) { // if we know branch already exists, no need to check
     repoExists = true
   } else {
-    repoExists = await checkRepoExists(server, owner, repo, token);
+    repoExists = await checkIfRepoExists(server, owner, repo, token);
   }
 
   if (!repoExists) {
@@ -900,44 +900,54 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   console.log(`updateFilesInBranch - updating repo ${owner}/${repo}`)
   let lastRepo: DcsUploadStatus = readJsonFile(path.join(localRepoPath, dcsStatusFile))
   let branchExists = false;
-  let branchAlreadyExists = false
+  let branchPreviouslyCreated = false
   let newBranch = false;
   let newRepo = false;
   
-  const repoExists = await checkRepoExists(server, owner, repo, token);
+  const repoExists = await checkIfRepoExists(server, owner, repo, token);
   if (repoExists) {
-    lastRepo = {} // if no repo yet, we just proceed to upload
-
     const branchesResult = await getRepoBranches(server, owner, repo, token)
     if (branchesResult?.error) {
       return branchesResult
     }
 
-    const mergeToMaster = branchesResult.branches.find(branch => (branch.name = mergeToMasterBranch))
-    const mergeFromMaster = branchesResult.branches.find(branch => (branch.name = mergeFromMasterBranch))
+    console.log(`updateFilesInBranch - found ${branchesResult?.branches?.length} Branches`);
+
+    const mergeToMaster = branchesResult.branches.find(branch => (branch.name === mergeToMasterBranch))
+    const mergeFromMaster = branchesResult.branches.find(branch => (branch.name === mergeFromMasterBranch))
     branchExists = !!mergeToMaster
-    branchAlreadyExists = branchExists
+    branchPreviouslyCreated = branchExists
+    
+    if (branchPreviouslyCreated) {
+      console.log(`updateFilesInBranch - merge to master branch already exists`)
+    }
     
     if (mergeFromMaster) {
+      const message = `updateFilesInBranch - merge from master branch already exists`;
+      console.warn(message);
       return {
-        error: `updateFilesInBranch - merge to master branch already exists`,
+        error: message,
         errorMergeFromMasterExists: true
       }
     }
+  } else {
+    lastRepo = {} // if no repo yet, we just clear out old data and proceed to upload
   }
 
   if (!branchExists) {
     const _results = await makeSureBranchExists(server, owner, repo, token, mergeToMasterBranch, repoExists);
-    let { newBranch, newRepo, error } = _results;
-    if (error) {
+    if (_results?.error) {
       return _results;
+    }
+    newRepo = _results?.newRepo
+    newBranch = _results?.newBranch
+    if (!newBranch) {
+      branchPreviouslyCreated = true
     }
   }
 
   if (!newRepo) {
-    if (!newBranch) {
-      // TODO check for PRs
-    } else {
+    if (newBranch) {
       // @ts-ignore
       const lastCommit: string = lastRepo?.commit;
       const branchCurrent = await getRepoBranch(server, owner, repo, "master", token);
@@ -972,11 +982,14 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 
   let pr: PullRequest;
   
-  if (branchAlreadyExists) { // check if already PR for branch
+  if (branchPreviouslyCreated) { // check if already PR for branch
     const prResults = await getOpenPullRequests(server, owner, repo, token)
     if (prResults.error) {
       return prResults
     }
+
+    console.log(`updateFilesInBranch - found ${prResults?.pullRequests?.length} PRs`);
+
     const pullRequest = prResults?.pullRequests.find(pr => {
       const baseBranch = pr?.base?.ref
       const headBranch = pr?.head?.ref
@@ -1043,9 +1056,8 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 }
 
 export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string, targetLanguageId:string, targetBibleId:string, glLanguageId:string, bookId: string = ''): Promise<boolean> {
-  const branch = getNewBranchName(targetLanguageId, targetBibleId, glLanguageId, bookId)
   try {
-    const results = await updateFilesInDCS(server, owner, repo, branch, token, localRepoPath);
+    const results = await updateFilesInDCS(server, owner, repo, token, localRepoPath);
     if (!results.error) {
       return true
     } else {
