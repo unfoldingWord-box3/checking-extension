@@ -62,12 +62,12 @@ suite('Tests', () => {
 const server = 'https://git.door43.org'
 const token = env.TOKEN;
 const owner = env.USER;
-const targetLanguageId = 'pigeon';
+const targetLanguageId = 'pizza';
 const targetBibleId = 'ult';
 const glLanguageId = 'en';
 const bookId = 'tit';
 const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
-const newBranchName = 'update_current2';
+const testBranchName = 'update_current';
 const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
 
 suite.skip('Repo Tests', async ()=> {
@@ -85,14 +85,14 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test createRepoBranch', async () => {
-    const newBranch = newBranchName;
+    const newBranch = testBranchName;
     const branch = await createRepoBranch(server, owner, repo, newBranch, token)
     assert.ok(!branch.error)
     assert.equal(branch.name, newBranch)
   })
 
   test('Test createRepoFile', async () => {
-    const branch = newBranchName;
+    const branch = testBranchName;
     const filePath = path.join(projectFolder, './src/test/fixtures/tit.tn_check');
     
     const branchFilePath = 'fixtures/tit.tn_check';
@@ -117,7 +117,7 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test updateFilesInDCS', async () => {
-    const results = await updateFilesInDCS(server, owner, repo, newBranchName, token, testRepoPath)
+    const results = await updateFilesInDCS(server, owner, repo, token, testRepoPath)
     console.log(results)
   })
 
