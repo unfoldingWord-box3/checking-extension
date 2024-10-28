@@ -95,15 +95,16 @@ function TranslationCheckingView() {
     const projectKey = getKey(checkingObj)
 
     async function initData(data: TnTSV) {
-        if (!isEqual(checkingObj?.project, data?.project)) {
-            setCheckingObj(data);
-        }
+        const checkingSame = isEqual(checkingObj?.project, data?.project);
         const key = getKey(data)
         secretProvider.getItem(key).then(value => {
             // @ts-ignore
             const contextId = value;
             if (contextId) {
                 setInitialContextId(contextId)
+            }
+            if (!checkingSame) {
+                setCheckingObj(data);
             }
         })
     }
