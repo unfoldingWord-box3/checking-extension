@@ -8,7 +8,7 @@ import {
   getChecksum,
   readJsonFile
 } from "./fileUtils";
-import { ResourcesObject } from "../../types";
+import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 
 export const mergeToMasterBranch = 'merge_changes_to_master'
 export const mergeFromMasterBranch = 'update_from_master'
@@ -60,7 +60,10 @@ export async function checkIfRepoExists(server: string, owner: string, repo: str
     return true; // Repository exists
   } catch (error) {
     // @ts-ignore
-    if (error.response && error.response.status === 404) {
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status = error?.response?.status;
+    if (status === 404) {
       return false; // Repository does not exist
     } else {
       // @ts-ignore
@@ -531,16 +534,6 @@ export async function getChangedFiles(
     throw error;
   }
 }
-
-type NestedObject = {
-  [key: string]: {
-    [innerKey: string]: any;
-  };
-};
-
-type GeneralObject = {
-  [key: string]: any;
-};
 
 interface MergePullRequestResponse {
   message: string;
@@ -1055,17 +1048,23 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   } 
 }
 
-export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string, targetLanguageId:string, targetBibleId:string, glLanguageId:string, bookId: string = ''): Promise<boolean> {
+export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string): Promise<GeneralObject> {
   try {
     const results = await updateFilesInDCS(server, owner, repo, token, localRepoPath);
-    if (!results.error) {
-      return true
-    } else {
+    if (results.error) {
       console.error(`uploadRepoToDCS - upload error: ${results.error}`)
     }
-  } catch (e) {
+    return results
+  } catch (error) {
     // @ts-ignore
-    console.error(`uploadRepoToDCS - exception: ${e.toString()}`)
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      // @ts-ignore
+      error: message,
+      status: status
+    }
   }
-  return false
 }

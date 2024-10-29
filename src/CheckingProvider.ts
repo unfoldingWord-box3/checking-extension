@@ -26,9 +26,10 @@ import {
     findOwnersForLang,
     findResourcesForLangAndOwner,
     getBookForTestament,
-    getFileSubPathForResource,
+    getBookIdFromPath,
     getLanguagesInCatalog,
     getLatestResourcesCatalog,
+    getMetaData,
     getRepoPath,
     getResourceIdsInCatalog,
     getResourcesForChecking,
@@ -57,6 +58,7 @@ import {
 // @ts-ignore
 import isEqual from 'deep-equal'
 import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
+import { getRepoName, uploadRepoToDCS } from "./utilities/network";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -740,6 +742,31 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
             return CheckingProvider.secretStorage
         }
+
+        const uploadToDCS = (text:string, data:object) => {
+            // @ts-ignore
+            const token = data?.token as string
+            // @ts-ignore
+            const owner = data?.owner as string
+            // @ts-ignore
+            const server = data?.server as string
+            const filePath = document.fileName
+            const bookId = getBookIdFromPath(filePath) || ''
+            delay(100).then(async () => {
+                console.log(`uploadToDCS: ${text} - ${owner}`)
+                const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                const metaData = getMetaData(projectPath || '')
+                const { targetLanguageId, targetBibleId, gatewayLanguageId, bookId } = metaData?.["translation.checker"]
+                const repo = getRepoName(targetLanguageId, targetBibleId, gatewayLanguageId, bookId);
+                const results = await uploadRepoToDCS(server, owner, repo, token, projectPath || '')
+
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "uploadToDCSResponse",
+                    data: results,
+                } as TranslationCheckingPostMessages);
+            })
+        }
         
         const getSecret = (text:string, data:object) => {
             const _getSecret = async (text:string, key:string) => {
@@ -823,6 +850,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
                 ["changeTargetVerse"]: changeTargetVerse_,
+                ["uploadToDCS"]: uploadToDCS,
             };
 
             const commandFunction = commandToFunctionMapping[command];

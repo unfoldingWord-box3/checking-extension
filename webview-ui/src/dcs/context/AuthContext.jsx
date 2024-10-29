@@ -39,7 +39,7 @@ export default function AuthContextProvider(props) {
   const [networkError, _setNetworkError] = useState(null)
   const [initialized, setInitialized] = useState(false)
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
-  const defaultServer = QA_BASE_URL
+  const defaultServer = BASE_URL
   const [server, setServer] = useState(defaultServer)
 
   const myStorageProvider = props.storageProvider || { }

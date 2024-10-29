@@ -75,10 +75,12 @@ function hasResourceData(resource:object) {
 }
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
+type uploadToDCSFunction = (server:string, owner:string, token:string) => void;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
     saveCheckingData: saveCheckingDataFunction;
+    uploadToDCS: uploadToDCSFunction;
     initialContextId: object;
     projectKey: string;
 };
@@ -87,7 +89,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
   saveCheckingData,
   initialContextId,
-  projectKey
+  projectKey,
+  uploadToDCS
  }) => {
     const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
@@ -292,6 +295,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             languages={languages}
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
+            uploadToDCS={uploadToDCS}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

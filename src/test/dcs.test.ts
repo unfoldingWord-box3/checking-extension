@@ -122,7 +122,7 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test uploadRepoToDCS', async () => {
-    const results = await uploadRepoToDCS(server, owner, repo, token, testRepoPath, targetLanguageId, targetBibleId, glLanguageId, bookId)
+    const results = await uploadRepoToDCS(server, owner, repo, token, testRepoPath)
     console.log(results)
   })
 

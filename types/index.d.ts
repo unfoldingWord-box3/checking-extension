@@ -16,4 +16,16 @@ export type ResourcesInfo = {
 
 export type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
-    | { command: "getSecretResponse"; data: object };
+    | { command: "getSecretResponse"; data: object }
+    | { command: "uploadToDCSResponse"; data: object };
+
+export type NestedObject = {
+  [key: string]: {
+    [innerKey: string]: any;
+  };
+};
+
+export type GeneralObject = {
+  [key: string]: any;
+};
+

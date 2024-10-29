@@ -24,7 +24,7 @@ import {
     OT_ORIG_LANG,
     OT_ORIG_LANG_BIBLE,
 } from "./BooksOfTheBible";
-import { ResourcesObject } from "../../types";
+import { GeneralObject, ResourcesObject } from "../../types";
 import {
     getCurrentLocale,
     getLanguage,
@@ -1437,13 +1437,19 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
         || (hasBibleBooks && !hasCheckingFiles)
 
     // create metadata
-    const checkingMetaData = {
+    const checkingMetaData: GeneralObject = {
         resourceType: "Translation Checker",
         targetLanguageId,
+        targetOwner,
+        targetBibleId,
         gatewayLanguageId: gl_languageId,
         gatewayLanguageOwner: gl_owner,
         resourcesBasePath: removeHomePath(resourcesBasePath),
     };
+    
+    if (bookId) {
+        checkingMetaData.bookId = bookId
+    }
 
     if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
@@ -1863,6 +1869,12 @@ function isEmptyResourceDir(fullPath: string) {
     return true
 }
 
+export function getMetaData(repoPath:string) {
+    const pathToMetaData = path.join(repoPath, 'metadata.json')
+    const metaData = readJsonFile(pathToMetaData);
+    return metaData
+}
+        
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -2814,4 +2826,8 @@ export function getTsvOLVersionForBook(tsvRelations:string[], bookId:string) {
     const bibleId = _isNT ? NT_ORIG_LANG_BIBLE : OT_ORIG_LANG_BIBLE
     const version = getTsvOLVersion(tsvRelations, bibleId)
     return { bibleId, version }
+}
+
+export function getServer() {
+    return apiHelpers.DCS_BASE_URL
 }

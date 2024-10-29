@@ -33,7 +33,8 @@ export default function CommandDrawer({
   showFeedback,
   languages,
   currentLanguageSelection,
-  translate
+  translate,
+  uploadToDCS
 }) {
   const {
     state: {
@@ -50,6 +51,7 @@ export default function CommandDrawer({
     component: authenticationComponent,
   } = useContext(AuthenticationContext)
   const user = authentication?.user
+  const token = authentication?.token
 
   async function onSettingsClick() {
     const okToContinue = await checkUnsavedChanges()
@@ -168,12 +170,20 @@ export default function CommandDrawer({
         {/*  <ListItemText primary={'Bug Report or Feedback'} />*/}
         {/*</ListItem>*/}
         {user ? ( // if logged in give logout option
-          <ListItem button key={'Logout'} onClick={onLogout}>
-            <ListItemIcon>
-              <ExitToAppIcon />
-            </ListItemIcon>
-            <ListItemText primary={'Logout'} />
-          </ListItem>
+          <>
+            <ListItem button key={'UploadToDCS'} onClick={() => uploadToDCS(server, user?.username, token?.sha1)}>
+              <ListItemIcon>
+                <ExitToAppIcon />
+              </ListItemIcon>
+              <ListItemText primary={'UploadToDCS'} />
+            </ListItem>
+            <ListItem button key={'Logout'} onClick={onLogout}>
+              <ListItemIcon>
+                <BugReportIcon />
+              </ListItemIcon>
+              <ListItemText primary={'Logout'} />
+            </ListItem>
+          </>
         )
         : // or if logged in give login option
         (
