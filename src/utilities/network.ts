@@ -146,7 +146,7 @@ export async function createRepoBranch(server: string, owner: string, repo: stri
   // const url = `${server}/api/v1/repos/${owner}/${repo}/git/refs`;
   const data = {
     new_branch_name: newBranch,
-    old_branch_name: sourceBranch,
+    old_ref_name: sourceBranch,
   };
 
   try {
@@ -169,6 +169,104 @@ export async function createRepoBranch(server: string, owner: string, repo: stri
     }
   }
 }
+
+interface CommitCheckResult {
+  containsCommit: boolean;
+  commitSha: string;
+  message: string;
+}
+
+async function checkCommitInBranch(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  branch: string,
+  commitSha: string,
+  token: string
+): Promise<CommitCheckResult> {
+  try {
+  const results = await getCommitsInBranch(server, repoOwner, repoName, branch, token);
+  const commits = results?.commits;
+  const containsCommit = commits?.some((commit: any) => commit.sha === commitSha);
+
+    return {
+      containsCommit,
+      commitSha,
+      message: containsCommit ? 'Commit is in the master branch.' : 'Commit is not in the master branch.'
+    };
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      // @ts-ignore
+      error: message,
+      status: status
+    }
+  }
+}
+
+interface Commit {
+  sha: string;
+  message: string;
+  author: {
+    name: string;
+    email: string;
+    date: string;
+  };
+  committer: {
+    name: string;
+    email: string;
+    date: string;
+  };
+}
+
+interface getCommitsInBranchResponse {
+  commits: Commit[]
+  status?: number;
+  error?: string;
+}
+
+async function getCommitsInBranch(
+  server: string,
+  repoOwner: string,
+  repoName: string,
+  branchName: string,
+  token: string
+): Promise<getCommitsInBranchResponse> {
+  const apiUrl = `${server}/api/v1/repos/${repoOwner}/${repoName}/commits?sha=${branchName}`;
+
+  try {
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `token ${token}`
+      }
+    });
+
+    const commits = response.data.map((commit: any) => ({
+      sha: commit.sha,
+      message: commit.commit.message,
+      author: {
+        name: commit.commit.author.name,
+        email: commit.commit.author.email,
+        date: commit.commit.author.date
+      },
+      committer: {
+        name: commit.commit.committer.name,
+        email: commit.commit.committer.email,
+        date: commit.commit.committer.date
+      }
+    }));
+    return { commits };
+  } catch (error) {
+    // @ts-ignore
+    console.error('Error:', error.message);
+    throw error
+  }
+}
+
 
 interface UploadFileResponse {
   content: {
@@ -474,6 +572,11 @@ async function getRepoBranches(
       status: status
     }
   }
+}
+
+function getManualPullRequest(server: string, owner: string, repo: string, prNumber: number): string {
+  const url = `${server}/${owner}/${repo}/pulls/${prNumber}`;
+  return url
 }
 
 export async function createPullRequest(server: string, owner: string, repo: string, branchToMergeFrom: string, branchToMergeInto: string, title: string, body: string, token: string): Promise<PullRequest> {
@@ -846,12 +949,12 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
   }
 }
 
-async function makeSureBranchExists(server: string, owner: string, repo: string, token: string, branch: string, branchAlreadyExists = false): Promise<GeneralObject> {
+async function makeSureBranchExists(server: string, owner: string, repo: string, token: string, branch: string, branchAlreadyExists = false, previousCommit: string = ''): Promise<GeneralObject> {
   let newRepo = false;
   let newBranch = false;
   let repoExists = false;
   
-  if (branchAlreadyExists) { // if we know branch already exists, no need to check
+  if (branchAlreadyExists) { // if we know branch already exists, no need to check repo
     repoExists = true
   } else {
     repoExists = await checkIfRepoExists(server, owner, repo, token);
@@ -873,8 +976,16 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
 
   const branchExists = await checkBranchExists(server, owner, repo, branch, token);
   if (!branchExists) {
-    console.log(`updateFilesInBranch - creating repo branch ${branch}`);
-    const results = await createRepoBranch(server, owner, repo, branch, token);
+    let head = 'master'
+    if (previousCommit && !newRepo) {
+      const result = await checkCommitInBranch(server, owner, repo, 'master', previousCommit, token);
+      if (result?.containsCommit) {
+        head = previousCommit
+      }
+    }
+    
+    console.log(`updateFilesInBranch - creating repo branch ${head}`);
+    const results = await createRepoBranch(server, owner, repo, branch, token, head);
     if (results?.error) {
       console.error(`updateFilesInBranch - error creating branch ${branch}`);
       return {
@@ -928,7 +1039,9 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   }
 
   if (!branchExists) {
-    const _results = await makeSureBranchExists(server, owner, repo, token, mergeToMasterBranch, repoExists);
+    // @ts-ignore
+    const previousCommit:string = lastRepo?.commit || '';
+    const _results = await makeSureBranchExists(server, owner, repo, token, mergeToMasterBranch, repoExists, previousCommit);
     if (_results?.error) {
       return _results;
     }
@@ -940,20 +1053,22 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   }
 
   if (!newRepo) {
-    if (newBranch) {
       // @ts-ignore
-      const lastCommit: string = lastRepo?.commit;
-      const branchCurrent = await getRepoBranch(server, owner, repo, "master", token);
-      const currentCommit = branchCurrent?.commit?.id || null;
+      const lastMasterCommit: string = lastRepo?.commit;
+      const masterCurrent = await getRepoBranch(server, owner, repo, "master", token);
+      const masterCommit = masterCurrent?.commit?.id || null;
 
       // validate the last update against the current branch commit
-      const masterChanged = lastCommit && (currentCommit !== lastCommit);
+      const masterChanged = lastMasterCommit && (masterCommit !== lastMasterCommit);
       if (masterChanged) {
         const message = `updateFilesInBranch - master branch SHA changed`;
         console.error(message);
-        throw message;
+        return {
+          error: message,
+          errorMergeConflict: true,
+          url: 'url' // TODO
+        };
       }
-    }
   }
   
   const branch = mergeToMasterBranch
@@ -1057,13 +1172,15 @@ export async function uploadRepoToDCS(server: string, owner: string, repo: strin
     return results
   } catch (error) {
     // @ts-ignore
-    const message = `Error: ${error.message}`;
+    const message = error?.message || error?.toString()
+    const _message = `Error: ${message}`;
     // @ts-ignore
     const status: number = error.status;
     // @ts-ignore
     return {
       // @ts-ignore
-      error: message,
+      error: _message,
+      errorData: error,
       status: status
     }
   }
