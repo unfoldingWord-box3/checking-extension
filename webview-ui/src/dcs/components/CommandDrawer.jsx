@@ -15,6 +15,8 @@ import { AuthContext } from "../context/AuthContext";
 import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authentication";
 import PersonIcon from '@material-ui/icons/Person';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import LockOpenIcon from '@material-ui/icons/LockOpen';
+import LockIcon from '@material-ui/icons/Lock';
 // TODO: Enable buttons once ready to fully implement functionality
 // import DashboardIcon from '@material-ui/icons/Dashboard'
 // import Crop54Icon from '@material-ui/icons/Crop54'
@@ -166,7 +168,7 @@ export default function CommandDrawer({
           <>
             <ListItem button key={'UploadToDCS'} onClick={() => uploadToDCS(server, user?.username, token?.sha1)}>
               <ListItemIcon>
-                <CloudUploadIcon />
+                <LockOpenIcon />
               </ListItemIcon>
               <ListItemText primary={'UploadToDCS'} />
             </ListItem>
@@ -178,11 +180,11 @@ export default function CommandDrawer({
             </ListItem>
           </>
         )
-        : // or if logged in give login option
+        : // or if not logged in give login option
         (
           <ListItem button key={'Login'} onClick={onLogIn}>
             <ListItemIcon>
-              <ExitToAppIcon />
+              <LockIcon />
             </ListItemIcon>
             <ListItemText primary={'Login'} />
           </ListItem>
