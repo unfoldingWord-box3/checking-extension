@@ -1037,14 +1037,14 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
     fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), newDcsStatus);
   }
   
-  console.log(results)
   // @ts-ignore
   return {
-    ...results,
+    repo,
+    owner,
     localFiles,
     uploadedFiles,
-    // @ts-ignore
     mergeComplete,
+    updateSavedData,
   } 
 }
 

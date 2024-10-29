@@ -1,5 +1,5 @@
 // import { vscode } from "./utilities/vscode";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 
@@ -7,7 +7,7 @@ import "../css/styles.css";
 import AuthContextProvider from '../dcs/context/AuthContext'
 
 import type { TnTSV } from "../../../types/TsvTypes"
-import { ResourcesObject } from "../../../types";
+import { GeneralObject, ResourcesObject } from "../../../types";
 import { makeStyles } from "@material-ui/core";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
@@ -205,8 +205,8 @@ function TranslationCheckingView() {
         return promise
     }
 
-    function uploadToDCS(server:string, owner: string, token: string) {
-        const _uploadToDCS = (server:string, owner: string, token: string): Promise<object> => {
+    async function uploadToDCS(server:string, owner: string, token: string): Promise<GeneralObject> {
+        const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
                 saveCallBack("uploadToDCS", resolve);
                 vscode.postMessage({
@@ -217,9 +217,8 @@ function TranslationCheckingView() {
             })
             return promise
         }
-        _uploadToDCS(server, owner, token).then(results => {
-            console.log(results)
-        })
+        const results = await _uploadToDCS(server, owner, token)
+        return results
     }
 
     function sendFirstLoadMessage() {
