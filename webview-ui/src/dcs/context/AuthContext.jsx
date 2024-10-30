@@ -114,8 +114,8 @@ export default function AuthContextProvider(props) {
       }
 
       if (auth) { // verify that auth is still valid
-        doFetch(`${server}/api/v1/user`, auth, HTTP_GET_MAX_WAIT_TIME)
-          .then(response => {
+        try {
+            const response = await doFetch(`${server}/api/v1/user`, auth, HTTP_GET_MAX_WAIT_TIME)
             const httpCode = response?.status || 0;
 
             if (httpCode !== 200) {
@@ -127,8 +127,10 @@ export default function AuthContextProvider(props) {
               } else {
                 processError(null, httpCode);
               }
+            } else {
+              return auth;
             }
-          }).catch(e => {
+        } catch(e) {
           if (e.toString().includes("401")) { // check if 401 code in exception
             console.error(`getAuth() - user token expired`);
             logout();
@@ -136,9 +138,8 @@ export default function AuthContextProvider(props) {
             console.warn(`getAuth() - hard error fetching user info, error=`, e);
             processError(e);
           }
-        });
+        }
       }
-      return auth;
     }
     return null
   }
@@ -183,6 +184,7 @@ export default function AuthContextProvider(props) {
     },
     actions: {
       logout,
+      getAuth,
       showDialogContent,
       setNetworkError,
       setServer,

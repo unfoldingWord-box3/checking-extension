@@ -46,6 +46,7 @@ export default function CommandDrawer({
     },
     actions: {
       logout,
+      getAuth,
       showDialogContent,
       setServer,
     }
@@ -124,6 +125,19 @@ export default function CommandDrawer({
     })
   }
 
+  function handleUpload() {
+    console.log(`handleUpload`)
+    getAuth().then(auth => {
+      if (auth) {
+         uploadToDCS(server, user?.username, token?.sha1);
+      } else {
+        showDialogContent({
+          message: 'Previous Login is no longer valid.  Need to login again.'
+        })
+      }
+    })
+  }
+
   return (
     <SwipeableDrawer
       anchor='left'
@@ -166,7 +180,7 @@ export default function CommandDrawer({
         {/*</ListItem>*/}
         {user ? ( // if logged in give logout option
           <>
-            <ListItem button key={'UploadToDCS'} onClick={() => uploadToDCS(server, user?.username, token?.sha1)}>
+            <ListItem button key={'UploadToDCS'} onClick={handleUpload}>
               <ListItemIcon>
                 <CloudUploadIcon />
               </ListItemIcon>
