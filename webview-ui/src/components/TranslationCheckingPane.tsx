@@ -188,31 +188,36 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             name: bookName
         }
     }
+    function _showDialogContent(params: object) {
+      showDialogContent && showDialogContent(params)
+    }
 
-  function uploadToDCS(server:string, owner: string, token: string) {
-    _uploadToDCS(server, owner, token).then(results => {
-      console.log(`uploadToDCS completed with results:`, results)
-      // @ts-ignore
-      const errorMessage = results?.error;
-      if (errorMessage) {
-        let message = errorMessage;
-        const lastState = results?.lastState;
-        if (lastState) {
-          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-          message = `${message}.  Repo is at ${url}`
+    function uploadToDCS(server:string, owner: string, token: string) {
+      _showDialogContent({ message: 'Doing Upload to DCS' })
+      _uploadToDCS(server, owner, token).then(results => {
+        console.log(`uploadToDCS completed with results:`, results)
+        // @ts-ignore
+        const errorMessage = results?.error;
+        if (errorMessage) {
+          let message = errorMessage;
+          const lastState = results?.lastState;
+          if (lastState) {
+            const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+            message = `${message}.  Repo is at ${url}`
+          }
+          _showDialogContent({ message });
+        } else {
+          let message = 'Upload Success'
+          const lastState = results?.lastState;
+          if (lastState) {
+            const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+            message = `${message} to ${url}`
+          }
+          _showDialogContent({ message });
         }
-        showDialogContent && showDialogContent({ message });
-      } else {
-        let message = 'Upload Success'
-        const lastState = results?.lastState;
-        if (lastState) {
-          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-          message = `${message} to ${url}`
-        }
-        showDialogContent && showDialogContent({ message });
-      }
-    })
-  }
+      })
+    }
+    
     const handleDrawerOpen = () => {
         if (!drawerOpen) {
             setOpen(true)

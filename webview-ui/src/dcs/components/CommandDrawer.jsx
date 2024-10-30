@@ -127,6 +127,7 @@ export default function CommandDrawer({
 
   function handleUpload() {
     console.log(`handleUpload`)
+    showDialogContent({ message: 'Validating Login' })
     getAuth().then(auth => {
       if (auth) {
          uploadToDCS(server, user?.username, token?.sha1);
