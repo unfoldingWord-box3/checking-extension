@@ -67,14 +67,27 @@ function getCallBack(key:string):any {
     return callback;
 }
 
-
+type StateType = {
+    checkingObj: ResourcesObject;
+    initialContextId: object;
+};
 
 console.log("TranslationCheckingView.tsx")
 
 function TranslationCheckingView() {
-    const [checkingObj, setCheckingObj] = useState<ResourcesObject>({});
-    const [initialContextId, setInitialContextId] = useState<object>({});
-    
+    const [state, _setState] = useState<StateType>({
+        checkingObj: {},
+        initialContextId: {},
+    })
+    const {
+        checkingObj,
+        initialContextId,
+    } = state
+
+    function setState(newState:object) {
+        _setState(prevState => ({ ...prevState, ...newState }))
+    }
+
     function getKey(checkingObj:object):string {
         // @ts-ignore
         const project = checkingObj?.project || {};
@@ -94,18 +107,19 @@ function TranslationCheckingView() {
 
     const projectKey = getKey(checkingObj)
 
+    function getContextIdKey(projectKey:string) {
+        return `${projectKey}.contextId`;
+    }
+
     async function initData(data: TnTSV) {
-        const checkingSame = isEqual(checkingObj?.project, data?.project);
-        const key = getKey(data)
+        const key = getContextIdKey(getKey(data))
         secretProvider.getItem(key).then(value => {
             // @ts-ignore
-            const contextId = value;
-            if (contextId) {
-                setInitialContextId(contextId)
-            }
-            if (!checkingSame) {
-                setCheckingObj(data);
-            }
+            const contextId = value || {};
+            setState({
+                checkingObj: data,
+                initialContextId: contextId,
+            })
         })
     }
 
@@ -229,7 +243,9 @@ function TranslationCheckingView() {
             newGroup[index] = newItem
             // @ts-ignore
             newItem.selections = newSelections
-            setCheckingObj(newCheckingObj)
+            setState({
+                checkingObj: newCheckingObj,
+            })
         }
 
         vscode.postMessage({
@@ -241,7 +257,9 @@ function TranslationCheckingView() {
         // @ts-ignore
         const nextContextId = newState && newState.nextContextId
         if (nextContextId && Object.keys(nextContextId).length) {
-            secretProvider.setItem(projectKey, nextContextId);
+            secretProvider.setItem(getContextIdKey(projectKey), nextContextId);
+        } else {
+            secretProvider.setItem(getContextIdKey(projectKey), currentContextId);
         }
     }
 

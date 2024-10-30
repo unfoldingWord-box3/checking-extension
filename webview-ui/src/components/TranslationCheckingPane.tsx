@@ -143,7 +143,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         saveCheckingData && saveCheckingData(newState)
     }
 
-    const contextId = currentContextId || {}
+    const contextId = initialContextId || {}
     const project = checkingObj.project;
     // @ts-ignore
     const bookId = project?.bookId
