@@ -7,8 +7,8 @@ const SEP = path.sep || '/'
 export function readJsonFile(jsonPath:string) {
   if (fs.existsSync(jsonPath)) {
     try {
-      const resourceManifest = fs.readJsonSync(jsonPath);
-      return resourceManifest;
+      const jsonData = fs.readJsonSync(jsonPath);
+      return jsonData;
     } catch (e) {
       console.error(`getLocalResourceList(): could not read ${jsonPath}`, e);
     }
