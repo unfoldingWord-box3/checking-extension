@@ -61,8 +61,8 @@ suite('Tests', () => {
 
 suite.skip('Repo Tests', async ()=> {
   const server = 'https://git.door43.org'
-  const token = env.TOKEN;
-  const owner = env.USER;
+  const token = env.TOKEN || '';
+  const owner = env.USER || '';
   const targetLanguageId = 'pizza';
   const targetBibleId = 'ult';
   const glLanguageId = 'en';
