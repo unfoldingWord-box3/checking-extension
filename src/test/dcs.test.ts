@@ -117,7 +117,8 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test updateFilesInDCS', async () => {
-    const results = await updateFilesInDCS(server, owner, repo, token, testRepoPath)
+    const state = {}
+    const results = await updateFilesInDCS(server, owner, repo, token, testRepoPath, state)
     console.log(results)
   })
 

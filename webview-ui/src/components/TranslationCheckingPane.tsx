@@ -195,9 +195,21 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       // @ts-ignore
       const errorMessage = results?.error;
       if (errorMessage) {
-        showDialogContent && showDialogContent({ message: errorMessage });
+        let message = errorMessage;
+        const lastState = results?.lastState;
+        if (lastState) {
+          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+          message = `${message}.  Repo is at ${url}`
+        }
+        showDialogContent && showDialogContent({ message });
       } else {
-        showDialogContent && showDialogContent({ message: 'Upload Success' });
+        let message = 'Upload Success'
+        const lastState = results?.lastState;
+        if (lastState) {
+          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+          message = `${message} to ${url}`
+        }
+        showDialogContent && showDialogContent({ message });
       }
     })
   }

@@ -168,13 +168,13 @@ export default function CommandDrawer({
           <>
             <ListItem button key={'UploadToDCS'} onClick={() => uploadToDCS(server, user?.username, token?.sha1)}>
               <ListItemIcon>
-                <LockOpenIcon />
+                <CloudUploadIcon />
               </ListItemIcon>
               <ListItemText primary={'UploadToDCS'} />
             </ListItem>
             <ListItem button key={'Logout'} onClick={onLogout}>
               <ListItemIcon>
-                <BugReportIcon />
+                <LockOpenIcon />
               </ListItemIcon>
               <ListItemText primary={'Logout'} />
             </ListItem>

@@ -267,7 +267,6 @@ async function getCommitsInBranch(
   }
 }
 
-
 interface UploadFileResponse {
   content: {
     name: string;
@@ -737,6 +736,7 @@ interface OpenPullRequestData {
   pullRequests: PullRequest[];
   status?: number;
   error?: undefined|string;
+  matchedPullRequest?: PullRequest;
   // Add other fields as needed
 }
 
@@ -1000,13 +1000,39 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
   return { newRepo, newBranch };
 }
 
-export async function updateFilesInDCS(server: string, owner: string, repo: string, token: string, localRepoPath:string): Promise<GeneralObject> {
+async function getMergeToMasterPR(server: string, owner: string, repo: string, token: string, state: GeneralObject) {
+  const prResults = await getOpenPullRequests(server, owner, repo, token);
+  if (!prResults.error) {
+    console.log(`updateFilesInBranch - found ${prResults?.pullRequests?.length} PRs`);
+
+    const pullRequest = prResults?.pullRequests.find(pr => {
+      const baseBranch = pr?.base?.ref;
+      const headBranch = pr?.head?.ref;
+      const match = (baseBranch === "master") && (headBranch === mergeToMasterBranch);
+      return match;
+    });
+    if (pullRequest) {
+      prResults.matchedPullRequest = pullRequest;
+      state.prNumber = pullRequest.number;
+      state.prURL = getManualPullRequest(server, owner, repo, pullRequest.number);
+    }
+  }
+  return prResults;
+}
+
+export async function updateFilesInDCS(server: string, owner: string, repo: string, token: string, localRepoPath:string, state:GeneralObject): Promise<GeneralObject> {
   console.log(`updateFilesInBranch - updating repo ${owner}/${repo}`)
   let lastRepo: DcsUploadStatus = readJsonFile(path.join(localRepoPath, dcsStatusFile))
-  let branchExists = false;
-  let branchPreviouslyCreated = false
-  let newBranch = false;
-  let newRepo = false;
+  state.branchExists = false;
+  state.branchPreviouslyCreated = false
+  state.newBranch = false;
+  state.newRepo = false;
+  let updateSavedData = false
+  state.mergeComplete = false
+  state.server = server
+  state.owner = owner
+  state.repo = repo
+  state.localRepoPath = localRepoPath
   
   const repoExists = await checkIfRepoExists(server, owner, repo, token);
   if (repoExists) {
@@ -1019,10 +1045,16 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 
     const mergeToMaster = branchesResult.branches.find(branch => (branch.name === mergeToMasterBranch))
     const mergeFromMaster = branchesResult.branches.find(branch => (branch.name === mergeFromMasterBranch))
-    branchExists = !!mergeToMaster
-    branchPreviouslyCreated = branchExists
-    
-    if (branchPreviouslyCreated) {
+    state.branchExists = !!mergeToMaster
+    state.branchPreviouslyCreated = state.branchExists
+    if (mergeToMaster) {
+      state.mergeToMaster = mergeToMasterBranch
+    }
+    if (mergeFromMaster) {
+      state.mergeToMaster = mergeFromMasterBranch
+    }
+
+    if (state.branchPreviouslyCreated) {
       console.log(`updateFilesInBranch - merge to master branch already exists`)
     }
     
@@ -1038,21 +1070,21 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
     lastRepo = {} // if no repo yet, we just clear out old data and proceed to upload
   }
 
-  if (!branchExists) {
+  if (!state.branchExists) {
     // @ts-ignore
     const previousCommit:string = lastRepo?.commit || '';
     const _results = await makeSureBranchExists(server, owner, repo, token, mergeToMasterBranch, repoExists, previousCommit);
     if (_results?.error) {
       return _results;
     }
-    newRepo = _results?.newRepo
-    newBranch = _results?.newBranch
-    if (!newBranch) {
-      branchPreviouslyCreated = true
+    state.newRepo = _results?.newRepo
+    state.newBranch = _results?.newBranch
+    if (!state.newBranch) {
+      state.branchPreviouslyCreated = true
     }
   }
 
-  if (!newRepo) {
+  if (!state.newRepo) {
       // @ts-ignore
       const lastMasterCommit: string = lastRepo?.commit;
       const masterCurrent = await getRepoBranch(server, owner, repo, "master", token);
@@ -1066,7 +1098,6 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
         return {
           error: message,
           errorMergeConflict: true,
-          url: 'url' // TODO
         };
       }
   }
@@ -1077,7 +1108,7 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   const results = await getRepoTree(server, owner, repo, branch, token)
   const handledFiles: NestedObject = {}
   let uploadedFiles: NestedObject = lastRepo?.files || {}
-  if (newRepo) { // if new repo then upload everything
+  if (state.newRepo) { // if new repo then upload everything
     uploadedFiles = {}
   }
   
@@ -1090,22 +1121,13 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 
   let pr: PullRequest;
   
-  if (branchPreviouslyCreated) { // check if already PR for branch
-    const prResults = await getOpenPullRequests(server, owner, repo, token)
+  if (state.branchPreviouslyCreated) { // check if already PR for branch
+    const prResults = await getMergeToMasterPR(server, owner, repo, token, state);
     if (prResults.error) {
       return prResults
     }
-
-    console.log(`updateFilesInBranch - found ${prResults?.pullRequests?.length} PRs`);
-
-    const pullRequest = prResults?.pullRequests.find(pr => {
-      const baseBranch = pr?.base?.ref
-      const headBranch = pr?.head?.ref
-      const match = (baseBranch === 'master') && (headBranch === mergeToMasterBranch)
-      return match
-    })
-    if (pullRequest) {
-      pr = pullRequest
+    if (prResults.matchedPullRequest) {
+      pr = prResults.matchedPullRequest
     }
   }
 
@@ -1118,25 +1140,27 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
     const body = `This pull request merges ${branch} into master.`;
     pr = await createPullRequest(server, owner, repo, branch, "master", title, body, token);
     console.log(`updateFilesInBranch - Pull request created: #${pr.number} - ${pr.url}`);
+    state.prNumber = pr.number
+    state.prURL = getManualPullRequest(server, owner, repo, pr.number)
   }
-  let updateSavedData = false
-  let mergeComplete = false
   
   const prStatus = await getChangedFiles(server, owner, repo, pr.number, token)
   if (!prStatus?.length) {
     console.log(`updateFilesInBranch - PR #${pr.number} has no changes, deleting PR`)
-    mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+    state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+    state.noChanges = true
   } else {
     if (!pr.mergeable) {
       console.warn(`updateFilesInBranch - PR #${pr.number} is not mergeable`);
     } else if (pr.merged) {
       console.warn(`updateFilesInBranch - PR #${pr.number} has already been merged, deleting PR`);
-      mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+      state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
+      state.noChanges = true
     } else {
       console.log(`updateFilesInBranch - merging PR #${pr.number}`);
       const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token);
       console.log(`updateFilesInBranch - merged PR`);
-      mergeComplete = true;
+      state.mergeComplete = true;
       updateSavedData = true;
     }
   }
@@ -1144,30 +1168,48 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   if (updateSavedData) {
     const branch = await getRepoBranch(server, owner, repo, 'master', token)
     const commit = branch?.commit?.id || null
+    state.updatedSavedData = true;
     // save latest upload data
     const newDcsStatus = {
       files: uploadedFiles,
       commit,
+      lastState: state,
     };
     fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), newDcsStatus);
   }
   
   // @ts-ignore
   return {
-    repo,
-    owner,
     localFiles,
     uploadedFiles,
-    mergeComplete,
-    updateSavedData,
+    lastState: state,
   } 
 }
 
+function updateDcsStatus(state:GeneralObject, localRepoPath:string) {
+  const statusPath = path.join(localRepoPath, dcsStatusFile)
+  const statusData = readJsonFile(statusPath) || {}
+  statusData.lastState = state
+  fs.outputJsonSync(statusPath, statusData);
+}
+
+function addErrorToDcsStatus(state:GeneralObject, errorResults:GeneralObject, localRepoPath:string) {
+  const newState = {
+    ...state,
+    ...errorResults,
+  }
+  updateDcsStatus(newState, localRepoPath)
+}
+
+
 export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string): Promise<GeneralObject> {
+  const state = {} // for keeping track of current state
   try {
-    const results = await updateFilesInDCS(server, owner, repo, token, localRepoPath);
+    const results = await updateFilesInDCS(server, owner, repo, token, localRepoPath, state);
     if (results.error) {
       console.error(`uploadRepoToDCS - upload error: ${results.error}`)
+      addErrorToDcsStatus(state, results, localRepoPath)
+      results.lastState = state
     }
     return results
   } catch (error) {
@@ -1177,11 +1219,13 @@ export async function uploadRepoToDCS(server: string, owner: string, repo: strin
     // @ts-ignore
     const status: number = error.status;
     // @ts-ignore
-    return {
+    const _error = {
       // @ts-ignore
       error: _message,
       errorData: error,
-      status: status
-    }
+      status: status,
+    };
+    addErrorToDcsStatus(state, _error, localRepoPath)
+    return _error
   }
 }
