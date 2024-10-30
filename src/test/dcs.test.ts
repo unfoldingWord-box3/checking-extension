@@ -47,8 +47,8 @@ function autoDetectProjectFolder() {
 }
 
 const projectFolder = autoDetectProjectFolder();
-// const envPath = path.join(projectFolder, '.env.json')
-// const env = readJsonFile(envPath) || {}
+const envPath = path.join(projectFolder, '.env.json')
+const env = readJsonFile(envPath) || {}
 
 suite('Tests', () => {
   test('Test CRC', async () => {
