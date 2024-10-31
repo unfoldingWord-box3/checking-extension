@@ -1251,7 +1251,7 @@ export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLan
  * @param repoPath
  * @param bookId
  */
-function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
+export function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
         return fs.readdirSync(repoPath).filter((filename: string) => {
             let validFile = (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm");
@@ -1269,7 +1269,7 @@ function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
  * @param repoPath
  * @param bookId
  */
-function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
+export function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
         const bookIdsToMatch = bookId ? [bookId] : Object.keys(ALL_BIBLE_BOOKS)
         return fs.readdirSync(repoPath).filter((filename: string) => {
@@ -2182,7 +2182,16 @@ export function getParsedUSFM(usfmData:string) {
             return usfmjs.toJSON(usfmData, { convertToInt: ['occurrence', 'occurrences'] });
         }
     } catch (e) {
-        console.error(e);
+        console.error(`getParsedUSFM error`, e);
+    }
+}
+
+export function convertJsonToUSFM(bookData:object) {
+    try {
+        const USFM = usfmjs.toUSFM(bookData, { forcedNewLines: true });
+        return USFM
+    } catch (e) {
+        console.error(`convertJsonToUSFM error`, e);
     }
 }
 
@@ -2507,6 +2516,11 @@ export function toInt(value:any):any {
     return (value && typeof value === 'string') ? parseInt(value, 10) : value;
 }
 
+function escapeString(content:string) {
+  const escaped = (content || '').replaceAll('\t', '\\t').replaceAll('\n', ' ').replaceAll('\r', ' ')
+  return escaped
+}
+
 function sortRowsByRef(rows: object[]) {
     const _rows = rows.sort((a, b) => {
         // @ts-ignore
@@ -2607,16 +2621,17 @@ export function checkDataToTwl(checkData:{}) {
                 const groupId = contextId?.groupId || '';
                 const Tags = `${category}`;
                 const quoteString = contextId?.quoteString || '';
-                const OrigWords = `${quoteString}`;
+                const OrigWords = escapeString(`${quoteString}`);
                 const Occurrence = `${contextId?.occurrence || ''}`;
-                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
                 const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
-                const comments = ''
-                const bookmarks = ''
+                const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
+                const comments = escapeString(item?.comments)
+                const bookmarks = item?.reminder ? '1' : '0'
+                const verseEdits = item?.verseEdits ? '1' : '0'
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks, verseEdits
                   },
                 )
             }
@@ -2625,10 +2640,10 @@ export function checkDataToTwl(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks, r.verseEdits
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks'
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks', 'verseEdits'
         ];
         twl.unshift(arrayToTsvLine(keys))
         
@@ -2750,18 +2765,19 @@ export function checkDataToTn(checkData:{}) {
                 const groupId = contextId?.groupId || '';
                 const Tags = `${category}`;
                 const quoteString = contextId?.quoteString || '';
-                const Quote = `${quoteString}`;
+                const Quote = escapeString(`${quoteString}`);
                 const Occurrence = `${contextId?.occurrence || ''}`;
-                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
                 const SupportReference = `rc://*/ta/man/translate/${groupId}`
                 const _note = contextId?.occurrenceNote || '';
                 const Note = `${_note}`;
-                const comments = ''
-                const bookmarks = ''
+                const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
+                const comments = escapeString(item?.comments)
+                const bookmarks = item?.reminder ? '1' : '0'
+                const verseEdits = item?.verseEdits ? '1' : '0'
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, Note, selections, comments, bookmarks
+                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, Note, selections, comments, bookmarks, verseEdits
                   },
                 )
             }
@@ -2770,10 +2786,10 @@ export function checkDataToTn(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.SupportReference, r.Quote, r.Occurrence, r.Note, r.selections, r.comments, r.bookmarks
+            r.Reference,  r.ID, r.Tags, r.SupportReference, r.Quote, r.Occurrence, r.Note, r.selections, r.comments, r.bookmarks, r.verseEdits
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note', 'selections', 'comments', 'bookmarks'
+            'Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note', 'selections', 'comments', 'bookmarks', 'verseEdits'
         ];
         twl.unshift(arrayToTsvLine(keys))
 

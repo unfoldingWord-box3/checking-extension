@@ -1,9 +1,22 @@
 import axios from "axios";
-import { getRepoFileName } from "./resourceUtils";
+import {
+  checkDataToTn,
+  checkDataToTwl,
+  convertJsonToUSFM,
+  flattenGroupData,
+  getBibleBookFolders,
+  getRepoFileName,
+} from "./resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from "path";
-import { getAllFiles, getChecksum, getPatch, readJsonFile } from "./fileUtils";
+import {
+  getAllFiles,
+  getChecksum,
+  getFilesOfType,
+  getPatch,
+  readJsonFile
+} from "./fileUtils";
 import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 
 export const mergeToMasterBranch = 'merge_changes_to_master'
@@ -1365,7 +1378,75 @@ function addErrorToDcsStatus(state:GeneralObject, errorResults:GeneralObject, lo
 }
 
 
+function updateOutputFiles(localRepoPath: string) {
+  const outputFolder = "output_READONLY";
+
+  try {
+    // output tn TSV
+    const tnCheckingPath = path.join(localRepoPath, "checking/tn");
+    let files = getFilesOfType(tnCheckingPath, ".tn_check");
+    files.forEach((file: string) => {
+      const filePath = path.join(tnCheckingPath, file);
+      const checkData = readJsonFile(filePath);
+      const groupData = flattenGroupData(checkData);
+      const tsv = checkDataToTn(groupData);
+      if (tsv) {
+        const outputPath = path.join(localRepoPath, outputFolder, file + ".tsv");
+        fs.outputFileSync(outputPath, tsv, "UTF-8");
+      }
+    });
+  } catch (e) {
+    console.warn(`updateOutputFiles - error updating tN tsv`)
+  }
+
+  try {
+    // output twl TSV
+    const twlCheckingPath = path.join(localRepoPath, "checking/twl");
+    const files = getFilesOfType(twlCheckingPath, ".twl_check");
+    files.forEach((file: string) => {
+      const filePath = path.join(twlCheckingPath, file);
+      const checkData = readJsonFile(filePath);
+      const groupData = flattenGroupData(checkData);
+      const tsv = checkDataToTwl(groupData);
+      if (tsv) {
+        const outputPath = path.join(localRepoPath, outputFolder, file + ".tsv");
+        fs.outputFileSync(outputPath, tsv, "UTF-8");
+      }
+    });
+  } catch (e) {
+    console.warn(`updateOutputFiles - error updating twl tsv`)
+  }
+  
+  try {
+    const targetBiblePath = path.join(localRepoPath, 'targetBible')
+    const books = getBibleBookFolders(targetBiblePath)
+    books.forEach((bookId:string) => {
+      const bookPath = path.join(targetBiblePath, bookId)
+      const chapters = getFilesOfType(bookPath, `.json`)
+      const bookData = { chapters: {} }
+      chapters.forEach((fileName:string) => {
+        const filePath = path.join(bookPath, fileName)
+        const chapterData = readJsonFile(filePath)
+        if (fileName.toLowerCase() === 'headers.json') {
+          // @ts-ignore
+          bookData.headers = chapterData
+        } else {
+          const chapter = path.parse(fileName).name
+          // @ts-ignore
+          bookData.chapters[chapter] = chapterData
+        }
+      })
+      const USFM = convertJsonToUSFM(bookData)
+      const outputPath = path.join(localRepoPath, outputFolder, `targetBible.USFM`);
+      fs.outputFileSync(outputPath, USFM, "UTF-8");
+    })
+  } catch (e) {
+    console.warn(`updateOutputFiles - error updating twl tsv`)
+  }
+}
+
 export async function uploadRepoToDCS(server: string, owner: string, repo: string,  token: string, localRepoPath:string): Promise<GeneralObject> {
+  updateOutputFiles(localRepoPath);
   const state = {} // for keeping track of current state
   try {
     const results = await updateFilesInDCS(server, owner, repo, token, localRepoPath, state);

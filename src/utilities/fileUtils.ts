@@ -106,7 +106,7 @@ export function copyFiles(sourcePath: string, destPath: string, files: string[])
  * @param fileType
  * @param bookId
  */
-export function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null) {
+export function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null):string[] {
   if (fs.pathExistsSync(repoPath)) {
     return fs.readdirSync(repoPath).filter((filename: string) => {
       const fileNameLC = filename.toLowerCase();
