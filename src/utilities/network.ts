@@ -1,13 +1,9 @@
-import axios from 'axios';
-import { getRepoFileName, projectsBasePath } from "./resourceUtils";
+import axios from "axios";
+import { getRepoFileName } from "./resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
-import * as path from 'path';
-import {
-  getAllFiles,
-  getChecksum,
-  readJsonFile
-} from "./fileUtils";
+import * as path from "path";
+import { getAllFiles, getChecksum, getPatch, readJsonFile } from "./fileUtils";
 import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 
 export const mergeToMasterBranch = 'merge_changes_to_master'
@@ -221,6 +217,8 @@ interface Commit {
     email: string;
     date: string;
   };
+  status?: number;
+  error?: string;
 }
 
 interface getCommitsInBranchResponse {
@@ -305,14 +303,14 @@ interface UploadFileResponse {
       html_url: string;
     }>;
   };
-  status: number;
-  error: undefined|string;
+  status?: number;
+  error?: string;
 }
 
 export async function uploadRepoFile(server: string, owner: string, repo: string, branch: string, filePath: string, content: Buffer, token: string): Promise<UploadFileResponse> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/contents/${filePath}`;
   const data = {
-    content: content.toString('base64'),
+    content: Buffer.from(content).toString('base64'),
     message: `Create ${filePath}`,
     branch: branch
   };
@@ -339,7 +337,7 @@ export async function uploadRepoFile(server: string, owner: string, repo: string
 }
 
 export async function uploadRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string): Promise<UploadFileResponse> {
-  const content = fs.readFileSync(sourceFilePath);
+  const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
   const results = await uploadRepoFile(server, owner, repo, branch, uploadPath, content, token)
   return results
 }
@@ -382,14 +380,14 @@ interface ModifyFileResponse {
       html_url: string;
     }>;
   };
-  status: number;
-  error: undefined|string;
+  status?: number;
+  error?: string;
 }
 
 export async function modifyRepoFile(server: string, owner: string, repo: string, branch: string, filePath: string, content: Buffer, token: string, sha: string): Promise<UploadFileResponse> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/contents/${filePath}`;
   const data = {
-    content: content.toString('base64'),
+    content: Buffer.from(content).toString('base64'),
     message: `Update ${filePath}`,
     branch: branch,
     sha: sha
@@ -416,9 +414,83 @@ export async function modifyRepoFile(server: string, owner: string, repo: string
   }
 }
 
-export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string): Promise<ModifyFileResponse> {
-  const content = fs.readFileSync(sourceFilePath);
-  const results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha)
+async function uploadRepoDiffPatchFile(
+  server: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  filePath: string,
+  patch: string,
+  sha: string,
+  token: string
+): Promise<Commit> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}/diffpatch`;
+  const headers = {
+    Authorization: `token ${token}`,
+    'Content-Type': 'application/json',
+  };
+
+  const encodedPatch = Buffer.from(patch).toString('base64');
+
+  const data = {
+    branch: branch,
+    content: encodedPatch,
+    from_path: '.',
+    message: 'Applying diffpatch',
+    sha,
+    signoff: true
+  };
+
+  try {
+    const response = await axios.post(url, data, { headers });
+    return response.data as Commit;
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
+  }
+}
+
+export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string, downloadAndDiff = false): Promise<ModifyFileResponse> {
+  let results:UploadFileResponse
+  
+  if (!downloadAndDiff) {
+    const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
+    results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
+  } else {
+    const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
+    if (fileData?.error) {
+      // @ts-ignore
+      return fileData;
+    }
+    const dcsContent = fileData?.content
+    const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
+    if (dcsContent === content) { // if no change
+      // nothing to do
+      return {
+        // @ts-ignore
+        success: true,
+        content,
+      }
+    } else
+    if (dcsContent) {
+      const diffPatch = getPatch(uploadPath, dcsContent, content, false, 4)
+      // @ts-ignore
+      results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, fileData.sha, token)
+      results.content = content
+    } else {
+      const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
+      results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
+    }
+  }
+
+  // @ts-ignore
   return results
 }
 
@@ -634,6 +706,52 @@ export async function getChangedFiles(
     // @ts-ignore
     console.error('Error getting changed files:', error);
     throw error;
+  }
+}
+
+interface FileData {
+  content: string;
+  encoding: string;
+  url: string;
+  sha: string;
+  size: number;
+  error?: string;
+  status?: number;
+}
+
+async function getFileFromBranch(
+  server: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  filePath: string,
+  token: string
+): Promise<FileData> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
+  const headers = {
+    Authorization: `token ${token}`,
+  };
+
+  try {
+    const response = await axios.get(url, { headers });
+    const fileData = response.data as FileData;
+    if (response?.data?.encoding === 'base64') {
+      const decodedContent = Buffer.from(fileData.content, "base64").toString("utf-8");
+      // @ts-ignore
+      fileData.content = decodedContent
+    }
+    return fileData;
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      // @ts-ignore
+      error: message,
+      status: status
+    }
   }
 }
 
@@ -900,7 +1018,7 @@ async function deleteTheBranchAndPR(server: string, owner: string, repo: string,
 async function updateFilesInBranch(localFiles: string[], localRepoPath: string, handledFiles: NestedObject, uploadedFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<number> {
   let changedFiles = 0;
   for (const localFile of localFiles) {
-    if ((localFile === dcsStatusFile) || (localFile === ".DS_Store")) { // skip over DCS data file, and system files
+    if ((localFile.includes(dcsStatusFile)) || (localFile === ".DS_Store")) { // skip over DCS data file, and system files
       continue;
     }
 
@@ -931,7 +1049,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
       } else {
         console.log(`updateFilesInBranch - updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha);
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, false);
       }
       
       changedFiles++
@@ -1048,16 +1166,9 @@ async function getMergeToMasterPR(server: string, owner: string, repo: string, t
   return prResults;
 }
 
-function addOwnersUploadStateTDcsState(dcsState: ResourcesObject | undefined, owner: string, state: GeneralObject) {
-  const _dcsState = dcsState || {};
-  _dcsState[owner] = state;
-  return _dcsState;
-}
-
 export async function updateFilesInDCS(server: string, owner: string, repo: string, token: string, localRepoPath:string, state:GeneralObject): Promise<GeneralObject> {
-  console.log(`updateFilesInBranch - updating repo ${owner}/${repo}`)
-  let dcsState: GeneralObject = readJsonFile(path.join(localRepoPath, dcsStatusFile))
-  let lastUserState = dcsState?.[owner] as DcsUploadStatus
+  console.log(`updateFilesInDCS - updating repo ${owner}/${repo}`)
+  let dcsState: DcsUploadStatus = readJsonFile(path.join(localRepoPath, dcsStatusFile, owner))
   state.branchExists = false;
   state.branchPreviouslyCreated = false
   state.newBranch = false;
@@ -1069,13 +1180,13 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   state.repo = repo
   state.localRepoPath = localRepoPath
 
-  const lastState = lastUserState?.lastState as GeneralObject;
+  const lastState = dcsState?.lastState as GeneralObject;
   if (lastState) {
     // @ts-ignore
     const repoChanged = (lastState.server !== server) || (lastState.owner !== owner) || (lastState.repo !== repo)
     if (repoChanged) {
-      console.log(`updateFilesInBranch - repo moved.  Last upload was to ${lastState.server}/${lastState.owner}/${lastState.repo}.  Now treating as new upload to ${server}/${owner}/${repo}`);
-      lastUserState = {}; // clear out old data and proceed as if new upload
+      console.log(`updateFilesInDCS - repo moved.  Last upload was to ${lastState.server}/${lastState.owner}/${lastState.repo}.  Now treating as new upload to ${server}/${owner}/${repo}`);
+      dcsState = {}; // clear out old data and proceed as if new upload
     }
   }
   
@@ -1086,7 +1197,7 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
       return branchesResult
     }
 
-    console.log(`updateFilesInBranch - found ${branchesResult?.branches?.length} Branches`);
+    console.log(`updateFilesInDCS - found ${branchesResult?.branches?.length} Branches`);
 
     const mergeToMaster = branchesResult.branches.find(branch => (branch.name === mergeToMasterBranch))
     const mergeFromMaster = branchesResult.branches.find(branch => (branch.name === mergeFromMasterBranch))
@@ -1100,11 +1211,11 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
     }
 
     if (state.branchPreviouslyCreated) {
-      console.log(`updateFilesInBranch - merge to master branch already exists`)
+      console.log(`updateFilesInDCS - merge to master branch already exists`)
     }
     
     if (mergeFromMaster) {
-      const message = `updateFilesInBranch - merge from master branch already exists`;
+      const message = `updateFilesInDCS - merge from master branch already exists`;
       console.warn(message);
       return {
         error: message,
@@ -1112,12 +1223,12 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
       }
     }
   } else {
-    lastUserState = {} // if no repo yet, we just clear out old data and proceed to upload
+    dcsState = {} // if no repo yet, we just clear out old data and proceed to upload
   }
 
   if (!state.branchExists) {
     // @ts-ignore
-    const previousCommit:string = lastUserState?.commit || '';
+    const previousCommit:string = dcsState?.commit || '';
     const _results = await makeSureBranchExists(server, owner, repo, token, mergeToMasterBranch, repoExists, previousCommit);
     if (_results?.error) {
       return _results;
@@ -1131,14 +1242,14 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 
   if (!state.newRepo) {
       // @ts-ignore
-      const lastMasterCommit: string = lastUserState?.commit;
+      const lastMasterCommit: string = dcsState?.commit;
       const masterCurrent = await getRepoBranch(server, owner, repo, "master", token);
       const masterCommit = masterCurrent?.commit?.id || null;
 
       // validate the last update against the current branch commit
       const masterChanged = lastMasterCommit && (masterCommit !== lastMasterCommit);
       if (masterChanged) {
-        const message = `updateFilesInBranch - master branch SHA changed`;
+        const message = `updateFilesInDCS - master branch SHA changed`;
         console.error(message);
         return {
           error: message,
@@ -1152,7 +1263,7 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   const localFiles = getAllFiles(localRepoPath);
   const results = await getRepoTree(server, owner, repo, branch, token)
   const handledFiles: NestedObject = {}
-  let uploadedFiles: NestedObject = lastUserState?.files || {}
+  let uploadedFiles: NestedObject = dcsState?.files || {}
   if (state.newRepo) { // if new repo then upload everything
     uploadedFiles = {}
   }
@@ -1191,31 +1302,31 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
   
   const prStatus = await getChangedFiles(server, owner, repo, pr.number, token)
   if (!prStatus?.length) {
-    console.log(`updateFilesInBranch - PR #${pr.number} has no changes, deleting PR`)
+    console.log(`updateFilesInDCS - PR #${pr.number} has no changes, deleting PR`)
     state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
     state.noChanges = true
   } else {
-    console.log(`updateFilesInBranch - PR #${pr.number} has ${prStatus?.length} changes`, prStatus)
+    console.log(`updateFilesInDCS - PR #${pr.number} has ${prStatus?.length} changes`, prStatus)
     if (!pr.mergeable) {
-      console.warn(`updateFilesInBranch - PR #${pr.number} is not mergeable`);
+      console.warn(`updateFilesInDCS - PR #${pr.number} is not mergeable`);
     } else if (pr.merged) {
-      console.warn(`updateFilesInBranch - PR #${pr.number} has already been merged, deleting PR`);
+      console.warn(`updateFilesInDCS - PR #${pr.number} has already been merged, deleting PR`);
       state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
       state.noChanges = true
     } else {
-      console.log(`updateFilesInBranch - merging PR #${pr.number}`);
+      console.log(`updateFilesInDCS - merging PR #${pr.number}`);
       const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token, 2);
       if (response.error) {
         return response
       }
-      console.log(`updateFilesInBranch - merged PR`);
+      console.log(`updateFilesInDCS - merged PR`);
       state.mergeComplete = true;
       updateSavedData = true;
     }
   }
   
   if (updateSavedData) {
-    console.log(`updateFilesInBranch - updating saved data`);
+    console.log(`updateFilesInDCS - updating saved data`);
     const branch = await getRepoBranch(server, owner, repo, 'master', token)
     const commit = branch?.commit?.id || null
     state.updatedSavedData = true;
@@ -1225,11 +1336,10 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
       commit,
       lastState: state,
     };
-    const _newDcsStatus = addOwnersUploadStateTDcsState(dcsState, owner, newStatus)
-    fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile), _newDcsStatus);
+    fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile, owner), newStatus);
   }
 
-  console.log(`updateFilesInBranch - upload complete`);
+  console.log(`updateFilesInDCS - upload complete`);
 
   // @ts-ignore
   return {
@@ -1240,11 +1350,9 @@ export async function updateFilesInDCS(server: string, owner: string, repo: stri
 }
 
 function updateDcsStatus(state:GeneralObject, localRepoPath:string, owner:string) {
-  const statusPath = path.join(localRepoPath, dcsStatusFile)
+  const statusPath = path.join(localRepoPath, dcsStatusFile, owner)
   const dcsState = readJsonFile(statusPath) || {}
-  const ownerStatus = dcsState?.[owner] || {};
-  ownerStatus.lastState = state
-  dcsState[owner] = ownerStatus
+  dcsState.lastState = state
   fs.outputJsonSync(statusPath, dcsState);
 }
 

@@ -2,6 +2,9 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as crypto from "node:crypto";
+// @ts-ignore
+import { applyPatch, createPatch } from 'diff'
+
 const SEP = path.sep || '/'
 
 export function readJsonFile(jsonPath:string) {
@@ -168,3 +171,35 @@ export function readHelpsFolder(folderPath:string, filterBook:string = '', ignor
   }
   return contents
 }
+
+/**
+ * replace any characters that are not compatible with a json string content
+ * @param {string} diffFile
+ * @return {string} escaped text
+ */
+export function escapeJsonStringChars(diffFile:string) {
+  let newDiff = diffFile.replaceAll('\\', '\\\\')
+  newDiff = newDiff.replaceAll('\n\r', '\\n')
+  newDiff = newDiff.replaceAll('\n', '\\n')
+  newDiff = newDiff.replaceAll('"', '\\"')
+  return newDiff
+}
+
+/**
+ * create a patch of the differences between the contents of originalFile and editedFile
+ * @param {string} fileName - name of the file being changed
+ * @param {string} originalFileContents - original file contents
+ * @param {string} editedFileContents - new file contents
+ * @param {boolean} jsonEscape - if true then we escape characters to fit in json string contents
+ * @param {number} contextLines - number of context lines to include in patch
+ * @return {string} - differences between files
+ */
+export function getPatch(fileName:string, originalFileContents:string, editedFileContents:string, jsonEscape = false, contextLines = 4) {
+  let diffResult = createPatch(fileName, originalFileContents, editedFileContents, undefined, undefined, { context: contextLines })
+
+  if (jsonEscape) {
+    diffResult = escapeJsonStringChars(diffResult)
+  }
+  return diffResult
+}
+
