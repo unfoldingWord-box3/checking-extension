@@ -23,7 +23,7 @@ import {
   getRepoName,
   getRepoTree,
   uploadRepoFileFromPath,
-  updateFilesInDCS,
+  updateContentOnDCS,
   uploadRepoToDCS,
   getChangedFiles,
 } from "../utilities/network";
@@ -118,7 +118,7 @@ suite.skip('Repo Tests', async ()=> {
 
   test('Test updateFilesInDCS', async () => {
     const state = {}
-    const results = await updateFilesInDCS(server, owner, repo, token, testRepoPath, state)
+    const results = await updateContentOnDCS(server, owner, repo, token, testRepoPath, state)
     console.log(results)
   })
 
