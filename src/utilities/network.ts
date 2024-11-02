@@ -1162,14 +1162,28 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
 export async function downloadRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
   fs.ensureDirSync(localRepoPath)
   const treeResults = await getRepoTree(server, owner, repo, 'master', token);
-  const handledFiles: NestedObject = {};
+  if (treeResults.error) {
+    return treeResults
+  }
+
+  const dcsFiles: NestedObject = {};
 
   for (const file of treeResults?.tree || []) { // make object indexed by path
     // @ts-ignore
-    handledFiles[file.path] = file;
+    dcsFiles[file.path] = file;
   }
 
-  const results = await downloadFilesInBranch(localRepoPath, handledFiles, server, owner, repo, branch, token)
+  const commit = treeResults.sha || '';
+  const results = await downloadFilesInBranch(localRepoPath, dcsFiles, server, owner, repo, commit, token)
+  
+  const newStatus = {
+    files: dcsFiles,
+    commit,
+    lastState: { 
+      downloaded: true
+    },
+  };
+  fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile, owner), newStatus);
   return results
 }
 
@@ -1182,48 +1196,35 @@ async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObje
     }
 
     const fullFilePath = path.join(localRepoPath, fileName);
-    const newFileData = dcsFiles[fileName];
+    const dcsFileData = dcsFiles[fileName];
     let localChecksum: string = "";
 
     let results = null;
-    
-    console.log(`downloadFilesInBranch - updating changed file ${fileName}`);
-    const sha = newFileData?.sha || "";
-    results = await getFileFromBranch(server, owner, repo, sha, fileName, token);
-          
-    changedFiles++
+    const fileType = dcsFileData?.type;
 
-    if (!results?.error) {
-      // @ts-ignore
-      const fileData = results.content;
-      fs.outputFileSync(fullFilePath, fileData, 'UTF-8');
-      localChecksum = await getChecksum(fullFilePath);
-      newFileData.checksum = localChecksum
-      // @ts-ignore
-      delete newFileData["content"];
-    } else {
-      // @ts-ignore
-      results.errorDownloading = true
-      console.error(results.error);
-      return results
-    }
-  }
-
-  for (const file of Object.keys(dcsFiles)) {
-    const fileData = dcsFiles[file];
-    const fileType = fileData?.type;
     if (fileType === "file" || fileType === "blob") {
-      console.log(`downloadFilesInBranch - deleting ${file}`);
+      console.log(`downloadFilesInBranch - downloading file ${fileName}`);
+      results = await getFileFromBranch(server, owner, repo, branch, fileName, token);
 
-      const sha = fileData?.sha || "";
-      const results = await getFileFromBranch(server, owner, repo, branch, file, token)
-        deleteRepoFile(server, owner, repo, branch, file, token, sha);
+      changedFiles++
 
-      if (results?.error) {
-        console.log(results);
+      if (!results?.error) {
+        // @ts-ignore
+        const fileData = results.content;
+        fs.outputFileSync(fullFilePath, fileData, 'UTF-8');
+        localChecksum = await getChecksum(fullFilePath);
+        dcsFileData.checksum = localChecksum
+        // @ts-ignore
+        delete dcsFileData["content"];
+      } else {
+        // @ts-ignore
+        results.errorDownloading = true
+        console.error(results.error);
+        return results
       }
     }
   }
+
   console.log(`downloadFilesInBranch - files downloaded count ${changedFiles}`);
   return { changedFiles }
 }
