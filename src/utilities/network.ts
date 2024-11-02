@@ -1048,22 +1048,6 @@ async function createTag(
   }
 }
 
-// const owner = 'your-username';
-// const repo = 'your-repo';
-// const tagName = 'v1.0.0';
-// const tagMessage = 'Initial release';
-// const target = 'main';
-// const token = 'your-api-token';
-//
-// createTag(owner, repo, tagName, tagMessage, target, token)
-//   .then((tagData) => {
-//     console.log('Tag created:', tagData);
-//   })
-//   .catch((error) => {
-//     console.error('Error:', error.message);
-//   });
-
-
 type DcsUploadStatus = {
   files?: NestedObject;
   commit?: ResourcesObject,
@@ -1128,7 +1112,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
         const sha = remoteFileData?.sha || "";
         results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, false);
       }
-      
+
       changedFiles++
 
       if (!results?.error) {
@@ -1172,6 +1156,75 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
     }
   }
   console.log(`updateFilesInBranch - files changed count ${changedFiles}`);
+  return { changedFiles }
+}
+
+export async function downloadRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
+  fs.ensureDirSync(localRepoPath)
+  const treeResults = await getRepoTree(server, owner, repo, 'master', token);
+  const handledFiles: NestedObject = {};
+
+  for (const file of treeResults?.tree || []) { // make object indexed by path
+    // @ts-ignore
+    handledFiles[file.path] = file;
+  }
+
+  const results = await downloadFilesInBranch(localRepoPath, handledFiles, server, owner, repo, branch, token)
+  return results
+}
+
+async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
+  let changedFiles = 0;
+  const files = Object.keys(dcsFiles)
+  for (const fileName of files) {
+    if ((fileName.includes(dcsStatusFile)) || (fileName === ".DS_Store")) { // skip over DCS data file, and system files
+      continue;
+    }
+
+    const fullFilePath = path.join(localRepoPath, fileName);
+    const newFileData = dcsFiles[fileName];
+    let localChecksum: string = "";
+
+    let results = null;
+    
+    console.log(`downloadFilesInBranch - updating changed file ${fileName}`);
+    const sha = newFileData?.sha || "";
+    results = await getFileFromBranch(server, owner, repo, sha, fileName, token);
+          
+    changedFiles++
+
+    if (!results?.error) {
+      // @ts-ignore
+      const fileData = results.content;
+      fs.outputFileSync(fullFilePath, fileData, 'UTF-8');
+      localChecksum = await getChecksum(fullFilePath);
+      newFileData.checksum = localChecksum
+      // @ts-ignore
+      delete newFileData["content"];
+    } else {
+      // @ts-ignore
+      results.errorDownloading = true
+      console.error(results.error);
+      return results
+    }
+  }
+
+  for (const file of Object.keys(dcsFiles)) {
+    const fileData = dcsFiles[file];
+    const fileType = fileData?.type;
+    if (fileType === "file" || fileType === "blob") {
+      console.log(`downloadFilesInBranch - deleting ${file}`);
+
+      const sha = fileData?.sha || "";
+      const results = await getFileFromBranch(server, owner, repo, branch, file, token)
+        deleteRepoFile(server, owner, repo, branch, file, token, sha);
+
+      if (results?.error) {
+        console.log(results);
+      }
+    }
+  }
+  console.log(`downloadFilesInBranch - files downloaded count ${changedFiles}`);
   return { changedFiles }
 }
 

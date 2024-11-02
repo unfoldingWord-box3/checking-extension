@@ -20,6 +20,7 @@ import {
 import {
   createRepoBranch,
   createCheckingRepository,
+  downloadRepoFromBranch,
   getRepoName,
   getRepoTree,
   uploadRepoFileFromPath,
@@ -59,18 +60,18 @@ suite('Tests', () => {
   });
 });
 
-suite.skip('Repo Tests', async ()=> {
-  const server = 'https://git.door43.org'
-  const token = env.TOKEN || '';
-  const owner = env.USER || '';
-  const targetLanguageId = 'pizza';
-  const targetBibleId = 'ult';
-  const glLanguageId = 'en';
-  const bookId = 'tit';
-  const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
-  const testBranchName = 'update_current';
-  const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
-  
+const server = 'https://git.door43.org'
+const token = env.TOKEN || '';
+const owner = env.USER || '';
+const targetLanguageId = 'pizza';
+const targetBibleId = 'ult';
+const glLanguageId = 'en';
+const bookId = 'tit';
+const repo = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId);
+const testBranchName = 'update_current';
+const testRepoPath = path.join(ospath.home(), env.TEST_PROJECT)
+
+suite('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
     const repoName = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId)
     assert.equal(repoName, "pigeon_ult_en_tit_checking")
@@ -89,6 +90,12 @@ suite.skip('Repo Tests', async ()=> {
     const branch = await createRepoBranch(server, owner, repo, newBranch, token)
     assert.ok(!branch.error)
     assert.equal(branch.name, newBranch)
+  })
+
+  test('Test downloadRepo', async () => {
+    const branch = 'master'
+    const results = await downloadRepoFromBranch(testRepoPath, server, owner, repo, branch, token)
+    assert.ok(!results.error)
   })
 
   test('Test createRepoFile', async () => {
