@@ -34,6 +34,7 @@ import {
 import * as tsvparser from "uw-tsv-parser";
 // @ts-ignore
 import * as tsvGroupdataParser from "tsv-groupdata-parser"
+import { request } from "node:http";
 
 // helpers
 const {
@@ -67,6 +68,93 @@ const RESOURCE_ID_MAP = {
 
 const checkingHelpsResources = [
     { id:'ta' }, { id:'tw' }, { id:'twl', bookRes: true }, { id: 'tn', bookRes: true }]
+
+/**
+ * does http request and returns the response data parsed from JSON
+ * @param {string} url
+ * @param {number} retries
+ * @return {Promise<{Object}>}
+ */
+export async function makeJsonRequestDetailed(url:string, retries= 5): Promise<any> {
+    let result_;
+    for (let i = 1; i <= retries; i++) {
+        result_ = null;
+        try {
+            result_ = await new Promise((resolve, reject) => {
+                // @ts-ignore
+                request(url, function(error: any, response: any, body: string) {
+                    if (error)
+                        reject(error);
+                    else if (response.statusCode === 200) {
+                        let result = body;
+                        try {
+                            result = JSON.parse(body);
+                        } catch (e) {
+                            reject(e);
+                        }
+                        resolve({result, response, body});
+                    } else {
+                        reject(`fetch error ${response.statusCode}`);
+                    }
+                });
+            });
+        } catch (e) {
+            if (i >= retries) {
+                console.warn(`makeJsonRequestDetailed(${url}) - error getting data`, e);
+                throw e;
+            }
+            result_ = null;
+            console.log(`makeJsonRequestDetailed(${url}) - retry ${i+1} getting data, last error`, e);
+            await delay(500);
+        }
+
+        if (result_) {
+            break;
+        }
+    }
+    return result_;
+}
+
+/**
+ * does specific page query and returns the response data parsed from JSON
+ * @param {string} url
+ * @param {number} page
+ * @param {number} retries
+ * @return {Promise<{Object}>}
+ */
+export async function doMultipartQueryPage(url:string, page = 1, retries = 5):Promise<any> {
+    const url_ = `${url}&page=${page}`;
+    const {result, response} = await makeJsonRequestDetailed(url_, retries);
+    const pos = response && response.rawHeaders && response.rawHeaders.indexOf('X-Total-Count');
+    const totalCount = (pos >= 0) ? parseInt(response.rawHeaders[pos + 1]) : 0;
+    const items = result && result.data || null;
+    return {items, totalCount};
+}
+
+/**
+ * does multipart query and returns the response data parsed from JSON. Continues to read pages until all results are returned.
+ * @param {string} url
+ * @param {number} retries
+ * @return {Promise<{Object}>}
+ */
+export async function doMultipartQuery(url:string, retries = 5) {
+    let page = 1;
+    let data:any[] = [];
+    const {items, totalCount} = await doMultipartQueryPage(url, page, retries = 5);
+    let lastItems = items;
+    let totalCount_ = totalCount;
+    data = data.concat(items);
+    while (lastItems && data.length < totalCount_) {
+        const {items, totalCount} = await doMultipartQueryPage(url, ++page, retries = 5);
+        lastItems = items;
+        totalCount_ = totalCount;
+        if (items && items.length) {
+            data = data.concat(items);
+        }
+    }
+
+    return data;
+}
 
 /**
  * merge helps folder into single json file
@@ -401,8 +489,41 @@ function getDestFolderForRepoFile(resourcesPath: string, languageId: string, res
     return destFolder;
 }
 
-async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
-    let downloadUrl = masterBranchUrl + repoFilePath;
+export async function fetchFileFromRepo(server: string, owner: string, repo: string, branch: string, localRepoPath: string, fileName: string) {
+    const baseUrl = `${server}/${owner}/${repo}/raw/branch/${branch}`;
+    const results = await fetchFileFromUrl(baseUrl, localRepoPath, fileName);
+    return results;
+}
+
+export async function fetchFileFromUrl(baseUrl: string, repoFilePath: string, filePath: string) {
+    const _filePath = filePath?.replace('./', '')
+    const downloadUrl = `${baseUrl}/${_filePath}`
+    const destFilePath = path.join(repoFilePath, _filePath)
+    const destFolder = path.dirname(destFilePath)
+    fs.ensureDirSync(destFolder)
+    let error:string = ''
+
+    try {
+        const results = await downloadHelpers.download(downloadUrl, destFilePath);
+        if (results.status === 200) {
+            return { 
+                success: true
+            }
+        }
+        error = `fetchFileFromUrl(${downloadUrl}) - returned status ${results.status}`
+        console.warn(`fetchFileFromUrl(${downloadUrl}) - returned status ${results.status}`)
+    } catch (e) {
+        error = `fetchFileFromUrl(${downloadUrl}) - failed`
+        console.warn(`fetchFileFromUrl(${downloadUrl}) - failed`)
+    }
+    return { 
+        success: false,
+        error
+    }
+}
+
+async function fetchRepoFile(baseBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
+    let downloadUrl = baseBranchUrl + repoFilePath;
     const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
     let destFilePath: string | null = path.join(destFolder, repoFilePath);
     let contents = ''
@@ -485,6 +606,14 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                     contents: bookContents,
                     filePath: bookFilePath
                 } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
+                
+                try {
+                    const bookPath = 'LICENSE.md'
+                    await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
+                } catch (e) {
+                    console.warn(`fetchBibleResourceBook - could not download license file from ${path.join(rawUrl)}`)
+                }
+                
                 if (bookContents && bookFilePath) {
                     return destFolder;
                 }
@@ -1531,6 +1660,12 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
                                 fs.outputJsonSync(path.join(targetPath, 'manifest.json'), manifest, { spaces: 2 });
+                                const fileName = 'LICENSE.md';
+                                const sourcePath = path.join(targetFoundPath, fileName);
+                                if (fs.existsSync(sourcePath)) {
+                                    fs.copySync(sourcePath, path.join(targetPath, fileName))
+                                    fs.copySync(sourcePath, path.join(repoPath, fileName))
+                                }
                             }
                         }
 

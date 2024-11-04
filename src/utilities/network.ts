@@ -3,6 +3,7 @@ import {
   checkDataToTn,
   checkDataToTwl,
   convertJsonToUSFM,
+  fetchFileFromRepo,
   flattenGroupData,
   getBibleBookFolders,
   getMetaData,
@@ -40,14 +41,14 @@ interface RepoResponseItem {
   error: undefined|string
 }
 
-export async function getRepoTree(server: string, owner: string, repo: string, sha: string, token: string): Promise<RepoResponseItem> {
+export async function getRepoTree(server: string, owner: string, repo: string, sha: string, token: string = ''): Promise<RepoResponseItem> {
   const url = `${server}/api/v1/repos/${owner}/${repo}/git/trees/${sha}?recursive=true`;
   try {
-    const response = await axios.get(url, {
-      headers: {
-        'Authorization': `token ${token}`
-      }
-    });
+    const headers = token ? 
+    {
+      "Authorization": `token ${token}`,
+    } : {};
+    const response = await axios.get(url, { headers });
     return response.data;
   } catch (error) {
     // @ts-ignore
@@ -1159,9 +1160,9 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
   return { changedFiles }
 }
 
-export async function downloadRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
+export async function downloadPublicRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
   fs.ensureDirSync(localRepoPath)
-  const treeResults = await getRepoTree(server, owner, repo, 'master', token);
+  const treeResults = await getRepoTree(server, owner, repo, 'master');
   if (treeResults.error) {
     return treeResults
   }
@@ -1174,7 +1175,7 @@ export async function downloadRepoFromBranch(localRepoPath: string, server: stri
   }
 
   const commit = treeResults.sha || '';
-  const results = await downloadFilesInBranch(localRepoPath, dcsFiles, server, owner, repo, commit, token)
+  const results = await downloadFilesInBranch(localRepoPath, dcsFiles, server, owner, repo, branch)
   
   const newStatus = {
     files: dcsFiles,
@@ -1187,15 +1188,15 @@ export async function downloadRepoFromBranch(localRepoPath: string, server: stri
   return results
 }
 
-async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
+async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObject, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
   let changedFiles = 0;
   const files = Object.keys(dcsFiles)
   for (const fileName of files) {
     if ((fileName.includes(dcsStatusFile)) || (fileName === ".DS_Store")) { // skip over DCS data file, and system files
       continue;
     }
-
     const fullFilePath = path.join(localRepoPath, fileName);
+
     const dcsFileData = dcsFiles[fileName];
     let localChecksum: string = "";
 
@@ -1204,14 +1205,14 @@ async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObje
 
     if (fileType === "file" || fileType === "blob") {
       console.log(`downloadFilesInBranch - downloading file ${fileName}`);
-      results = await getFileFromBranch(server, owner, repo, branch, fileName, token);
+      const results = await fetchFileFromRepo(server, owner, repo, branch, localRepoPath, fileName);
+
+      // using API - probably slowing using base46 encoding
+      // results = await getFileFromBranch(server, owner, repo, branch, fileName, token);
 
       changedFiles++
 
       if (!results?.error) {
-        // @ts-ignore
-        const fileData = results.content;
-        fs.outputFileSync(fullFilePath, fileData, 'UTF-8');
         localChecksum = await getChecksum(fullFilePath);
         dcsFileData.checksum = localChecksum
         // @ts-ignore

@@ -1,6 +1,6 @@
 # Checking Tool
 
-This is an implementation of a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) webview extension.
+This is an implementation of a [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [Webview UI Toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit) vs-code webview extension.
 
 This extension will use a custom editor to open files with the `twl_check` or `tn_check` extension and display a UI to do checking for book 
 

@@ -20,7 +20,7 @@ import {
 import {
   createRepoBranch,
   createCheckingRepository,
-  downloadRepoFromBranch,
+  downloadPublicRepoFromBranch,
   getRepoName,
   getRepoTree,
   uploadRepoFileFromPath,
@@ -96,7 +96,7 @@ suite.skip('Repo Tests', async ()=> {
   test('Test downloadRepo', async () => {
     const branch = 'master'
     const repo = env.REPO || ''
-    const results = await downloadRepoFromBranch(testRepoPath, server, owner, repo, branch, token)
+    const results = await downloadPublicRepoFromBranch(testRepoPath, server, owner, repo, branch)
     assert.ok(!results.error)
   })
 
