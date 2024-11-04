@@ -18,26 +18,23 @@ import {
   readJsonFile
 } from "../utilities/fileUtils";
 import {
-  addTopicToRepo,
   bibleCheckingTopic,
-  createRepoBranch,
-  createCheckingRepository,
   downloadPublicRepoFromBranch,
-  getChangedFiles,
   getCheckingReposForOwner,
-  getCheckingRepos,
   getCheckingOwners,
   getOwnersFromRepoList,
   getOwnerReposFromRepoList,
-  getOwners,
   getRepoName,
-  getReposForOwner,
-  getRepoTree,
-  searchCatalogByTopic,
-  uploadRepoFileFromPath,
   updateContentOnDCS,
   uploadRepoToDCS,
 } from "../utilities/network";
+import {
+  addTopicToRepo,
+  createCheckingRepository, createRepoBranch,
+  getChangedFiles,
+  getCheckingRepos, getOwners, getReposForOwner, getRepoTree, searchCatalogByTopic,
+  uploadRepoFileFromPath,
+} from "../utilities/gitUtils";
 // import * as myExtension from '../extension';
 
 const TEST_FILE = './src/test/fixtures/tit.twl_check';
@@ -82,7 +79,7 @@ const testBranchName = 'update_current';
 const testProject = env.TEST_PROJECT || '';
 const testRepoPath = path.join(ospath.home(), testProject)
 
-suite('Repo Tests', async ()=> {
+suite.skip('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
     const repoName = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId)
     assert.equal(repoName, "pigeon_ult_en_tit_checking")

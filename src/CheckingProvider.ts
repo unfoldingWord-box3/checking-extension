@@ -60,12 +60,12 @@ import {
 import isEqual from 'deep-equal'
 import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
 import {
-    getCheckingRepos,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
     getRepoName,
     uploadRepoToDCS,
 } from "./utilities/network";
+import { getCheckingRepos } from "./utilities/gitUtils";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
