@@ -7,11 +7,18 @@ import {
   getBibleBookFolders,
   getMetaData,
   getRepoFileName,
+  projectsBasePath,
 } from "./resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from "path";
-import { getAllFiles, getChecksum, getFilesOfType, getPatch, readJsonFile } from "./fileUtils";
+import {
+  getAllFiles,
+  getChecksum,
+  getFilesOfType,
+  getPatch,
+  readJsonFile,
+} from "./fileUtils";
 import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 import {
   addTopicToRepo,
@@ -54,7 +61,6 @@ function sortAndRemoveDuplicates(strings: string[]): string[] {
 
   // Convert the Set back to an array and sort it
   const sortedStrings = Array.from(uniqueStrings).sort();
-
   return sortedStrings;
 }
 
@@ -255,9 +261,35 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
   return { changedFiles }
 }
 
+export async function downloadRepoFromDCS(server: string, owner: string, repo: string, backup = false): Promise<GeneralObject> {
+  const localRepoPath = path.join(projectsBasePath, repo)
+  if (fs.existsSync(localRepoPath)) {
+    if (!backup) {
+      return {
+        error: `local project already exists ${localRepoPath}`,
+        errorLocalProjectExists: true,
+      }
+    }
+    
+    try {
+      const newFolder = localRepoPath + '.OLD_' + getTimeStamp()
+      fs.moveSync(localRepoPath, newFolder)
+      // TODO: move original project
+    } catch (e:any) {
+      return {
+        error: `Could not backup local project ${localRepoPath}`,
+        errorMessage: e.toString(),
+        errorRenameFailure: true,
+      }
+    }
+  }
+  
+  return await downloadPublicRepoFromBranch(localRepoPath, server, owner, repo, 'master')
+}
+
 export async function downloadPublicRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
   fs.ensureDirSync(localRepoPath)
-  const treeResults = await getRepoTree(server, owner, repo, 'master');
+  const treeResults = await getRepoTree(server, owner, repo, branch);
   if (treeResults.error) {
     return treeResults
   }

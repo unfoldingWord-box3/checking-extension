@@ -20,6 +20,7 @@ import {
 import {
   bibleCheckingTopic,
   downloadPublicRepoFromBranch,
+  downloadRepoFromDCS,
   getCheckingReposForOwner,
   getCheckingOwners,
   getOwnersFromRepoList,
@@ -30,9 +31,14 @@ import {
 } from "../utilities/network";
 import {
   addTopicToRepo,
-  createCheckingRepository, createRepoBranch,
+  createCheckingRepository,
+  createRepoBranch,
   getChangedFiles,
-  getCheckingRepos, getOwners, getReposForOwner, getRepoTree, searchCatalogByTopic,
+  getCheckingRepos,
+  getOwners,
+  getReposForOwner,
+  getRepoTree,
+  searchCatalogByTopic,
   uploadRepoFileFromPath,
 } from "../utilities/gitUtils";
 // import * as myExtension from '../extension';
@@ -129,13 +135,19 @@ suite.skip('Repo Tests', async ()=> {
     // assert.ok(results.repos?.length)
   })
 
-  test('Test downloadRepo', async () => {
+  test('Test downloadPublicRepoFromBranch', async () => {
     const branch = 'master'
     const repo = env.REPO || ''
     const results = await downloadPublicRepoFromBranch(testRepoPath, server, owner, repo, branch)
     assert.ok(!results.error)
   })
 
+  test('Test downloadRepoFromDCS', async () => {
+    const repo = 'pigeon_ult_en_tit_checking'
+    const results = await downloadRepoFromDCS(server, owner, repo, true)
+    assert.ok(!results.error)
+  })
+  
   test('Test addTopicToRepo', async () => {
     const topic = bibleCheckingTopic
     const repo = env.REPO || ''
