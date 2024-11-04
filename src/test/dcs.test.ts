@@ -26,7 +26,7 @@ import {
   uploadRepoFileFromPath,
   updateContentOnDCS,
   uploadRepoToDCS,
-  getChangedFiles,
+  getChangedFiles, getOwners, getReposForOwner, getCheckingReposForOwner,
 } from "../utilities/network";
 // import * as myExtension from '../extension';
 
@@ -72,7 +72,7 @@ const testBranchName = 'update_current';
 const testProject = env.TEST_PROJECT || '';
 const testRepoPath = path.join(ospath.home(), testProject)
 
-suite.skip('Repo Tests', async ()=> {
+suite('Repo Tests', async ()=> {
   test('Test getRepoName', () => {
     const repoName = getRepoName(targetLanguageId, targetBibleId, glLanguageId, bookId)
     assert.equal(repoName, "pigeon_ult_en_tit_checking")
@@ -91,6 +91,30 @@ suite.skip('Repo Tests', async ()=> {
     const branch = await createRepoBranch(server, owner, repo, newBranch, token)
     assert.ok(!branch.error)
     assert.equal(branch.name, newBranch)
+  })
+
+  test('Test getOwners', async () => {
+    const results = await getOwners(server)
+    assert.ok(!results.error)
+    const ownerNames = results?.owners?.map(owner => owner.login) || []
+    console.log(`repoNames length ${ownerNames?.length}`, ownerNames)
+    assert.ok(results.owners?.length)
+  })
+
+  test('Test getReposForOwner', async () => {
+    const results = await getReposForOwner(server, owner)
+    assert.ok(!results.error)
+    const repoNames = results?.repos?.map(repo => repo.name) || []
+    console.log(`repoNames length ${repoNames?.length}`, repoNames)
+    assert.ok(results.repos?.length)
+  })
+
+  test('Test getCheckingReposForOwner', async () => {
+    const results = await getCheckingReposForOwner(server, owner)
+    assert.ok(!results.error)
+    const repoNames = results?.repos?.map(repo => repo.name) || []
+    console.log(`repoNames length ${repoNames?.length}`, repoNames)
+    // assert.ok(results.repos?.length)
   })
 
   test('Test downloadRepo', async () => {

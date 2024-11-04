@@ -35,6 +35,7 @@ import * as tsvparser from "uw-tsv-parser";
 // @ts-ignore
 import * as tsvGroupdataParser from "tsv-groupdata-parser"
 import { request } from "node:http";
+import { getCheckingFiles } from "./network";
 
 // helpers
 const {
@@ -1660,6 +1661,15 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
                                 fs.outputJsonSync(path.join(targetPath, 'manifest.json'), manifest, { spaces: 2 });
+                                const repoManifest = {
+                                    ...manifest,
+                                    subject: "Checking",
+                                    description: "Checking",
+                                    projects: getCheckingFiles(repoPath),
+                                    // @ts-ignore
+                                    resource_title: "Checking: " + manifest?.resource_title,
+                                }
+                                fs.outputJsonSync(path.join(targetPath, '..', 'manifest.json'), repoManifest, { spaces: 2 });
                                 const fileName = 'LICENSE.md';
                                 const sourcePath = path.join(targetFoundPath, fileName);
                                 if (fs.existsSync(sourcePath)) {

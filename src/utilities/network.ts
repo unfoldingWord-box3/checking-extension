@@ -12,13 +12,7 @@ import {
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from "path";
-import {
-  getAllFiles,
-  getChecksum,
-  getFilesOfType,
-  getPatch,
-  readJsonFile
-} from "./fileUtils";
+import { getAllFiles, getChecksum, getFilesOfType, getPatch, readJsonFile } from "./fileUtils";
 import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 
 export const mergeToMasterBranch = 'merge_changes_to_master'
@@ -57,6 +51,119 @@ export async function getRepoTree(server: string, owner: string, repo: string, s
     // @ts-ignore
     return { error: errorMsg};
   }
+}
+
+interface Owner {
+  id: number;
+  login: string;
+  full_name: string;
+  email: string;
+  avatar_url: string;
+  language: string;
+  is_admin: boolean;
+  last_login: string;
+  created: string;
+  restricted: boolean;
+  active: boolean;
+  prohibit_login: boolean;
+  location: string;
+  website: string;
+  description: string;
+  visibility: string;
+}
+
+interface GetOwnersType {
+  owners?: Owner[];
+  error?: string;
+}
+
+export async function getOwners(server: string, token: string = ''): Promise<GetOwnersType> {
+  const url = `${server}/api/v1/catalog/list/owners`;
+  const headers = token ?
+  {
+    Authorization: `token ${token}`,
+  }
+  : {};
+
+  try {
+    const response = await axios.get(url, { headers });
+    const owners = response.data.data as Owner[];
+    return { owners };
+  } catch (error) {
+    // @ts-ignore
+    const errorMsg = `Error: ${error.message}`
+    console.error(errorMsg);
+    // @ts-ignore
+    return { error: errorMsg};
+  }
+}
+
+interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string;
+  private: boolean;
+  fork: boolean;
+  url: string;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  language: string;
+  forks_count: number;
+  stargazers_count: number;
+  watchers_count: number;
+  size: number;
+  default_branch: string;
+  open_issues_count: number;
+  topics: string[];
+  has_issues: boolean;
+  has_projects: boolean;
+  has_wiki: boolean;
+  has_pages: boolean;
+  has_downloads: boolean;
+  archived: boolean;
+  disabled: boolean;
+  visibility: string;
+  pushed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface GetReposType {
+  repos?: Repository[];
+  error?: string;
+}
+
+export async function getReposForOwner(server: string, owner:string, token: string = ''): Promise<GetReposType> {
+  const url = `${server}/api/v1/repos/search?owner=${owner}`
+  const headers = token ?
+    {
+      Authorization: `token ${token}`,
+    }
+    : {};
+
+  try {
+    const response = await axios.get(url, { headers });
+    const repos = response.data.data as Repository[];
+    return { repos };
+  } catch (error) {
+    // @ts-ignore
+    const errorMsg = `Error: ${error.message}`
+    console.error(errorMsg);
+    // @ts-ignore
+    return { error: errorMsg};
+  }
+}
+
+const checkingRegex = /_checking$/;
+
+export async function getCheckingReposForOwner(server: string, owner:string, token: string = '') {
+  const results = await getReposForOwner(server, owner);
+
+  const checkingRepos = results?.repos?.filter(repo => checkingRegex.test(repo.name)) || []
+  results.repos = checkingRepos
+  return results;
 }
 
 export async function checkIfRepoExists(server: string, owner: string, repo: string, token: string): Promise<boolean> {
@@ -1265,7 +1372,7 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
       }
     }
     
-    console.log(`updateFilesInBranch - creating repo branch ${head}`);
+    console.log(`updateFilesInBranch - creating repo branch from ${head}`);
     const results = await createRepoBranch(server, owner, repo, branch, token, head);
     if (results?.error) {
       console.error(`updateFilesInBranch - error creating branch ${branch}`);
@@ -1534,6 +1641,34 @@ function addErrorToDcsStatus(state:GeneralObject, errorResults:GeneralObject, lo
     ...errorResults,
   }
   updateDcsStatus('lastState', newState, localRepoPath, owner)
+}
+
+function getProjectsForChecking(localRepoPath: string, checkingSubPath: string, checkingFileType: string, projects: GeneralObject[]) {
+  try {
+    // get checking files
+    const tnCheckingPath = path.join(localRepoPath, checkingSubPath);
+    let files = getFilesOfType(tnCheckingPath, checkingFileType);
+    files.forEach((file: string) => {
+      const bookId = path.basename(file);
+      const project = {
+        identifier: file,
+        title: `Checking ${bookId}`,
+        path: `./${checkingSubPath}/${file}`,
+      };
+      projects.push(project);
+    });
+  } catch (e) {
+    console.warn(`getCheckingFiles - error updating projects list for ${checkingSubPath}`);
+  }
+}
+
+export function getCheckingFiles(localRepoPath: string) {
+  const projects: GeneralObject[] = []
+
+  getProjectsForChecking(localRepoPath, "checking/tn", ".tn_check", projects);
+  getProjectsForChecking(localRepoPath, "checking/twl", ".twl_check", projects);
+
+  return projects
 }
 
 function updateOutputFiles(localRepoPath: string) {
