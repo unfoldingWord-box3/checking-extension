@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
@@ -34,6 +34,7 @@ import {
     getResourceIdsInCatalog,
     getResourcesForChecking,
     getSavedCatalog,
+    getServer,
     initProject,
     isRepoInitialized,
     loadResources,
@@ -58,7 +59,13 @@ import {
 // @ts-ignore
 import isEqual from 'deep-equal'
 import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
-import { getRepoName, uploadRepoToDCS } from "./utilities/network";
+import {
+    getCheckingRepos,
+    getOwnerReposFromRepoList,
+    getOwnersFromRepoList,
+    getRepoName,
+    uploadRepoToDCS,
+} from "./utilities/network";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -333,6 +340,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
           },
         );
         subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.downloadProject",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.downloadProject"`)
+              const  { owner: ownerPick, repoName: repoPick } = await this.getRepoSelection()
+              console.log(`finished "checking-extension.downloadProject"`)
+          })
+        );
+        subscriptions.push(commandRegistration)
+        
         return subscriptions;
     }
 
@@ -1099,6 +1117,61 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
         return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
+    }
+
+    private static async getRepoSelection(): Promise<RepoSelection> {
+        const server = getServer();
+        const results = await getCheckingRepos(server)
+        const repos = results?.repos || [];
+        
+        let repoPick:string = ''
+
+        const ownerNames = getOwnersFromRepoList(repos);
+        console.log(`ownerNames length ${ownerNames?.length}`, ownerNames)
+
+        if (!ownerNames?.length) {
+            await showInformationMessage(`No Owners found on ${server}`, true, `No Owners found on ${server}.  Check with your network Administrator`);
+            return {
+                error: `No Owners found on ${server}`
+            }
+        }
+        
+        let ownerPick = await vscode.window.showQuickPick(
+          ownerNames,
+          {
+              placeHolder: "Select the owner for Project download:",
+          }
+        );
+        
+        if (ownerPick) {
+            await showInformationMessage(`Owner selected ${ownerPick}`);
+
+            const filteredRepos = getOwnerReposFromRepoList(repos, ownerPick)
+            const repoNames = filteredRepos.map(repo => repo.name).sort()
+
+            console.log(`repoNames length ${repoNames?.length}`, repoNames)
+            
+            if (!repoNames?.length) {
+                await showInformationMessage(`No Checking repos found on ${server}/${ownerPick}`, true, `No Checking repos found on ${server}/${ownerPick}. Try a different owner`);
+                return {
+                    error: `No Checking repos found on ${server}/${ownerPick}`
+                }
+            }
+
+            repoPick = await vscode.window.showQuickPick(
+              repoNames,
+              {
+                  placeHolder: "Select the repo for Project download:",
+              }
+            ) || '';
+            
+            if (repoPick) {
+                await showInformationMessage(`Repo selected ${repoPick}`);
+            }
+        }
+
+        
+        return { owner: ownerPick, repoName: repoPick };
     }
 
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {

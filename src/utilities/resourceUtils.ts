@@ -1669,7 +1669,10 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                                     // @ts-ignore
                                     resource_title: "Checking: " + manifest?.resource_title,
                                 }
-                                fs.outputJsonSync(path.join(targetPath, '..', 'manifest.json'), repoManifest, { spaces: 2 });
+                                // fs.outputJsonSync(path.join(targetPath, '..', 'manifest.json'), repoManifest, { spaces: 2 });
+                                const yamlData = YAML.stringify(repoManifest, 4);
+                                fs.outputFileSync(path.join(targetPath, '..', 'manifest.yaml'), yamlData, "UTF-8");
+
                                 const fileName = 'LICENSE.md';
                                 const sourcePath = path.join(targetFoundPath, fileName);
                                 if (fs.existsSync(sourcePath)) {

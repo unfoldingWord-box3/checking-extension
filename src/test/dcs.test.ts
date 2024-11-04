@@ -18,15 +18,25 @@ import {
   readJsonFile
 } from "../utilities/fileUtils";
 import {
+  addTopicToRepo,
+  bibleCheckingTopic,
   createRepoBranch,
   createCheckingRepository,
   downloadPublicRepoFromBranch,
+  getChangedFiles,
+  getCheckingReposForOwner,
+  getCheckingRepos,
+  getCheckingOwners,
+  getOwnersFromRepoList,
+  getOwnerReposFromRepoList,
+  getOwners,
   getRepoName,
+  getReposForOwner,
   getRepoTree,
+  searchCatalogByTopic,
   uploadRepoFileFromPath,
   updateContentOnDCS,
   uploadRepoToDCS,
-  getChangedFiles, getOwners, getReposForOwner, getCheckingReposForOwner,
 } from "../utilities/network";
 // import * as myExtension from '../extension';
 
@@ -97,8 +107,13 @@ suite('Repo Tests', async ()=> {
     const results = await getOwners(server)
     assert.ok(!results.error)
     const ownerNames = results?.owners?.map(owner => owner.login) || []
-    console.log(`repoNames length ${ownerNames?.length}`, ownerNames)
+    console.log(`ownerNames length ${ownerNames?.length}`, ownerNames)
     assert.ok(results.owners?.length)
+  })
+
+  test('Test getCheckingOwners', async () => {
+    const owners = await getCheckingOwners(server)
+    assert.ok(owners)
   })
 
   test('Test getReposForOwner', async () => {
@@ -122,6 +137,32 @@ suite('Repo Tests', async ()=> {
     const repo = env.REPO || ''
     const results = await downloadPublicRepoFromBranch(testRepoPath, server, owner, repo, branch)
     assert.ok(!results.error)
+  })
+
+  test('Test addTopicToRepo', async () => {
+    const topic = bibleCheckingTopic
+    const repo = env.REPO || ''
+    const results = await addTopicToRepo(server, owner, repo, topic, token)
+    assert.ok(!results.error)
+  })
+
+  test('Test searchCatalogByTopic', async () => {
+    const topic = bibleCheckingTopic
+    const repo = env.REPO || ''
+    const results = await searchCatalogByTopic(server, topic)
+    assert.ok(!results.error)
+  })
+
+  test('Test getCheckingRepos', async () => {
+    const repo = env.REPO || ''
+    const results = await getCheckingRepos(server)
+    assert.ok(!results.error)
+    const repos = results?.repos || [];
+    const owners = getOwnersFromRepoList(repos);
+    console.log(owners)
+    const filteredRepos = getOwnerReposFromRepoList(repos, owner)
+    const repoNames = filteredRepos.map(repo => repo.name).sort()
+    console.log(repoNames)
   })
 
   test('Test createRepoFile', async () => {

@@ -18,6 +18,8 @@ import { GeneralObject, NestedObject, ResourcesObject } from "../../types";
 export const mergeToMasterBranch = 'merge_changes_to_master'
 export const mergeFromMasterBranch = 'update_from_master'
 
+export const bibleCheckingTopic = 'bible-checking';
+
 interface TreeItem {
   path: string;
   type: string;
@@ -32,7 +34,8 @@ interface RepoResponseItem {
   sha: undefined|string;
   url: undefined|string;
   truncated: undefined|boolean;
-  error: undefined|string
+  error?: string;
+  status?: number;
 }
 
 export async function getRepoTree(server: string, owner: string, repo: string, sha: string, token: string = ''): Promise<RepoResponseItem> {
@@ -46,10 +49,14 @@ export async function getRepoTree(server: string, owner: string, repo: string, s
     return response.data;
   } catch (error) {
     // @ts-ignore
-    const errorMsg = `Error: ${error.message}`
-    console.error(errorMsg);
+    const message = `Error: ${error.message}`;
     // @ts-ignore
-    return { error: errorMsg};
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
   }
 }
 
@@ -75,10 +82,12 @@ interface Owner {
 interface GetOwnersType {
   owners?: Owner[];
   error?: string;
+  status?: number;
 }
 
 export async function getOwners(server: string, token: string = ''): Promise<GetOwnersType> {
-  const url = `${server}/api/v1/catalog/list/owners`;
+  
+  const url = `${server}/api/v1/catalog/list/owners?stage=latest`;
   const headers = token ?
   {
     Authorization: `token ${token}`,
@@ -91,10 +100,14 @@ export async function getOwners(server: string, token: string = ''): Promise<Get
     return { owners };
   } catch (error) {
     // @ts-ignore
-    const errorMsg = `Error: ${error.message}`
-    console.error(errorMsg);
+    const message = `Error: ${error.message}`;
     // @ts-ignore
-    return { error: errorMsg};
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
   }
 }
 
@@ -133,6 +146,64 @@ interface Repository {
 interface GetReposType {
   repos?: Repository[];
   error?: string;
+  status?: number;
+}
+
+function sortAndRemoveDuplicates(strings: string[]): string[] {
+  // Convert the list to a Set to remove duplicates
+  const uniqueStrings = new Set(strings);
+
+  // Convert the Set back to an array and sort it
+  const sortedStrings = Array.from(uniqueStrings).sort();
+
+  return sortedStrings;
+}
+
+export function getOwnersFromRepoList(repos: Repository[]) {
+  // @ts-ignore
+  let owners = repos.map(repo => repo?.owner?.login);
+  return sortAndRemoveDuplicates(owners);
+}
+
+export function getOwnerReposFromRepoList(repos: Repository[], owner: string) {
+  // @ts-ignore
+  const filteredRepos = repos.filter(repo => (repo?.owner?.login === owner));
+  return filteredRepos;
+}
+
+export async function getCheckingOwners(server: string) {
+  const results = await getCheckingRepos(server);
+  if (!results?.error) {
+    const repos = results?.repos || [];
+    const owners = getOwnersFromRepoList(repos);
+    return owners
+  }
+  return null
+}
+
+export async function getCheckingRepos(server: string, token: string = ''): Promise<GetReposType> {
+  const url = `${server}/api/v1/repos/search?q=%5C_checking`
+  const headers = token ?
+    {
+      Authorization: `token ${token}`,
+    }
+    : {};
+
+  try {
+    const response = await axios.get(url, { headers });
+    const repos = response.data.data as Repository[];
+    return { repos };
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
+  }
 }
 
 export async function getReposForOwner(server: string, owner:string, token: string = ''): Promise<GetReposType> {
@@ -149,12 +220,83 @@ export async function getReposForOwner(server: string, owner:string, token: stri
     return { repos };
   } catch (error) {
     // @ts-ignore
-    const errorMsg = `Error: ${error.message}`
-    console.error(errorMsg);
+    const message = `Error: ${error.message}`;
     // @ts-ignore
-    return { error: errorMsg};
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
   }
 }
+
+interface CatalogItem {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string;
+  private: boolean;
+  fork: boolean;
+  url: string;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  language: string;
+  forks_count: number;
+  stargazers_count: number;
+  watchers_count: number;
+  size: number;
+  default_branch: string;
+  open_issues_count: number;
+  topics: string[];
+  has_issues: boolean;
+  has_projects: boolean;
+  has_wiki: boolean;
+  has_pages: boolean;
+  has_downloads: boolean;
+  archived: boolean;
+  disabled: boolean;
+  visibility: string;
+  pushed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CatalogSearchResultType {
+  catalog?: CatalogItem[];
+  error?: string;
+  status?: number;
+}
+
+export async function searchCatalogByTopic(
+  server: string,
+  topic: string,
+  token: string = ''
+): Promise<CatalogSearchResultType> {
+  const url = `${server}/api/v1/catalog/search?topic=${topic}&stage=latest`;
+  const headers = token ? 
+    {
+      "Authorization": `token ${token}`,
+    } : {};
+
+  try {
+    const response = await axios.get(url, { headers });
+    const catalog = response.data.data as CatalogItem[];
+    return { catalog };
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      error: message,
+      status: status
+    }
+  }
+}
+
 
 const checkingRegex = /_checking$/;
 
@@ -1156,6 +1298,45 @@ async function createTag(
   }
 }
 
+interface TopicData {
+  content: string;
+  error?: string;
+  status?: number;
+}
+
+export async function addTopicToRepo(
+  server: string,
+  owner: string,
+  repo: string,
+  topic: string,
+  token: string
+): Promise<TopicData> {
+  const url = `${server}/api/v1/repos/${owner}/${repo}/topics/${topic}`;
+  const headers = {
+    Authorization: `token ${token}`,
+    'Content-Type': 'application/json',
+  };
+  const data = {};
+
+  try {
+    const response = await axios.put(url, data, { headers });
+    const content = response.data
+    return { content };
+  } catch (error) {
+    // @ts-ignore
+    const message = `Error: ${error.message}`;
+    // @ts-ignore
+    const status: number = error.status;
+    // @ts-ignore
+    return {
+      // @ts-ignore
+      error: message,
+      status: status
+    }
+  }
+}
+
+
 type DcsUploadStatus = {
   files?: NestedObject;
   commit?: ResourcesObject,
@@ -1750,6 +1931,8 @@ export async function uploadRepoToDCS(server: string, owner: string, repo: strin
       console.error(`uploadRepoToDCS - upload error: ${results.error}`)
       addErrorToDcsStatus(state, results, localRepoPath, owner)
       results.lastState = state
+    } else {
+      const results = await addTopicToRepo(server, owner, repo, bibleCheckingTopic, token)
     }
     return results
   } catch (error) {

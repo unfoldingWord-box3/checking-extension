@@ -29,3 +29,9 @@ export type GeneralObject = {
   [key: string]: any;
 };
 
+export type RepoSelection = {
+  owner?: string;
+  repoName?: string;
+  error?: string;
+};
+

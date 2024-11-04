@@ -25,6 +25,10 @@
       {
         "title": "Translation Checking: Launch Initialize - WARNING Prerelease Resources",
         "command": "checking-extension.launchWorkflowPre"
+      },
+      {
+        "title": "Translation Checking: Download Project",
+        "command": "checking-extension.downloadProject"
       }
     ],
     "customEditors": [
