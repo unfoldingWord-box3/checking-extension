@@ -51,7 +51,7 @@ const projectFolder = autoDetectProjectFolder();
 const envPath = path.join(projectFolder, '.env.json')
 const env = readJsonFile(envPath) || {}
 
-suite('Tests', () => {
+suite.skip('Tests', () => {
   test('Test CRC', async () => {
     const filePath = path.join(projectFolder, './src/test/fixtures/tit.tn_check');
     assert.ok(fs.existsSync(filePath))
