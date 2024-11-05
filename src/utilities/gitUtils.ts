@@ -600,7 +600,7 @@ export async function modifyRepoFile(server: string, owner: string, repo: string
   }
 }
 
-async function uploadRepoDiffPatchFile(
+export async function uploadRepoDiffPatchFile(
   server: string,
   owner: string,
   repo: string,

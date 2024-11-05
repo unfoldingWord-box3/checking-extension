@@ -2,6 +2,7 @@ import {
   checkDataToTn,
   checkDataToTwl,
   convertJsonToUSFM,
+  fetchFileFromRepo,
   fetchFromUrl,
   flattenGroupData,
   getBibleBookFolders,
@@ -47,6 +48,7 @@ import {
   squashMergePullRequest,
   updatePullRequest,
   UploadFileResponse,
+  uploadRepoDiffPatchFile,
   uploadRepoFileFromPath,
 } from "./gitUtils";
 // @ts-ignore
@@ -56,6 +58,7 @@ export const mergeToMasterBranch = 'merge_changes_to_master'
 export const mergeFromMasterBranch = 'update_from_master'
 
 export const bibleCheckingTopic = 'bible-checking';
+let contextLines = 4;
 
 function sortAndRemoveDuplicates(strings: string[]): string[] {
   // Convert the list to a Set to remove duplicates
@@ -115,6 +118,17 @@ export function getNewBranchName(targetLanguageId:string, targetBibleId:string, 
   return branchName
 }
 
+function getContextLines() {
+  return contextLines;
+}
+
+function incrementContextLines() {
+  contextLines++;
+  if (contextLines > 7) {
+    contextLines = 2
+  }
+}
+
 export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string, downloadAndDiff = false): Promise<ModifyFileResponse> {
   let results:UploadFileResponse
   
@@ -122,12 +136,17 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
   } else {
-    const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
+    //  https://git.door43.org/unfoldingWord/en_ult/raw/branch/auto-pjoakes-TIT/manifest.yaml
+    // const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
+    const importsFolder = path.join(projectsBasePath, 'imports')
+    const tempFolder = path.join(importsFolder, 'temp')
+    const fileData = await fetchFileFromRepo(server, owner, repo, branch, tempFolder, uploadPath)
     if (fileData?.error) {
       // @ts-ignore
       return fileData;
     }
-    const dcsContent = fileData?.content
+    const tempFile = path.join(tempFolder, uploadPath)
+    const dcsContent = fs.readFileSync(tempFile, "UTF-8")?.toString()
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     if (dcsContent === content) { // if no change
       // nothing to do
@@ -138,10 +157,17 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
       }
     } else
     if (dcsContent) {
-      const diffPatch = getPatch(uploadPath, dcsContent, content, false, 4)
+      const diffPatch = getPatch(uploadPath, dcsContent, content, false, getContextLines())
       // @ts-ignore
-      results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, fileData.sha, token)
+      results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
       results.content = content
+      if (results?.error) {
+        incrementContextLines();
+        const diffPatch = getPatch(uploadPath, dcsContent, content, false, getContextLines())
+        // @ts-ignore
+        results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
+        results.content = content
+      }
     } else {
       const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
       results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
@@ -182,8 +208,10 @@ async function deleteTheBranchAndPR(server: string, owner: string, repo: string,
 
 async function updateFilesInBranch(localFiles: string[], localRepoPath: string, handledFiles: NestedObject, uploadedFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
   let changedFiles = 0;
+  const importsFolder = path.join(projectsBasePath, 'imports')
+  fs.emptyDirSync(importsFolder)
   for (const localFile of localFiles) {
-    if ((localFile.includes(dcsStatusFile)) || (localFile === ".DS_Store")) { // skip over DCS data file, and system files
+    if (localFile.includes(dcsStatusFile) || localFile.includes(".DS_Store")) { // skip over DCS data file, and system files
       continue;
     }
 
@@ -214,7 +242,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
       } else {
         console.log(`updateFilesInBranch - updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, false);
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true);
       }
 
       changedFiles++
