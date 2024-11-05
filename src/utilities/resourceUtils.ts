@@ -1414,7 +1414,7 @@ export function getBibleBookFolders(repoPath: string, bookId:string | null = nul
  * replace the home path with '~'
  * @param filePath
  */
-function removeHomePath(filePath:string) {
+export function removeHomePath(filePath:string) {
     if (filePath && (filePath.indexOf(ospath.home()) === 0)) {
         const newPath = filePath.replace(ospath.home(), '~')
         return newPath

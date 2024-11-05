@@ -263,6 +263,8 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
 
 export async function downloadRepoFromDCS(server: string, owner: string, repo: string, backup = false): Promise<GeneralObject> {
   const localRepoPath = path.join(projectsBasePath, repo)
+  let backupRepoPath = ''
+
   if (fs.existsSync(localRepoPath)) {
     if (!backup) {
       return {
@@ -272,9 +274,8 @@ export async function downloadRepoFromDCS(server: string, owner: string, repo: s
     }
     
     try {
-      const newFolder = localRepoPath + '.OLD_' + getTimeStamp()
-      fs.moveSync(localRepoPath, newFolder)
-      // TODO: move original project
+      backupRepoPath = localRepoPath + '.OLD_' + getTimeStamp()
+      fs.moveSync(localRepoPath, backupRepoPath)
     } catch (e:any) {
       return {
         error: `Could not backup local project ${localRepoPath}`,
@@ -283,8 +284,10 @@ export async function downloadRepoFromDCS(server: string, owner: string, repo: s
       }
     }
   }
-  
-  return await downloadPublicRepoFromBranch(localRepoPath, server, owner, repo, 'master')
+
+  const results = await downloadPublicRepoFromBranch(localRepoPath, server, owner, repo, 'master')
+  results.backupRepoPath = backupRepoPath
+  return results
 }
 
 export async function downloadPublicRepoFromBranch(localRepoPath: string, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
@@ -312,6 +315,7 @@ export async function downloadPublicRepoFromBranch(localRepoPath: string, server
     },
   };
   fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile, owner), newStatus);
+  results.localRepoPath = localRepoPath
   return results
 }
 

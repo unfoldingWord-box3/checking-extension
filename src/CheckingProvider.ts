@@ -38,6 +38,7 @@ import {
     initProject,
     isRepoInitialized,
     loadResources,
+    removeHomePath,
     resourcesPath,
     saveCatalog,
 } from "./utilities/resourceUtils";
@@ -346,32 +347,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.downloadProject",
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.downloadProject"`)
-              const {
-                  owner: ownerPick,
-                  repoName: repoPick,
-                  server,
-              } = await this.getRepoSelection()
-              let success = false
-              
-              if (ownerPick && repoPick) {
-                  const results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', false)
-                  if (results.error) {
-                      if (results.errorLocalProjectExists) {
-                          const results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', true)
-                          if (!results.error) {
-                              success = true
-                          }
-                      }
-                  } else {
-                      success = true
-                  }
+              const localRepoPath = await this.downloadCheckingProjectFromDCS()
+              if (localRepoPath) {
+                  // navigate to new folder
+                  const repoPathUri = vscode.Uri.file(localRepoPath);
+                  vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
               }
-              
-              if (!success) {
-                  await showErrorMessage(`Could not download repo ${ownerPick}/${repoPick}`, true)
-              }
-
-              console.log(`finished "checking-extension.downloadProject"`)
+              console.log(`finished "checking-extension.downloadProject success=${!!localRepoPath}"`)
           })
         );
         subscriptions.push(commandRegistration)
@@ -1144,7 +1126,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
     }
 
-    private static async getRepoSelection(): Promise<RepoSelection> {
+    private static async downloadCheckingProjectFromDCS(): Promise<string> {
+        await showInformationMessage(`Searching for Checking Projects on server`);
+        
         const server = getServer();
         const results = await getCheckingRepos(server)
         const repos = results?.repos || [];
@@ -1156,9 +1140,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         if (!ownerNames?.length) {
             await showInformationMessage(`No Owners found on ${server}`, true, `No Owners found on ${server}.  Check with your network Administrator`);
-            return {
-                error: `No Owners found on ${server}`
-            }
+            return ''
         }
         
         let ownerPick = await vscode.window.showQuickPick(
@@ -1178,9 +1160,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             
             if (!repoNames?.length) {
                 await showInformationMessage(`No Checking repos found on ${server}/${ownerPick}`, true, `No Checking repos found on ${server}/${ownerPick}. Try a different owner`);
-                return {
-                    error: `No Checking repos found on ${server}/${ownerPick}`
-                }
+                return ''
             }
 
             repoPick = await vscode.window.showQuickPick(
@@ -1192,11 +1172,49 @@ export class CheckingProvider implements CustomTextEditorProvider {
             
             if (repoPick) {
                 await showInformationMessage(`Repo selected ${repoPick}`);
+                let success = false
+                let madeBackup = false
+
+                let results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', false)
+                if (results.error) {
+                    if (results.errorLocalProjectExists) {
+                        const backupOption = 'Backup Current Repo and Download'
+                        const response = await vscode.window.showWarningMessage(
+                          'There is already a project with the same name on your computer.  What do you want to do?',
+                          { modal: true },
+                          backupOption,
+                        );
+                        console.log('User selected:', response);
+                        
+                        if (response !== backupOption) {
+                            return ''
+                        }
+
+                        madeBackup = true
+                        await showInformationMessage(`Downloading Checking Project ${ownerPick}/${repoPick} from server`);
+                        
+                        results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', true)
+                        if (!results.error) {
+                            success = true
+                        }
+                    }
+                } else {
+                    success = true
+                }
+
+                if (!success) {
+                    await showErrorMessage(`Could not download repo ${ownerPick}/${repoPick}`, true)
+                } else {
+                    const _backupRepoPath = removeHomePath(results?.backupRepoPath);
+                    const _localRepoPath = removeHomePath(results?.localRepoPath);
+                    const detail = madeBackup ? `The existing project was moved to ${_backupRepoPath}.` : ''
+                    await showInformationMessage(`Project successfully downloaded to ${_localRepoPath}.`, true, detail);
+                    return results?.localRepoPath || ''
+                }
             }
         }
-
         
-        return { owner: ownerPick, repoName: repoPick, server };
+        return '';
     }
 
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {
