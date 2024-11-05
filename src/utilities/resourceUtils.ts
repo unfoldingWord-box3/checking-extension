@@ -7,7 +7,13 @@ import * as ospath from "ospath";
 import * as usfmjs from "usfm-js";
 // @ts-ignore
 import * as YAML from "yamljs";
-import { objectNotEmpty, readHelpsFolder } from "./folderUtils";
+import {
+    delay,
+    getFilesOfType,
+    objectNotEmpty,
+    readHelpsFolder,
+    readJsonFile
+} from "./fileUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import {
     ALL_BIBLE_BOOKS,
@@ -18,12 +24,18 @@ import {
     OT_ORIG_LANG,
     OT_ORIG_LANG_BIBLE,
 } from "./BooksOfTheBible";
-import { ResourcesObject } from "../../types";
-import { getLanguage } from "./languages";
+import { GeneralObject, ResourcesObject } from "../../types";
+import {
+    getCurrentLocale,
+    getLanguage,
+    getLocales,
+} from "./languages";
 // @ts-ignore
 import * as tsvparser from "uw-tsv-parser";
 // @ts-ignore
 import * as tsvGroupdataParser from "tsv-groupdata-parser"
+import { request } from "node:http";
+import { getCheckingFiles } from "./network";
 
 // helpers
 const {
@@ -39,19 +51,12 @@ const {
 // @ts-ignore
   = require('tc-source-content-updater');
 
-
+const SEP = path.sep || '/'
 const workingPath = path.join(ospath.home(), 'translationCore')
 export const projectsBasePath = path.join(workingPath, 'otherProjects')
 export const resourcesPath = path.join(projectsBasePath, 'cache')
 
 const { lexicons } = require('../data/lexicons')
-
-export const DEFAULT_LOCALE = 'en'
-export const LOCALE_KEY = 'LOCALE_CDOE'
-let translations: object = { }
-export let currentLanguageCode: string|null = null
-let currentLocale:object = {};
-const { locales } = require('../data/locales/locales')
 
 const checkingName = 'translation.checker'
 
@@ -66,112 +71,91 @@ const checkingHelpsResources = [
     { id:'ta' }, { id:'tw' }, { id:'twl', bookRes: true }, { id: 'tn', bookRes: true }]
 
 /**
- * This parses localization data if not already parsed.
+ * does http request and returns the response data parsed from JSON
+ * @param {string} url
+ * @param {number} retries
+ * @return {Promise<{Object}>}
  */
-export function loadLocalization():void {
-    // check if already initialized
-    if (translations && Object.keys(translations).length) {
-        return 
-    }
-    
-    const keys = Object.keys(locales)
-    if (!keys?.length) {
-        console.error(`loadLocalization - locales not loaded`);
-        return
-    }
-    
-    for (let key of keys) {
+export async function makeJsonRequestDetailed(url:string, retries= 5): Promise<any> {
+    let result_;
+    for (let i = 1; i <= retries; i++) {
+        result_ = null;
         try {
-            let translation = locales[key];
-            translation = enhanceTranslation(translation, key);
-    
-            const { langCode, shortLangCode } = explodeLocaleName(key);
-            // @ts-ignore
-            translations[langCode] = translation;
-    
-            // include short language names for wider locale compatibility
-            // @ts-ignore
-            if (!translations[shortLangCode]) {
+            result_ = await new Promise((resolve, reject) => {
                 // @ts-ignore
-                translations[shortLangCode] = translation;
-            }
+                request(url, function(error: any, response: any, body: string) {
+                    if (error)
+                        reject(error);
+                    else if (response.statusCode === 200) {
+                        let result = body;
+                        try {
+                            result = JSON.parse(body);
+                        } catch (e) {
+                            reject(e);
+                        }
+                        resolve({result, response, body});
+                    } else {
+                        reject(`fetch error ${response.statusCode}`);
+                    }
+                });
+            });
         } catch (e) {
-            console.error(`loadLocalization() - Failed to load localization ${key}: ${e}`);
+            if (i >= retries) {
+                console.warn(`makeJsonRequestDetailed(${url}) - error getting data`, e);
+                throw e;
+            }
+            result_ = null;
+            console.log(`makeJsonRequestDetailed(${url}) - retry ${i+1} getting data, last error`, e);
+            await delay(500);
+        }
+
+        if (result_) {
+            break;
         }
     }
+    return result_;
 }
 
 /**
- * find localization data that matches code, or will fall back to default
- * @param languageCode
+ * does specific page query and returns the response data parsed from JSON
+ * @param {string} url
+ * @param {number} page
+ * @param {number} retries
+ * @return {Promise<{Object}>}
  */
-export function setLocale(languageCode:string) {
-    loadLocalization() // make sure initialized
-    // @ts-ignore
-    if (translations[languageCode]) {
-        // @ts-ignore
-        currentLocale = translations[languageCode]
-        currentLanguageCode = languageCode
-    } else 
-    if (languageCode) {
-        console.log(`setLocale() - No exact match found for ${languageCode}`);
-        const shortLocale = languageCode.split('_')[0];
-        // @ts-ignore
-        const equivalentLocale = translations[shortLocale]?.['_']?.['locale'];
-
-        if (equivalentLocale) {
-            console.log(`setLocale() - Falling back to ${equivalentLocale}`);
-            currentLanguageCode = equivalentLocale;
-            // @ts-ignore
-            currentLocale = translations[shortLocale]
-        } else {
-            currentLanguageCode = DEFAULT_LOCALE; // default to `en` if shortLocale match not found
-            // @ts-ignore
-            currentLocale = translations[currentLanguageCode]
-            console.log(`setLocale() - No short match found for ${shortLocale}, Falling back to ${languageCode}`);
-        }
-    }
+export async function doMultipartQueryPage(url:string, page = 1, retries = 5):Promise<any> {
+    const url_ = `${url}&page=${page}`;
+    const {result, response} = await makeJsonRequestDetailed(url_, retries);
+    const pos = response && response.rawHeaders && response.rawHeaders.indexOf('X-Total-Count');
+    const totalCount = (pos >= 0) ? parseInt(response.rawHeaders[pos + 1]) : 0;
+    const items = result && result.data || null;
+    return {items, totalCount};
 }
 
 /**
- * Splits a locale fullName into it's identifiable pieces
- * @param {string} fullName the locale name
- * @return {{langName, langCode, shortLangCode}}
+ * does multipart query and returns the response data parsed from JSON. Continues to read pages until all results are returned.
+ * @param {string} url
+ * @param {number} retries
+ * @return {Promise<{Object}>}
  */
-const explodeLocaleName = (fullName:string) => {
-    let title = fullName.replace(/\.json/, '');
-    const parts = title.split('-')
-    let langCode = parts.pop() || '';
-    let langName = parts.join('-');
-    let shortLangCode = langCode.split('_')[0];
-    return {
-        langName, langCode, shortLangCode,
-    };
-};
+export async function doMultipartQuery(url:string, retries = 5) {
+    let page = 1;
+    let data:any[] = [];
+    const {items, totalCount} = await doMultipartQueryPage(url, page, retries = 5);
+    let lastItems = items;
+    let totalCount_ = totalCount;
+    data = data.concat(items);
+    while (lastItems && data.length < totalCount_) {
+        const {items, totalCount} = await doMultipartQueryPage(url, ++page, retries = 5);
+        lastItems = items;
+        totalCount_ = totalCount;
+        if (items && items.length) {
+            data = data.concat(items);
+        }
+    }
 
-/**
- * Injects additional information into the translation
- * that should not otherwise be translated. e.g. legal entities
- * @param {object} translation localized strings
- * @param {string} fullName the name of the locale.
- * @param {array} nonTranslatableStrings a list of non-translatable strings to inject
- * @return {object} the enhanced translation
- */
-const enhanceTranslation = (translation:object, fullName:string, nonTranslatableStrings = []) => {
-    const {
-        langName, langCode, shortLangCode,
-    } = explodeLocaleName(fullName);
-    return {
-        ...translation,
-        '_': {
-            'language_name': langName,
-            'short_locale': shortLangCode,
-            'locale': langCode,
-            'full_name': fullName,
-            ...nonTranslatableStrings,
-        },
-    };
-};
+    return data;
+}
 
 /**
  * merge helps folder into single json file
@@ -224,6 +208,21 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
 
     console.error(`processHelpsIntoJson - failed to process folder`, folderPath)
     return false
+}
+
+/**
+ * fetches all the resources for doing checking.
+ * @param filePath path to the file.
+ * @returns A resource collection object.
+ */
+export function loadResources(filePath: string):null|ResourcesObject {
+    if (filePath) {
+        const resources = loadResourcesFromPath(filePath, resourcesPath)
+        return resources
+    }
+    throw new Error(
+      `loadResources() - invalid checking filePath "${filePath}", cannot find project folder`,
+    );
 }
 
 /**
@@ -491,8 +490,41 @@ function getDestFolderForRepoFile(resourcesPath: string, languageId: string, res
     return destFolder;
 }
 
-async function fetchRepoFile(masterBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
-    let downloadUrl = masterBranchUrl + repoFilePath;
+export async function fetchFileFromRepo(server: string, owner: string, repo: string, branch: string, localRepoPath: string, fileName: string) {
+    const baseUrl = `${server}/${owner}/${repo}/raw/branch/${branch}`;
+    const results = await fetchFileFromUrl(baseUrl, localRepoPath, fileName);
+    return results;
+}
+
+export async function fetchFileFromUrl(baseUrl: string, repoFilePath: string, filePath: string) {
+    const _filePath = filePath?.replace('./', '')
+    const downloadUrl = `${baseUrl}/${_filePath}`
+    const destFilePath = path.join(repoFilePath, _filePath)
+    const destFolder = path.dirname(destFilePath)
+    fs.ensureDirSync(destFolder)
+    let error:string = ''
+
+    try {
+        const results = await downloadHelpers.download(downloadUrl, destFilePath);
+        if (results.status === 200) {
+            return { 
+                success: true
+            }
+        }
+        error = `fetchFileFromUrl(${downloadUrl}) - returned status ${results.status}`
+        console.warn(`fetchFileFromUrl(${downloadUrl}) - returned status ${results.status}`)
+    } catch (e) {
+        error = `fetchFileFromUrl(${downloadUrl}) - failed`
+        console.warn(`fetchFileFromUrl(${downloadUrl}) - failed`)
+    }
+    return { 
+        success: false,
+        error
+    }
+}
+
+async function fetchRepoFile(baseBranchUrl: string, repoFilePath: string, resourcesPath: string, languageId: string, resourceId: string, bookId: string, version: string, owner: string) {
+    let downloadUrl = baseBranchUrl + repoFilePath;
     const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
     let destFilePath: string | null = path.join(destFolder, repoFilePath);
     let contents = ''
@@ -575,6 +607,14 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
                     contents: bookContents,
                     filePath: bookFilePath
                 } = await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
+                
+                try {
+                    const bookPath = 'LICENSE.md'
+                    await fetchRepoFile(rawUrl, bookPath, resourcesPath, languageId, resourceId, bookId, version, owner);
+                } catch (e) {
+                    console.warn(`fetchBibleResourceBook - could not download license file from ${path.join(rawUrl)}`)
+                }
+                
                 if (bookContents && bookFilePath) {
                     return destFolder;
                 }
@@ -889,7 +929,6 @@ function verifyHaveBibleResource(bibleId:string, resourcesPath:string, languageI
     }
     return null
 }
-
 
 /**
  * look in resourcesPath to make sure we have all the GL translationHelps resources needed for GL
@@ -1324,11 +1363,16 @@ export async function getLatestLangGlResourcesFromCatalog(catalog:null|any[], la
     return { processed, updatedCatalogResources: catalog, foundResources }
 }
 
-export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+export function getRepoFileName(targetLanguageId: string, targetBibleId: string, glLanguageId: string, bookId: string) {
     let repoFolderName = `${targetLanguageId}_${targetBibleId}_${glLanguageId}`;
     if (bookId) {
-        repoFolderName += `_${bookId}`
+        repoFolderName += `_${bookId}`;
     }
+    return repoFolderName;
+}
+
+export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLanguageId:string, projectsPath = projectsBasePath, bookId: string = '') {
+    const repoFolderName = getRepoFileName(targetLanguageId, targetBibleId, glLanguageId, bookId);
     return path.join(projectsPath, repoFolderName)
 }
 
@@ -1337,7 +1381,7 @@ export function getRepoPath(targetLanguageId:string, targetBibleId:string, glLan
  * @param repoPath
  * @param bookId
  */
-function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
+export function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
         return fs.readdirSync(repoPath).filter((filename: string) => {
             let validFile = (path.extname(filename) === ".USFM") || (path.extname(filename) === ".usfm");
@@ -1355,7 +1399,7 @@ function getBibleBookFiles(repoPath: string, bookId:string | null = null) {
  * @param repoPath
  * @param bookId
  */
-function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
+export function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
     if (fs.pathExistsSync(repoPath)) {
         const bookIdsToMatch = bookId ? [bookId] : Object.keys(ALL_BIBLE_BOOKS)
         return fs.readdirSync(repoPath).filter((filename: string) => {
@@ -1367,48 +1411,10 @@ function getBibleBookFolders(repoPath: string, bookId:string | null = null) {
 }
 
 /**
- * get list of files with extension of fileType
- * @param repoPath
- * @param fileType
- * @param bookId
- */
-function getFilesOfType(repoPath: string, fileType: string, bookId:string | null = null) {
-    if (fs.pathExistsSync(repoPath)) {
-        return fs.readdirSync(repoPath).filter((filename: string) => {
-            const fileNameLC = filename.toLowerCase();
-            let validFile = path.extname(fileNameLC) === fileType;
-            if (validFile && bookId) {
-                validFile = fileNameLC.includes(bookId)
-            }
-            return validFile;
-        });
-    }
-    return []
-}
-
-/**
- * copy files from one folder to destination
- * @param sourcePath
- * @param destPath
- * @param files
- */
-function copyFiles(sourcePath: string, destPath: string, files: string[]) {
-    try {
-        fs.ensureDirSync(destPath)
-        for (const file of files) {
-            fs.copyFileSync(path.join(sourcePath, file), path.join(destPath, file))
-        }
-    } catch (e) {
-        console.error(`copyFiles failed`, e)
-        return false
-    }
-}
-
-/**
  * replace the home path with '~'
  * @param filePath
  */
-function removeHomePath(filePath:string) {
+export function removeHomePath(filePath:string) {
     if (filePath && (filePath.indexOf(ospath.home()) === 0)) {
         const newPath = filePath.replace(ospath.home(), '~')
         return newPath
@@ -1561,13 +1567,19 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
         || (hasBibleBooks && !hasCheckingFiles)
 
     // create metadata
-    const checkingMetaData = {
+    const checkingMetaData: GeneralObject = {
         resourceType: "Translation Checker",
         targetLanguageId,
+        targetOwner,
+        targetBibleId,
         gatewayLanguageId: gl_languageId,
         gatewayLanguageOwner: gl_owner,
         resourcesBasePath: removeHomePath(resourcesBasePath),
     };
+    
+    if (bookId) {
+        checkingMetaData.bookId = bookId
+    }
 
     if (!(gl_owner && gl_languageId)) {
         errorMsg = `Missing GL info`;
@@ -1649,6 +1661,24 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
                                 fs.outputJsonSync(path.join(targetPath, 'manifest.json'), manifest, { spaces: 2 });
+                                const repoManifest = {
+                                    ...manifest,
+                                    subject: "Checking",
+                                    description: "Checking",
+                                    projects: getCheckingFiles(repoPath),
+                                    // @ts-ignore
+                                    resource_title: "Checking: " + manifest?.resource_title,
+                                }
+                                // fs.outputJsonSync(path.join(targetPath, '..', 'manifest.json'), repoManifest, { spaces: 2 });
+                                const yamlData = YAML.stringify(repoManifest, 4);
+                                fs.outputFileSync(path.join(targetPath, '..', 'manifest.yaml'), yamlData, "UTF-8");
+
+                                const fileName = 'LICENSE.md';
+                                const sourcePath = path.join(targetFoundPath, fileName);
+                                if (fs.existsSync(sourcePath)) {
+                                    fs.copySync(sourcePath, path.join(targetPath, fileName))
+                                    fs.copySync(sourcePath, path.join(repoPath, fileName))
+                                }
                             }
                         }
 
@@ -1730,15 +1760,6 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
         success: false,
         errorMsg
     };
-
-}
-
-function readJsonFileIfExists(jsonPath:string) {
-    if (fs.existsSync(jsonPath)) {
-        const data = fs.readJsonSync(jsonPath)
-        return data
-    }
-    return null
 }
 
 function updatedResourcesPath(preRelease:boolean) {
@@ -1756,10 +1777,6 @@ export function getSavedCatalog(preRelease = false):null|object[] {
     const fileExists = fs.existsSync(_updatedResourcesPath);
     const updatedResources = fileExists ? fs.readJsonSync(_updatedResourcesPath) : null
     return updatedResources
-}
-
-export function fileExists(filePath:string) {
-    return !!fs.existsSync(filePath)
 }
 
 /**
@@ -1858,7 +1875,7 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
     const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
     const checkType = `.${resourceId}_check`;
     const twlPath = path.join(checksPath, `${bookId}${checkType}`);
-    let resource = readJsonFileIfExists(twlPath);
+    let resource = readJsonFile(twlPath);
     let hasResourceFiles = hasResourceData(resource);
     if (!hasResourceFiles) { // if we don't have checking the specific book, check to see if we have checks for other books at least
         const files = getFilesOfType(checksPath, checkType);
@@ -1869,12 +1886,11 @@ function getCheckingResource(repoPath: string, metadata: object, resourceId: str
 }
 
 function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPath: string, changed: boolean, metadata: object, bookId:string|null = null) {
-    const sep = path.sep || '/'
-    const projectResources = `.${sep}.resources${sep}`;
+    const projectResources = `.${SEP}.resources${SEP}`;
     const bibleId = bible.bibleId || bible.id;
     let biblePath = bible.path;
     let localChanged = false;
-    const resourcesSubFolder = `${sep}.resources${sep}`;
+    const resourcesSubFolder = `${SEP}.resources${SEP}`;
     if (!biblePath) {
         // look first in projects folders
         biblePath = getPathForBible(path.join(repoPath, projectResources), bible.languageId, bibleId, bible.owner, bible.version || '');
@@ -1905,7 +1921,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
         if (!inProject) { // if not in project check if in cache
             const _biblePath = getPathForBible(resourcesBasePath, bible.languageId, bibleId, bible.owner, bible.version || '')
             const testPath = bookId ? path.join(_biblePath, 'books', bookId) : _biblePath
-            if (!isEmptyDir(testPath)) {
+            if (!isEmptyResourceDir(testPath)) {
                 biblePath = _biblePath
             } else {
                 biblePath = ''
@@ -1919,17 +1935,17 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     }
 
     if (isHomePath(biblePath) || !bible.path || localChanged) {
-        const matchBase = `~${sep}translationCore${sep}otherProjects${sep}cache${sep}`;
+        const matchBase = `~${SEP}translationCore${SEP}otherProjects${SEP}cache${SEP}`;
         const matchedBase = biblePath.substring(0, matchBase.length) === matchBase;
         if (matchedBase || !bible.path || localChanged) {
-            const cacheFolder = `${sep}cache${sep}`;
+            const cacheFolder = `${SEP}cache${SEP}`;
             const parts = biblePath.split(cacheFolder);
             if (parts.length >= 2) { // if path is from cache rather than in project, we need to copy it over
                 const newPath = projectResources + parts[1];
                 const _newFullPath = path.join(repoPath, newPath);
 
                 try {
-                    if (isEmptyDir(_newFullPath)) {
+                    if (isEmptyResourceDir(_newFullPath)) {
                         const src = path.join(replaceHomePath(biblePath));
                         const dest = _newFullPath;
                         const parentDir = path.join(dest, "..");
@@ -1973,9 +1989,9 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
                     metadata.otherResources[bibleId] = bible;
                 } catch (e) {
                     console.warn(`makeSureBibleIsInProject - could not copy resource from ${biblePath} to ${newPath}`);
-                    let parts = biblePath.split(sep);
+                    let parts = biblePath.split(SEP);
                     while (parts.length) {
-                        const checkPath = parts.join(sep);
+                        const checkPath = parts.join(SEP);
                         const exists = fs.existsSync(checkPath);
                         if (exists) {
                             break;
@@ -1989,7 +2005,7 @@ function makeSureBibleIsInProject(bible: any, resourcesBasePath: string, repoPat
     return { bibleId, biblePath, changed: changed || localChanged };
 }
 
-function isEmptyDir(fullPath: string) {
+function isEmptyResourceDir(fullPath: string) {
     if (fs.existsSync(fullPath)) {
         let files = getFilesOfType(fullPath, ".yaml");
         if (!files.length) {
@@ -2001,6 +2017,12 @@ function isEmptyDir(fullPath: string) {
     return true
 }
 
+export function getMetaData(repoPath:string) {
+    const pathToMetaData = path.join(repoPath, 'metadata.json')
+    const metaData = readJsonFile(pathToMetaData);
+    return metaData
+}
+        
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -2021,9 +2043,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           // @ts-ignore
           results.metadata = metadata
           // @ts-ignore
-          results.locales = currentLocale
+          results.locales = getCurrentLocale()
           // @ts-ignore
-          results.localeOptions = Object.keys(locales)
+          results.localeOptions = Object.keys(getLocales())
           
           // get the dependent original bibles for resource
           const key = `${resourceId}_relation`
@@ -2042,7 +2064,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               let twPath = cleanupPath(twResource?.path, repoPath)
               twPath = twPath && path.join(twPath, 'tw.json')
               // @ts-ignore
-              results.tw = twPath && readJsonFileIfExists(twPath)
+              results.tw = twPath && readJsonFile(twPath)
           } else
           if (resourceId === 'tn') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
@@ -2052,12 +2074,12 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
               // @ts-ignore
               results.hasTns = !! hasResourceFiles
               // @ts-ignore
-              results.tn = readJsonFileIfExists(tnPath)
+              results.tn = readJsonFile(tnPath)
               const taResource = metadata.otherResources['ta']
               let taPath = cleanupPath(taResource?.path, repoPath)
               taPath = taPath && path.join(taPath, 'ta.json')
               // @ts-ignore
-              results.ta = taPath && readJsonFileIfExists(taPath)
+              results.ta = taPath && readJsonFile(taPath)
           }
 
           // @ts-ignore
@@ -2308,7 +2330,16 @@ export function getParsedUSFM(usfmData:string) {
             return usfmjs.toJSON(usfmData, { convertToInt: ['occurrence', 'occurrences'] });
         }
     } catch (e) {
-        console.error(e);
+        console.error(`getParsedUSFM error`, e);
+    }
+}
+
+export function convertJsonToUSFM(bookData:object) {
+    try {
+        const USFM = usfmjs.toUSFM(bookData, { forcedNewLines: true });
+        return USFM
+    } catch (e) {
+        console.error(`convertJsonToUSFM error`, e);
     }
 }
 
@@ -2535,17 +2566,6 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
     return null
 }
 
-/**
- * wraps timer in a Promise to make an async function that continues after a specific number of milliseconds.
- * @param {number} ms
- * @returns {Promise<unknown>}
- */
-export function delay(ms:number) {
-    return new Promise((resolve) =>
-      setTimeout(resolve, ms)
-    );
-}
-
 export function getBookForTestament(repoPath: string, isNT = true):string | null {
     // console.log(`loadResourcesFromPath() - filePath: ${filePath}`);
     const testamentBooks = Object.keys(isNT ? BIBLE_BOOKS.newTestament : BIBLE_BOOKS.oldTestament)
@@ -2628,12 +2648,6 @@ export function flattenGroupData(groupsData:{}) {
         }
     }
 
-    // let sortedGroups = { }
-    // for (const key of Object.keys(mergedGroups).sort()) {
-    //     // @ts-ignore
-    //     sortedGroups[key] = mergedGroups[key]
-    // }
-
     return mergedGroups;
 }
 
@@ -2648,6 +2662,11 @@ function arrayToTsvLine(keys: string[]) {
  */
 export function toInt(value:any):any {
     return (value && typeof value === 'string') ? parseInt(value, 10) : value;
+}
+
+function escapeString(content:string) {
+  const escaped = (content || '').replaceAll('\t', '\\t').replaceAll('\n', ' ').replaceAll('\r', ' ')
+  return escaped
 }
 
 function sortRowsByRef(rows: object[]) {
@@ -2673,7 +2692,6 @@ function sortRowsByRef(rows: object[]) {
  * process the TSV data into index files
  * @param {string} tsvLines
  */
-
 export function tsvToObjects(tsvLines:string) {
     let tsvItems;
     let parseErrorMsg;
@@ -2751,16 +2769,17 @@ export function checkDataToTwl(checkData:{}) {
                 const groupId = contextId?.groupId || '';
                 const Tags = `${category}`;
                 const quoteString = contextId?.quoteString || '';
-                const OrigWords = `${quoteString}`;
+                const OrigWords = escapeString(`${quoteString}`);
                 const Occurrence = `${contextId?.occurrence || ''}`;
-                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
                 const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
-                const comments = ''
-                const bookmarks = ''
+                const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
+                const comments = escapeString(item?.comments)
+                const bookmarks = item?.reminder ? '1' : '0'
+                const verseEdits = item?.verseEdits ? '1' : '0'
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks, verseEdits
                   },
                 )
             }
@@ -2769,10 +2788,10 @@ export function checkDataToTwl(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks, r.verseEdits
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks'
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks', 'verseEdits'
         ];
         twl.unshift(arrayToTsvLine(keys))
         
@@ -2810,14 +2829,14 @@ function findSelection(checkData: {}, selection: {}):object|undefined {
                     const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
     
                     const ID = `${contextId?.checkId || ""}`;
-                    const category = item?.category || "";
+                    // const category = item?.category || "";
                     const groupId = contextId?.groupId || "";
-                    const Tags = `${category}`;
+                    // const Tags = `${category}`;
                     const quoteString = contextId?.quoteString || "";
-                    const OrigWords = `${quoteString}`;
-                    const Occurrence = `${contextId?.occurrence || ""}`;
-                    const selections = item?.selections ? JSON.stringify(item?.selections) : "";
-                    const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
+                    // const OrigWords = `${quoteString}`;
+                    // const Occurrence = `${contextId?.occurrence || ""}`;
+                    // const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                    // const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
     
                     if (
                         // @ts-ignore
@@ -2894,18 +2913,19 @@ export function checkDataToTn(checkData:{}) {
                 const groupId = contextId?.groupId || '';
                 const Tags = `${category}`;
                 const quoteString = contextId?.quoteString || '';
-                const Quote = `${quoteString}`;
+                const Quote = escapeString(`${quoteString}`);
                 const Occurrence = `${contextId?.occurrence || ''}`;
-                const selections = item?.selections ? JSON.stringify(item?.selections) : ''
                 const SupportReference = `rc://*/ta/man/translate/${groupId}`
                 const _note = contextId?.occurrenceNote || '';
                 const Note = `${_note}`;
-                const comments = ''
-                const bookmarks = ''
+                const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
+                const comments = escapeString(item?.comments)
+                const bookmarks = item?.reminder ? '1' : '0'
+                const verseEdits = item?.verseEdits ? '1' : '0'
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, Note, selections, comments, bookmarks
+                      Reference, chapter, verse, ID, Tags, SupportReference, Quote, Occurrence, Note, selections, comments, bookmarks, verseEdits
                   },
                 )
             }
@@ -2914,10 +2934,10 @@ export function checkDataToTn(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.SupportReference, r.Quote, r.Occurrence, r.Note, r.selections, r.comments, r.bookmarks
+            r.Reference,  r.ID, r.Tags, r.SupportReference, r.Quote, r.Occurrence, r.Note, r.selections, r.comments, r.bookmarks, r.verseEdits
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note', 'selections', 'comments', 'bookmarks'
+            'Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note', 'selections', 'comments', 'bookmarks', 'verseEdits'
         ];
         twl.unshift(arrayToTsvLine(keys))
 
@@ -2929,7 +2949,7 @@ export function checkDataToTn(checkData:{}) {
 export async function changeTargetVerse(projectPath:string, bookId:string, chapter:string, verse:string, newVerseText:string, newVerseObjects: object) {
     if (projectPath && bookId && chapter && verse) {
         const filePath = path.join(projectPath, 'targetBible', bookId, `${chapter}.json`)
-        const chapterData = readJsonFileIfExists(filePath);
+        const chapterData = readJsonFile(filePath);
         if (chapterData) {
             chapterData[verse] = { verseObjects: newVerseObjects }
             fs.outputJsonSync(filePath, chapterData, { spaces: 2 });
@@ -2970,4 +2990,8 @@ export function getTsvOLVersionForBook(tsvRelations:string[], bookId:string) {
     const bibleId = _isNT ? NT_ORIG_LANG_BIBLE : OT_ORIG_LANG_BIBLE
     const version = getTsvOLVersion(tsvRelations, bibleId)
     return { bibleId, version }
+}
+
+export function getServer() {
+    return apiHelpers.DCS_BASE_URL
 }

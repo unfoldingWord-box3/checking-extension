@@ -1,5 +1,5 @@
 // import { vscode } from "./utilities/vscode";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
@@ -9,11 +9,8 @@ import {
 }
 // @ts-ignore
 from 'checking-tool-rcl'
-// @ts-ignore
-import AuthContextProvider from '../dcs/context/AuthContext'
 
-import type { TnTSV } from "../../../types/TsvTypes"
-import { ResourcesObject } from "../../../types/index";
+import { GeneralObject, ResourcesObject } from "../../../types/index";
 import { ALL_BIBLE_BOOKS } from "../../../src/utilities/BooksOfTheBible";
 import { AppBar, IconButton, makeStyles, Toolbar, Typography } from "@material-ui/core";
 import MenuIcon from '@material-ui/icons/Menu'
@@ -23,6 +20,8 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import isEqual from 'deep-equal'
+// @ts-ignore
+import { AuthContext } from "../dcs/context/AuthContext";
 
 const showDocument = true // set this to false, to disable showing ta or tw articles
 
@@ -75,10 +74,12 @@ function hasResourceData(resource:object) {
 }
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
+type uploadToDCSFunction = (server:string, owner:string, token:string) => Promise<GeneralObject>;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
     saveCheckingData: saveCheckingDataFunction;
+    uploadToDCS: uploadToDCSFunction;
     initialContextId: object;
     projectKey: string;
 };
@@ -87,7 +88,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
   saveCheckingData,
   initialContextId,
-  projectKey
+  projectKey,
+  uploadToDCS: _uploadToDCS
  }) => {
     const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
@@ -110,6 +112,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     // @ts-ignore
     const haveChecks = hasResourceData(checks)
     const targetBible = checkingObj.targetBible
+
+    // @ts-ignore
+    const _authContext = useContext(AuthContext);
+    // @ts-ignore
+    const showDialogContent = _authContext?.actions?.showDialogContent
 
     useEffect(() => {
       setCurrentContextId(initialContextId)
@@ -180,6 +187,35 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             id: bookId,
             name: bookName
         }
+    }
+    function _showDialogContent(params: object) {
+      showDialogContent && showDialogContent(params)
+    }
+
+    function uploadToDCS(server:string, owner: string, token: string) {
+      _showDialogContent({ message: 'Doing Upload to DCS' })
+      _uploadToDCS(server, owner, token).then(results => {
+        console.log(`uploadToDCS completed with results:`, results)
+        // @ts-ignore
+        const errorMessage = results?.error;
+        if (errorMessage) {
+          let message = errorMessage;
+          const lastState = results?.lastState;
+          if (lastState) {
+            const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+            message = `${message}.  Repo is at ${url}`
+          }
+          _showDialogContent({ message });
+        } else {
+          let message = 'Upload Success'
+          const lastState = results?.lastState;
+          if (lastState) {
+            const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+            message = `${message} to ${url}`
+          }
+          _showDialogContent({ message });
+        }
+      })
     }
     
     const handleDrawerOpen = () => {
@@ -292,6 +328,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             languages={languages}
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
+            uploadToDCS={uploadToDCS}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

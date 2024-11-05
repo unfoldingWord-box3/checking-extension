@@ -4,7 +4,7 @@ import {
   flattenGroupData,
   importSelectionsDataIntoCheckData,
   tsvToObjects,
-} from "../utilities/checkerFileUtils";
+} from "../utilities/resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as assert from "assert";

@@ -15,37 +15,43 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
-    currentLanguageCode,
-    DEFAULT_LOCALE,
-    delay,
     downloadLatestLangHelpsResourcesFromCatalog,
     downloadTargetBible,
     fetchBibleManifest,
-    fileExists,
     findBibleResources,
     findOwnersForLang,
     findResourcesForLangAndOwner,
     getBookForTestament,
-    getFileSubPathForResource,
+    getBookIdFromPath,
     getLanguagesInCatalog,
     getLatestResourcesCatalog,
+    getMetaData,
     getRepoPath,
     getResourceIdsInCatalog,
     getResourcesForChecking,
     getSavedCatalog,
+    getServer,
     initProject,
     isRepoInitialized,
-    LOCALE_KEY,
+    loadResources,
+    removeHomePath,
     resourcesPath,
     saveCatalog,
+} from "./utilities/resourceUtils";
+import {
+    delay,
+    fileExists
+} from "./utilities/fileUtils";
+import {
+    DEFAULT_LOCALE,
+    getCurrentLanguageCode,
+    LOCALE_KEY,
     setLocale,
-} from "./utilities/checkerFileUtils";
-// @ts-ignore
-import { loadResources } from "./utilities/checkingServerUtils";
+} from "./utilities/languages";
 import {
     getGatewayLanguages,
     getLanguageCodeFromPrompts,
@@ -53,7 +59,15 @@ import {
 } from "./utilities/languages";
 // @ts-ignore
 import isEqual from 'deep-equal'
-import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
+import { isNT } from "./utilities/BooksOfTheBible";
+import {
+    downloadRepoFromDCS,
+    getOwnerReposFromRepoList,
+    getOwnersFromRepoList,
+    getRepoName,
+    uploadRepoToDCS,
+} from "./utilities/network";
+import { getCheckingRepos } from "./utilities/gitUtils";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -328,6 +342,22 @@ export class CheckingProvider implements CustomTextEditorProvider {
           },
         );
         subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.downloadProject",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.downloadProject"`)
+              const localRepoPath = await this.downloadCheckingProjectFromDCS()
+              if (localRepoPath) {
+                  // navigate to new folder
+                  const repoPathUri = vscode.Uri.file(localRepoPath);
+                  vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+              }
+              console.log(`finished "checking-extension.downloadProject success=${!!localRepoPath}"`)
+          })
+        );
+        subscriptions.push(commandRegistration)
+        
         return subscriptions;
     }
 
@@ -666,7 +696,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
          * make sure localization is initialized and check for last locale setting
          */
         const initCurrentLocale = async () => {
-            if (!currentLanguageCode) {
+            if (!getCurrentLanguageCode()) {
                 let currentLocale = DEFAULT_LOCALE
                     const secretStorage = getSecretStorage();
                     const value = await secretStorage.get(LOCALE_KEY);
@@ -736,6 +766,31 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
 
             return CheckingProvider.secretStorage
+        }
+
+        const uploadToDCS = (text:string, data:object) => {
+            // @ts-ignore
+            const token = data?.token as string
+            // @ts-ignore
+            const owner = data?.owner as string
+            // @ts-ignore
+            const server = data?.server as string
+            const filePath = document.fileName
+            const bookId = getBookIdFromPath(filePath) || ''
+            delay(100).then(async () => {
+                console.log(`uploadToDCS: ${text} - ${owner}`)
+                const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                const metaData = getMetaData(projectPath || '')
+                const { targetLanguageId, targetBibleId, gatewayLanguageId, bookId } = metaData?.["translation.checker"]
+                const repo = getRepoName(targetLanguageId, targetBibleId, gatewayLanguageId, bookId);
+                const results = await uploadRepoToDCS(server, owner, repo, token, projectPath || '')
+
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "uploadToDCSResponse",
+                    data: results,
+                } as TranslationCheckingPostMessages);
+            })
         }
         
         const getSecret = (text:string, data:object) => {
@@ -820,6 +875,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
                 ["changeTargetVerse"]: changeTargetVerse_,
+                ["uploadToDCS"]: uploadToDCS,
             };
 
             const commandFunction = commandToFunctionMapping[command];
@@ -1068,6 +1124,97 @@ export class CheckingProvider implements CustomTextEditorProvider {
         );
         await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
         return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
+    }
+
+    private static async downloadCheckingProjectFromDCS(): Promise<string> {
+        await showInformationMessage(`Searching for Checking Projects on server`);
+        
+        const server = getServer();
+        const results = await getCheckingRepos(server)
+        const repos = results?.repos || [];
+        
+        let repoPick:string = ''
+
+        const ownerNames = getOwnersFromRepoList(repos);
+        console.log(`ownerNames length ${ownerNames?.length}`, ownerNames)
+
+        if (!ownerNames?.length) {
+            await showInformationMessage(`No Owners found on ${server}`, true, `No Owners found on ${server}.  Check with your network Administrator`);
+            return ''
+        }
+        
+        let ownerPick = await vscode.window.showQuickPick(
+          ownerNames,
+          {
+              placeHolder: "Select the owner for Project download:",
+          }
+        );
+        
+        if (ownerPick) {
+            await showInformationMessage(`Owner selected ${ownerPick}`);
+
+            const filteredRepos = getOwnerReposFromRepoList(repos, ownerPick)
+            const repoNames = filteredRepos.map(repo => repo.name).sort()
+
+            console.log(`repoNames length ${repoNames?.length}`, repoNames)
+            
+            if (!repoNames?.length) {
+                await showInformationMessage(`No Checking repos found on ${server}/${ownerPick}`, true, `No Checking repos found on ${server}/${ownerPick}. Try a different owner`);
+                return ''
+            }
+
+            repoPick = await vscode.window.showQuickPick(
+              repoNames,
+              {
+                  placeHolder: "Select the repo for Project download:",
+              }
+            ) || '';
+            
+            if (repoPick) {
+                await showInformationMessage(`Repo selected ${repoPick}`);
+                let success = false
+                let madeBackup = false
+
+                let results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', false)
+                if (results.error) {
+                    if (results.errorLocalProjectExists) {
+                        const backupOption = 'Backup Current Repo and Download'
+                        const response = await vscode.window.showWarningMessage(
+                          'There is already a project with the same name on your computer.  What do you want to do?',
+                          { modal: true },
+                          backupOption,
+                        );
+                        console.log('User selected:', response);
+                        
+                        if (response !== backupOption) {
+                            return ''
+                        }
+
+                        madeBackup = true
+                        await showInformationMessage(`Downloading Checking Project ${ownerPick}/${repoPick} from server`);
+                        
+                        results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', true)
+                        if (!results.error) {
+                            success = true
+                        }
+                    }
+                } else {
+                    success = true
+                }
+
+                if (!success) {
+                    await showErrorMessage(`Could not download repo ${ownerPick}/${repoPick}`, true)
+                } else {
+                    const _backupRepoPath = removeHomePath(results?.backupRepoPath);
+                    const _localRepoPath = removeHomePath(results?.localRepoPath);
+                    const detail = madeBackup ? `The existing project was moved to ${_backupRepoPath}.` : ''
+                    await showInformationMessage(`Project successfully downloaded to ${_localRepoPath}.`, true, detail);
+                    return results?.localRepoPath || ''
+                }
+            }
+        }
+        
+        return '';
     }
 
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {

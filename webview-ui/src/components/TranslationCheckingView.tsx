@@ -1,5 +1,5 @@
 // import { vscode } from "./utilities/vscode";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 
@@ -7,7 +7,7 @@ import "../css/styles.css";
 import AuthContextProvider from '../dcs/context/AuthContext'
 
 import type { TnTSV } from "../../../types/TsvTypes"
-import { ResourcesObject } from "../../../types";
+import { GeneralObject, ResourcesObject } from "../../../types";
 import { makeStyles } from "@material-ui/core";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
@@ -144,9 +144,23 @@ function TranslationCheckingView() {
             }
         };
 
+        const uploadToDCSResponse = (value: string | undefined) => {
+            // @ts-ignore
+            const key = "uploadToDCS";
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+                saveCallBack(key, null) // clear callback after use
+            } else {
+                console.error(`No handler for uploadToDCSResponse(${key}) response`)
+            }
+        };
+
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
+            ["uploadToDCSResponse"]: uploadToDCSResponse,
         };
 
         commandToFunctionMapping[command](data);
@@ -189,6 +203,22 @@ function TranslationCheckingView() {
             });
         })
         return promise
+    }
+
+    async function uploadToDCS(server:string, owner: string, token: string): Promise<GeneralObject> {
+        const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
+            const promise = new Promise<object>((resolve) => {
+                saveCallBack("uploadToDCS", resolve);
+                vscode.postMessage({
+                    command: "uploadToDCS",
+                    text: "Upload Repo to DCS",
+                    data: { server, owner, token }
+                });
+            })
+            return promise
+        }
+        const results = await _uploadToDCS(server, owner, token)
+        return results
     }
 
     function sendFirstLoadMessage() {
@@ -346,6 +376,7 @@ function TranslationCheckingView() {
                 saveCheckingData={saveCheckingData}
                 initialContextId={initialContextId}
                 projectKey={projectKey}
+                uploadToDCS={uploadToDCS}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>
