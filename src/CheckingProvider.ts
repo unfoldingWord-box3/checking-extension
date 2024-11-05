@@ -58,8 +58,9 @@ import {
 } from "./utilities/languages";
 // @ts-ignore
 import isEqual from 'deep-equal'
-import { ALL_BIBLE_BOOKS, isNT } from "./utilities/BooksOfTheBible";
+import { isNT } from "./utilities/BooksOfTheBible";
 import {
+    downloadRepoFromDCS,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
     getRepoName,
@@ -345,7 +346,31 @@ export class CheckingProvider implements CustomTextEditorProvider {
           "checking-extension.downloadProject",
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.downloadProject"`)
-              const  { owner: ownerPick, repoName: repoPick } = await this.getRepoSelection()
+              const {
+                  owner: ownerPick,
+                  repoName: repoPick,
+                  server,
+              } = await this.getRepoSelection()
+              let success = false
+              
+              if (ownerPick && repoPick) {
+                  const results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', false)
+                  if (results.error) {
+                      if (results.errorLocalProjectExists) {
+                          const results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', true)
+                          if (!results.error) {
+                              success = true
+                          }
+                      }
+                  } else {
+                      success = true
+                  }
+              }
+              
+              if (!success) {
+                  await showErrorMessage(`Could not download repo ${ownerPick}/${repoPick}`, true)
+              }
+
               console.log(`finished "checking-extension.downloadProject"`)
           })
         );
@@ -1171,7 +1196,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
 
         
-        return { owner: ownerPick, repoName: repoPick };
+        return { owner: ownerPick, repoName: repoPick, server };
     }
 
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {

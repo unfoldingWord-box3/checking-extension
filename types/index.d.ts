@@ -32,6 +32,7 @@ export type GeneralObject = {
 export type RepoSelection = {
   owner?: string;
   repoName?: string;
+  server?: string;
   error?: string;
 };
 
