@@ -496,16 +496,21 @@ export async function fetchFileFromRepo(server: string, owner: string, repo: str
     return results;
 }
 
+export async function fetchFromUrl(downloadUrl: string, destFilePath: string) {
+    const destFolder = path.dirname(destFilePath)
+    fs.ensureDirSync(destFolder)
+    const results = await downloadHelpers.download(downloadUrl, destFilePath);
+    return results;
+}
+
 export async function fetchFileFromUrl(baseUrl: string, repoFilePath: string, filePath: string) {
     const _filePath = filePath?.replace('./', '')
     const downloadUrl = `${baseUrl}/${_filePath}`
     const destFilePath = path.join(repoFilePath, _filePath)
-    const destFolder = path.dirname(destFilePath)
-    fs.ensureDirSync(destFolder)
     let error:string = ''
 
     try {
-        const results = await downloadHelpers.download(downloadUrl, destFilePath);
+        const results = await fetchFromUrl(downloadUrl, destFilePath);
         if (results.status === 200) {
             return { 
                 success: true

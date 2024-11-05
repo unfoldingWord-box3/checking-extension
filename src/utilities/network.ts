@@ -2,7 +2,7 @@ import {
   checkDataToTn,
   checkDataToTwl,
   convertJsonToUSFM,
-  fetchFileFromRepo,
+  fetchFromUrl,
   flattenGroupData,
   getBibleBookFolders,
   getMetaData,
@@ -49,6 +49,8 @@ import {
   UploadFileResponse,
   uploadRepoFileFromPath,
 } from "./gitUtils";
+// @ts-ignore
+import { zipFileHelpers } from 'tc-source-content-updater'
 
 export const mergeToMasterBranch = 'merge_changes_to_master'
 export const mergeFromMasterBranch = 'update_from_master'
@@ -319,9 +321,9 @@ export async function downloadPublicRepoFromBranch(localRepoPath: string, server
   return results
 }
 
-async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObject, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
+async function checkDownloadedFiles(dcsFiles: NestedObject, localRepoPath: string) {
   let changedFiles = 0;
-  const files = Object.keys(dcsFiles)
+  const files = Object.keys(dcsFiles);
   for (const fileName of files) {
     if ((fileName.includes(dcsStatusFile)) || (fileName === ".DS_Store")) { // skip over DCS data file, and system files
       continue;
@@ -335,30 +337,50 @@ async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObje
     const fileType = dcsFileData?.type;
 
     if (fileType === "file" || fileType === "blob") {
-      console.log(`downloadFilesInBranch - downloading file ${fileName}`);
-      const results = await fetchFileFromRepo(server, owner, repo, branch, localRepoPath, fileName);
+      console.log(`checkDownloadedFiles - validating file ${fileName}`);
 
-      // using API - probably slowing using base46 encoding
-      // results = await getFileFromBranch(server, owner, repo, branch, fileName, token);
+      changedFiles++;
+      
+      localChecksum = await getChecksum(fullFilePath);
+      dcsFileData.checksum = localChecksum;
+      // @ts-ignore
+      delete dcsFileData["content"];
+    }
+  }
+  // @ts-ignore
+  return { changedFiles };
+}
 
-      changedFiles++
-
-      if (!results?.error) {
-        localChecksum = await getChecksum(fullFilePath);
-        dcsFileData.checksum = localChecksum
-        // @ts-ignore
-        delete dcsFileData["content"];
-      } else {
-        // @ts-ignore
-        results.errorDownloading = true
-        console.error(results.error);
-        return results
-      }
+async function downloadFilesInBranch(localRepoPath: string, dcsFiles: NestedObject, server: string, owner: string, repo: string, branch: string): Promise<GeneralObject> {
+  const zipFileName = repo + '.zip';
+  const importsFolder = path.join(projectsBasePath, 'imports')
+  fs.emptyDirSync(importsFolder)
+  const zipFilePath = path.join(importsFolder, owner, zipFileName)
+  const downloadUrl = `${server}/${owner}/${repo}/archive/${branch}.zip`
+  console.log(`downloadFilesInBranch - downloading zip ${downloadUrl}`);
+  const results = await fetchFromUrl(downloadUrl, zipFilePath);
+  if (results.status !== 200) {
+    return {
+      ...results,
+      error:`fetchFileFromUrl(${downloadUrl}) - returned status ${results.status}`
+    }
+  }
+  
+  try {
+    console.log(`downloadFilesInBranch - unzipping ${zipFilePath}`);
+    await zipFileHelpers.extractZipFile(zipFilePath, projectsBasePath);
+    fs.emptyDirSync(importsFolder)
+  } catch (e:any) {
+    return {
+      errorObject: e,
+      error:`unzip failed: ${e.toString()}`
     }
   }
 
-  console.log(`downloadFilesInBranch - files downloaded count ${changedFiles}`);
-  return { changedFiles }
+  const { changedFiles } = await checkDownloadedFiles(dcsFiles, localRepoPath);
+  
+  console.log(`downloadFilesInBranch - download completed`);
+  return { success: true, changedFiles }
 }
 
 async function makeSureBranchExists(server: string, owner: string, repo: string, token: string, branch: string, branchAlreadyExists = false, previousCommit: string = ''): Promise<GeneralObject> {

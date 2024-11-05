@@ -143,7 +143,7 @@ suite.skip('Repo Tests', async ()=> {
   })
 
   test('Test downloadRepoFromDCS', async () => {
-    const repo = 'pigeon_ult_en_tit_checking'
+    const repo = 'es-419_glt_en_3jn_checking'
     const results = await downloadRepoFromDCS(server, owner, repo, true)
     assert.ok(!results.error)
   })

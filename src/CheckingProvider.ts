@@ -1175,6 +1175,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 let success = false
                 let madeBackup = false
 
+                delay(5000).then(() => {
+                    showInformationMessage(`Downloading ${ownerPick}/${repoPick} from server`);
+                })
+
                 let results = await downloadRepoFromDCS(server || '', ownerPick || '', repoPick || '', false)
                 if (results.error) {
                     if (results.errorLocalProjectExists) {
