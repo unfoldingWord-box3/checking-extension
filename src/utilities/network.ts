@@ -242,7 +242,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
       } else {
         console.log(`updateFilesInBranch - updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true);
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, false);
       }
 
       changedFiles++
