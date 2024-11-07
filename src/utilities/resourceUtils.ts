@@ -2763,28 +2763,29 @@ export function checkDataToTwl(checkData:{}) {
 
             for (const item of group) {
                 // @ts-ignore
-                const contextId = item?.contextId;
+                const contextId = item.contextId;
                 const reference = contextId?.reference;
                 const chapter = reference?.chapter || '';
                 const verse = reference?.verse || '';
                 const Reference = (chapter && verse) ? `${chapter}:${verse}` : ''
 
                 const ID = `${contextId?.checkId || ''}`;
-                const category = item?.category || '';
+                const category = item.category || '';
                 const groupId = contextId?.groupId || '';
                 const Tags = `${category}`;
                 const quoteString = contextId?.quoteString || '';
                 const OrigWords = escapeString(`${quoteString}`);
                 const Occurrence = `${contextId?.occurrence || ''}`;
                 const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
-                const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
-                const comments = escapeString(item?.comments)
-                const bookmarks = item?.reminder ? '1' : '0'
-                const verseEdits = item?.verseEdits ? '1' : '0'
+                const selections = item.selections ? escapeString(JSON.stringify(item.selections)) : ''
+                const comments = escapeString(item.comments)
+                const bookmarks = item.reminder ? '1' : '0'
+                const verseEdits = item.verseEdits ? '1' : '0'
+                const invalidated = item.invalidated ? '1' : '0'
 
                 rows.push(
                   {
-                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks, verseEdits
+                      Reference, chapter, verse, ID, Tags, OrigWords, Occurrence, TWLink, selections, comments, bookmarks, verseEdits, invalidated
                   },
                 )
             }
@@ -2793,10 +2794,10 @@ export function checkDataToTwl(checkData:{}) {
         const _rows = sortRowsByRef(rows);
         twl = _rows.map(r => arrayToTsvLine([
             // @ts-ignore
-            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks, r.verseEdits
+            r.Reference,  r.ID, r.Tags, r.OrigWords, r.Occurrence, r.TWLink, r.selections, r.comments, r.bookmarks, r.verseEdits, r.invalidated
         ]))
         const keys = [
-            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks', 'verseEdits'
+            'Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink', 'selections', 'comments', 'bookmarks', 'verseEdits', 'invalidated'
         ];
         twl.unshift(arrayToTsvLine(keys))
         
@@ -2827,20 +2828,20 @@ function findSelection(checkData: {}, selection: {}):object|undefined {
     
                 for (const item of group) {
                     // @ts-ignore
-                    const contextId = item?.contextId;
+                    const contextId = item.contextId;
                     const reference = contextId?.reference;
                     const chapter = reference?.chapter || "";
                     const verse = reference?.verse || "";
                     const Reference = (chapter && verse) ? `${chapter}:${verse}` : "";
     
                     const ID = `${contextId?.checkId || ""}`;
-                    // const category = item?.category || "";
+                    // const category = item.category || "";
                     const groupId = contextId?.groupId || "";
                     // const Tags = `${category}`;
                     const quoteString = contextId?.quoteString || "";
                     // const OrigWords = `${quoteString}`;
                     // const Occurrence = `${contextId?.occurrence || ""}`;
-                    // const selections = item?.selections ? JSON.stringify(item?.selections) : "";
+                    // const selections = item.selections ? JSON.stringify(item.selections) : "";
                     // const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`;
     
                     if (
