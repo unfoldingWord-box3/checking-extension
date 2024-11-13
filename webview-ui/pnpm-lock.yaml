@@ -27,8 +27,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0(react@18.3.1)
       checking-tool-rcl:
-        specifier: 0.9.18-beta.3
-        version: 0.9.18-beta.3(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0)
+        specifier: 0.9.18-beta.5
+        version: 0.9.18-beta.5(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0)
       deep-equal:
         specifier: 1.0.1
         version: 1.0.1
@@ -1008,8 +1008,8 @@ packages:
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==, tarball: https://registry.npmjs.org/charenc/-/charenc-0.0.2.tgz}
 
-  checking-tool-rcl@0.9.18-beta.3:
-    resolution: {integrity: sha512-wpO5z9lPOzH/bz8c86qEqrkY0yxaHrwMu1BlsFkuVVqJNB/bQppHplfqOUN4J3P8k/faIH+qI37nJZCxbgeNAA==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.18-beta.3.tgz}
+  checking-tool-rcl@0.9.18-beta.5:
+    resolution: {integrity: sha512-jHJVunw3aWtUdskOEpXpBc6sLQL8US6a0naLnLH05BgBvEHcuB1vpVCrgtlUKtl2K9YjKw4DxkgiqTS5TfNtJQ==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.18-beta.5.tgz}
     peerDependencies:
       prop-types: ^15.x
       react: 18.3.1
@@ -1371,9 +1371,6 @@ packages:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==, tarball: https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz}
     deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
-  inherits@2.0.3:
-    resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==, tarball: https://registry.npmjs.org/inherits/-/inherits-2.0.3.tgz}
-
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==, tarball: https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz}
 
@@ -1723,9 +1720,6 @@ packages:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
 
-  path@0.12.7:
-    resolution: {integrity: sha512-aXXC6s+1w7otVF9UletFkFcDsJeO7lSZBPUQhtb5O0xJe8LtYhj/GxldoL09bBj9+ZmE2hNoHqQSFMN5fikh4Q==, tarball: https://registry.npmjs.org/path/-/path-0.12.7.tgz}
-
   performance-now@2.1.0:
     resolution: {integrity: sha512-7EAHlyLHI56VEIdK57uwHdHKIaAGbnXPiw0yWbarQZOKaKpvUIgW0jWRVLiatnM+XXlSwsanIBH/hzGMJulMow==, tarball: https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz}
 
@@ -1745,10 +1739,6 @@ packages:
 
   process-nextick-args@2.0.1:
     resolution: {integrity: sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==, tarball: https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz}
-
-  process@0.11.10:
-    resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==, tarball: https://registry.npmjs.org/process/-/process-0.11.10.tgz}
-    engines: {node: '>= 0.6.0'}
 
   prop-types-extra@1.1.1:
     resolution: {integrity: sha512-59+AHNnHYCdiC+vMwY52WmvP5dM3QLeoumYuEyceQDi9aEhtwN9zIQ2ZNo25sMyXnbh32h+P1ezDsUpUH3JAew==, tarball: https://registry.npmjs.org/prop-types-extra/-/prop-types-extra-1.1.1.tgz}
@@ -1940,9 +1930,6 @@ packages:
   schema-utils@3.3.0:
     resolution: {integrity: sha512-pN/yOAvcC+5rQ5nERGuwrjLlYvLTbCibnZ1I7B1LaiAz9BRBlE9GMgE/eqV30P7aJQUf7Ddimy/RsbYO/GrVGg==, tarball: https://registry.npmjs.org/schema-utils/-/schema-utils-3.3.0.tgz}
     engines: {node: '>= 10.13.0'}
-
-  selections@0.1.7:
-    resolution: {integrity: sha512-iuhI1EGk1VzbQB//ClJOIEjveqlGDDwTbyRxT3b/teHnbunQy0bKyh+azxgKZFRs+JHr20XO06kd/oGzwqwa2g==, tarball: https://registry.npmjs.org/selections/-/selections-0.1.7.tgz}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -2166,9 +2153,6 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==, tarball: https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz}
-
-  util@0.10.4:
-    resolution: {integrity: sha512-0Pm9hTQ3se5ll1XihRic3FDIku70C+iHUdT/W926rSgHV5QgXsYbKZN8MSC3tJtSkhuROzvsQjAaFENRXr+19A==, tarball: https://registry.npmjs.org/util/-/util-0.10.4.tgz}
 
   uw-tsv-parser@1.0.3:
     resolution: {integrity: sha512-BqDEayQWdGGsINZlYMzn1+4dAyVtG9zEmNnIv51H/7DquEODEO8hOI1mpNpLlNqGCcXySgTSj2nGhiODefZ4VA==, tarball: https://registry.npmjs.org/uw-tsv-parser/-/uw-tsv-parser-1.0.3.tgz}
@@ -3235,7 +3219,7 @@ snapshots:
 
   charenc@0.0.2: {}
 
-  checking-tool-rcl@0.9.18-beta.3(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0):
+  checking-tool-rcl@0.9.18-beta.5(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0):
     dependencies:
       '@material-ui/core': 4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3254,8 +3238,8 @@ snapshots:
       react-icons: 4.12.0(react@18.3.1)
       react-redux: 7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-tooltip: 3.11.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      selections: 0.1.7
       string-punctuation-tokenizer: 2.2.0
+      tc-strings: 0.1.7
       usfm-js: 3.4.3
       uw-tsv-parser: 1.0.3
       word-aligner: 1.0.3(usfm-js@3.4.3)
@@ -3643,8 +3627,6 @@ snapshots:
       once: 1.4.0
       wrappy: 1.0.2
 
-  inherits@2.0.3: {}
-
   inherits@2.0.4: {}
 
   internal-slot@1.0.7:
@@ -3988,11 +3970,6 @@ snapshots:
 
   path-type@4.0.0: {}
 
-  path@0.12.7:
-    dependencies:
-      process: 0.11.10
-      util: 0.10.4
-
   performance-now@2.1.0: {}
 
   picocolors@1.0.1: {}
@@ -4008,8 +3985,6 @@ snapshots:
       source-map-js: 1.2.0
 
   process-nextick-args@2.0.1: {}
-
-  process@0.11.10: {}
 
   prop-types-extra@1.1.1(react@18.3.1):
     dependencies:
@@ -4268,16 +4243,6 @@ snapshots:
       ajv: 6.12.6
       ajv-keywords: 3.5.2(ajv@6.12.6)
 
-  selections@0.1.7:
-    dependencies:
-      babel-runtime: 6.26.0
-      deep-equal: 1.0.1
-      lodash: 4.17.21
-      path: 0.12.7
-      rimraf: 2.7.1
-      tc-strings: 0.1.7
-      transform-runtime: 0.0.0
-
   semver@6.3.1: {}
 
   serialize-javascript@6.0.2:
@@ -4496,10 +4461,6 @@ snapshots:
   utf8@3.0.0: {}
 
   util-deprecate@1.0.2: {}
-
-  util@0.10.4:
-    dependencies:
-      inherits: 2.0.3
 
   uw-tsv-parser@1.0.3: {}
 

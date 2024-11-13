@@ -1548,7 +1548,7 @@ export function getCheckingExtension(resourceId: string) {
  * @param resourceId
  */
 export function getCheckingFileNameForBook(bookId: string, resourceId: string) {
-    return `${bookId}.${getCheckingExtension(resourceId)}`;
+    return `${bookId}${getCheckingExtension(resourceId)}`;
 }
 
 /**
@@ -1765,10 +1765,10 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     } else {
                         // parse USFM
                         const bibleBooks = getBibleBookFiles(targetFoundPath, bookId);
-                        for (const bookId of bibleBooks) {
-                            const matchLowerCase = bookId.toLowerCase();
+                        for (const book of bibleBooks) {
+                            const matchLowerCase = book.toLowerCase()
                             if (matchLowerCase.includes(bookId)) {
-                                const bookPath = path.join(targetFoundPath, bookId);
+                                const bookPath = path.join(targetFoundPath, book);
                                 const targetPath = path.join(repoPath, 'targetBible');
                                 const targetBook = parseAndSaveUsfm(bookPath, targetPath, bookId);
                                 // copy manifest
