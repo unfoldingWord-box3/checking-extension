@@ -12,7 +12,7 @@ import {
     getFilesOfType,
     objectNotEmpty,
     readHelpsFolder,
-    readJsonFile
+    readJsonFile,
 } from "./fileUtils";
 import * as BooksOfTheBible from "./BooksOfTheBible";
 import {
@@ -36,6 +36,8 @@ import * as tsvparser from "uw-tsv-parser";
 import * as tsvGroupdataParser from "tsv-groupdata-parser"
 import { request } from "node:http";
 import { getCheckingFiles } from "./network";
+// @ts-ignore
+import { referenceHelpers } from 'bible-reference-range';
 
 // helpers
 const {
@@ -1512,13 +1514,9 @@ export function getSubFolderForResource(resourceId: string) {
 }
 
 export function getFileSubPathForResource(resourceId: string, bookId: string | null) {
-    const folder = getSubFolderForResource(resourceId)
-    const fileName = getFileNameForBook(bookId, resourceId)
+    const folder = getSubFolderForResource(resourceId);
+    const fileName = getCheckingFileNameForBook(bookId || "", resourceId);
     return path.join(folder, fileName);
-}
-
-function getFileNameForBook(_bookId: string | null, resourceId: string) {
-    return `${_bookId}.${resourceId}_check`;
 }
 
 function parseAndSaveUsfm(bookPath: string, targetPath: string, bookId: string | null) {
@@ -1533,6 +1531,116 @@ function parseAndSaveUsfm(bookPath: string, targetPath: string, bookId: string |
     }
     // save header as json file
     fs.outputJsonSync(path.join(targetBookDestPath, "headers.json"), json.headers, { spaces: 2 });
+    return bookData;
+}
+
+/**
+ * get the extension name for resourceId
+ * @param resourceId
+ */
+export function getCheckingExtension(resourceId: string) {
+    return `.${resourceId}_check`;
+}
+
+/**
+ * get the folder name for bookId and resourceId
+ * @param bookId
+ * @param resourceId
+ */
+export function getCheckingFileNameForBook(bookId: string, resourceId: string) {
+    return `${bookId}.${getCheckingExtension(resourceId)}`;
+}
+
+/**
+ * get the folder name for resourceId
+ * @param resourceId
+ */
+export function getCheckingPathName(resourceId: string) {
+    return `${resourceId}_checksPath`;
+}
+
+/**
+ * remap the GL verse references to target verse reference
+ * @param groupsData
+ * @param bookId
+ * @param targetBook
+ */
+export function reMapGlVerseRefsToTarget_(groupsData: GeneralObject, bookId: string, targetBook: GeneralObject) {
+    for (const category of Object.keys(groupsData)) {
+        if (category === "manifest") {
+            continue; // skip manifest
+        }
+
+        // @ts-ignore
+        let groups: {} = groupsData[category];
+        console.log("groups", Object.keys(groups));
+
+        // @ts-ignore
+        const _groups = groups?.groups;
+        if (_groups) {
+            groups = _groups;
+            console.log("groups2", Object.keys(groups));
+        }
+
+        // console.log('groups',Object.keys(groups))
+        for (const groupId of Object.keys(groups)) {
+            // console.log('groupId',groupId)
+            // @ts-ignore
+            const group: object[] = groups[groupId];
+
+            if (Array.isArray(group)) {
+                // console.log('group',group)
+                const newGroup = group.map(item => {
+                    // @ts-ignore
+                    const reference = item.contextId?.reference;
+                    if (reference.bookId === bookId) { // only process if same book
+                        let chapter = reference.chapter;
+                        let verse = reference.verse;
+                        const ref = chapter + ":" + verse;
+                        const verseRefs = referenceHelpers.getVerses(targetBook, ref);
+
+                        const length = verseRefs.length;
+                        if (length === 1) {
+                            const verseRef = verseRefs[0];
+                            if ((verseRef.verse !== verse) || (verseRef.chapter !== chapter)) {
+                                reference.chapter = chapter;
+                                reference.verse = verse;
+                            }
+                        } else if (length > 1) {
+                            const newRef = referenceHelpers.convertReferenceChunksToString(verseRefs);
+                            const parts = newRef.split(":");
+                            const chapter = parts[0];
+                            const remaining = parts.slice(1);
+                            const verse = remaining.join(":");
+                            reference.chapter = chapter;
+                            reference.verse = verse;
+                        }
+                    }
+                    return item;
+                });
+            } else {
+                // console.log(`group is not an array`)
+            }
+        }
+    }
+}
+
+/**
+ * remap the GL verse references to target verse reference
+ * @param repoPath
+ * @param resourceId
+ * @param bookId
+ * @param targetBook
+ */
+function reMapGlVerseRefsToTarget(repoPath: string, resourceId: string, bookId: string, targetBook: GeneralObject) {
+    const checkingPath = path.join(repoPath, "checking", resourceId);
+    const fileName = getCheckingFileNameForBook(bookId || "", resourceId);
+    const checkingFilePath = path.join(checkingPath, fileName);
+    const groupsData = fs.readJsonSync(checkingFilePath) as GeneralObject;
+
+    reMapGlVerseRefsToTarget_(groupsData, bookId, targetBook);
+
+    fs.outputJsonSync(checkingFilePath, groupsData, { spaces: 2 });
 }
 
 /**
@@ -1556,7 +1664,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
     let hasCheckingFiles = true
     for (const resourceId of resourceIds) {
         const checkingPath = path.join(repoPath, 'checking', resourceId)
-        const checkingFiles = getFilesOfType(checkingPath, `.${resourceId}_check`)
+        const checkingFiles = getFilesOfType(checkingPath, getCheckingExtension(resourceId))
         const hasCheckingFiles_ = checkingFiles?.length
         if (!hasCheckingFiles_) {
             hasCheckingFiles = false
@@ -1637,7 +1745,7 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                         if (files?.length) {
                             for (const filename of files) {
                                 const _bookId = getBookIdFromPath(filename);
-                                const newName = getFileNameForBook(_bookId, resourceId);
+                                const newName = getCheckingFileNameForBook(_bookId || '', resourceId);
                                 if (newName !== filename) {
                                     fs.moveSync(path.join(checkingPath, filename), path.join(checkingPath, newName));
                                 }
@@ -1657,12 +1765,12 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                     } else {
                         // parse USFM
                         const bibleBooks = getBibleBookFiles(targetFoundPath, bookId);
-                        for (const book of bibleBooks) {
-                            const matchLowerCase = book.toLowerCase()
+                        for (const bookId of bibleBooks) {
+                            const matchLowerCase = bookId.toLowerCase();
                             if (matchLowerCase.includes(bookId)) {
-                                const bookPath = path.join(targetFoundPath, book);
+                                const bookPath = path.join(targetFoundPath, bookId);
                                 const targetPath = path.join(repoPath, 'targetBible');
-                                parseAndSaveUsfm(bookPath, targetPath, bookId);
+                                const targetBook = parseAndSaveUsfm(bookPath, targetPath, bookId);
                                 // copy manifest
                                 const manifest = getResourceManifest(targetFoundPath)
                                 fs.outputJsonSync(path.join(targetPath, 'manifest.json'), manifest, { spaces: 2 });
@@ -1684,10 +1792,11 @@ export async function initProject(repoPath:string, targetLanguageId:string, targ
                                     fs.copySync(sourcePath, path.join(targetPath, fileName))
                                     fs.copySync(sourcePath, path.join(repoPath, fileName))
                                 }
+                                
+                                reMapGlVerseRefsToTarget(repoPath, "tn", bookId, targetBook);
+                                reMapGlVerseRefsToTarget(repoPath, "twl", bookId, targetBook);
                             }
                         }
-
-                        // fs.copySync(targetFoundPath, repoPath)
                     }
                     callback && await callback(`Downloaded Target Bible ${targetLanguageId}/${targetBibleId}`)
                 }
@@ -1809,11 +1918,11 @@ export function isRepoInitialized(repoPath:string, resourcesBasePath:string, sou
         } else if (metadata) {
             const checkingMetadata = metadata[checkingName]
             for (const resourceId of resourceIds) {
-                const resourcePathKey = `${resourceId}_checksPath`;
+                const resourcePathKey = getCheckingPathName(resourceId);
                 if (checkingMetadata?.[resourcePathKey]) { // metadata initialized for resourceId
                     metaDataInitialized = true
                     const checkingPath = path.join(repoPath, checkingMetadata[resourcePathKey])
-                    const checkingFiles = getFilesOfType(checkingPath, `.${resourceId}_check`)
+                    const checkingFiles = getFilesOfType(checkingPath, getCheckingExtension(resourceId))
                     checksInitialized = !!checkingFiles?.length
                     if (!checksInitialized) {
                         console.log(`isRepoInitialized - checks not present at ${checkingPath}`)
@@ -1877,8 +1986,8 @@ function hasResourceData(resource:object) {
 
 function getCheckingResource(repoPath: string, metadata: object, resourceId: string, bookId: string) {
     // @ts-ignore
-    const checksPath = path.join(repoPath, metadata[`${resourceId}_checksPath`]);
-    const checkType = `.${resourceId}_check`;
+    const checksPath = path.join(repoPath, metadata[ getCheckingPathName(resourceId)]);
+    const checkType = getCheckingExtension(resourceId);
     const twlPath = path.join(checksPath, `${bookId}${checkType}`);
     let resource = readJsonFile(twlPath);
     let hasResourceFiles = hasResourceData(resource);
@@ -2073,7 +2182,7 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
           } else
           if (resourceId === 'tn') {
               let { resource, hasResourceFiles } = getCheckingResource(repoPath, metadata, resourceId, bookId);
-              const tnPath = path.join(repoPath, metadata[`${resourceId}_checksPath`], `${bookId}.${resourceId}_check` )
+              const tnPath = path.join(repoPath, metadata[ getCheckingPathName(resourceId)], getCheckingFileNameForBook(bookId, resourceId) );
               // @ts-ignore
               results.tn = resource
               // @ts-ignore
