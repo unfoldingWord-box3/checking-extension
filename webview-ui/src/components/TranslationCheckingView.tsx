@@ -239,8 +239,6 @@ function TranslationCheckingView() {
 
     function saveCheckingData(newState:{}) { // send message back to extension to save new selection to file
         // @ts-ignore
-        const newSelections = newState?.selections
-        // @ts-ignore
         const currentContextId = newState?.currentCheck?.contextId
         // @ts-ignore
         const checks = checkingObj?.checks;
@@ -271,8 +269,12 @@ function TranslationCheckingView() {
             }
             // @ts-ignore
             newGroup[index] = newItem
-            // @ts-ignore
-            newItem.selections = newSelections
+            if (Object.hasOwn(newState,'selections')) {
+                // @ts-ignore
+                const newSelections = newState?.selections
+                // @ts-ignore
+                newItem.selections = newSelections
+            }
             setState({
                 checkingObj: newCheckingObj,
             })
