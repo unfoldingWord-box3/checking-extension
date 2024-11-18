@@ -753,6 +753,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     foundCheck.nothingToSelect = currentCheck?.nothingToSelect
                     // @ts-ignore
                     foundCheck.verseEdits = currentCheck?.verseEdits
+                    // @ts-ignore
+                    foundCheck.invalidated = currentCheck?.invalidated
+                    
                     this.updateChecks(document, checkingData) // save with updated
                 } else {
                     console.error(`saveCheckingData - did not find match`, foundCheck);

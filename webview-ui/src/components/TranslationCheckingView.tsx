@@ -239,7 +239,8 @@ function TranslationCheckingView() {
 
     function saveCheckingData(newState:{}) { // send message back to extension to save new selection to file
         // @ts-ignore
-        const currentContextId = newState?.currentCheck?.contextId
+        const currentCheck = newState?.currentCheck;
+        const currentContextId = currentCheck?.contextId
         // @ts-ignore
         const checks = checkingObj?.checks;
         // @ts-ignore
@@ -265,7 +266,7 @@ function TranslationCheckingView() {
             const newItem = {
                 // @ts-ignore
                 ...newGroup[index],
-                ...check,
+                ...currentCheck,
             }
             // @ts-ignore
             newGroup[index] = newItem

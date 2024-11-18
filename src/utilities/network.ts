@@ -157,13 +157,14 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
       }
     } else
     if (dcsContent) {
-      const diffPatch = getPatch(uploadPath, dcsContent, content, false, getContextLines())
+      const patchFileName = uploadPath[0] === '/' ? uploadPath : '/' + uploadPath;
+      const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
       // @ts-ignore
       results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
       results.content = content
       if (results?.error) {
         incrementContextLines();
-        const diffPatch = getPatch(uploadPath, dcsContent, content, false, getContextLines())
+        const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
         // @ts-ignore
         results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
         results.content = content
@@ -242,7 +243,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
       } else {
         console.log(`updateFilesInBranch - updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, false);
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true);
       }
 
       changedFiles++
