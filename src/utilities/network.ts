@@ -149,7 +149,7 @@ function incrementContextLines() {
   }
 }
 
-export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string, downloadAndDiff = false): Promise<ModifyFileResponse> {
+export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string, downloadAndDiff = false, completedStr: string = ''): Promise<ModifyFileResponse> {
   let results:UploadFileResponse
   let  forcedUpload = false
   
@@ -161,7 +161,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     // const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
     const importsFolder = path.join(projectsBasePath, 'imports')
     const tempFolder = path.join(importsFolder, 'temp')
-    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `downloading DCS file content ${uploadPath}`);
+    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - downloading DCS file content ${uploadPath}`);
     const fileData = await fetchFileFromRepo(server, owner, repo, branch, tempFolder, uploadPath)
     if (fileData?.error) {
       // @ts-ignore
@@ -172,7 +172,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     if (dcsContent === content) { // if no change
       console.log(`modifyRepoFileFromPath - no change, skipping`);
-      sendUpdateUploadStatus(`modifyRepoFileFromPath`, `no change, skipping upload`);
+      sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - no change, skipping upload`);
       // nothing to do
       return {
         // @ts-ignore
@@ -188,13 +188,13 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
       
       if ((ratio > 0.5) || (diffPatch.length > 100000)) {
         forcedUpload = true
-        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `diff file too large ${diffPatch.length}, reverting to full upload`);
+        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - diff file too large ${diffPatch.length}, reverting to full upload`);
 
         console.log(`modifyRepoFileFromPath - dcsContent length ${dcsContent.length}, local content length ${content.length}`);
         console.log(`modifyRepoFileFromPath - patch length too large ${diffPatch.length}`);
       } else {
         forcedUpload = false
-        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `uploading patch content ${uploadPath}`);
+        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - uploading patch content ${uploadPath}`);
         // @ts-ignore
         results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
         results.content = content
@@ -202,7 +202,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
           incrementContextLines();
           const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
           await delay(1000)
-          sendUpdateUploadStatus(`modifyRepoFileFromPath`, `retrying upload of patch content ${uploadPath}`);
+          sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - retrying upload of patch content ${uploadPath}`);
           // @ts-ignore
           results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
           results.content = content
@@ -214,7 +214,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
   }
   
   if (forcedUpload) {
-    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `uploading new file content ${uploadPath}`);
+    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `${completedStr} - uploading new file content ${uploadPath}`);
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
   }
@@ -255,7 +255,12 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
   let changedFiles = 0;
   const importsFolder = path.join(projectsBasePath, 'imports')
   fs.emptyDirSync(importsFolder)
+  const total = localFiles.length + 1;
+  let counter = 0
   for (const localFile of localFiles) {
+    counter++
+    const completedStr = `${Math.round(100 * counter/total)}%`
+    
     if (localFile.includes(dcsStatusFile) || localFile.includes(".DS_Store")) { // skip over DCS data file, and system files
       continue;
     }
@@ -282,12 +287,12 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
     let results = null;
     if (!skip) {
       if (doUpload) { // uploading changed file
-        sendUpdateUploadStatus(`updateFilesInBranch`, `uploading file ${localFile}`);
+        sendUpdateUploadStatus(`updateFilesInBranch`, `${completedStr} - uploading file ${localFile}`);
         results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
       } else {
-        sendUpdateUploadStatus(`updateFilesInBranch`, `updating changed file ${localFile}`);
+        sendUpdateUploadStatus(`updateFilesInBranch`, `${completedStr} - updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
-        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true);
+        results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true, completedStr);
       }
 
       changedFiles++

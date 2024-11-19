@@ -164,7 +164,7 @@ function TranslationCheckingView() {
             const callback = getCallBack(key);
             if (callback) {
                 // @ts-ignore
-                callback(value?.message);
+                callback(value);
             } else {
                 console.error(`No handler for uploadToDcsStatusResponse(${key}) response`)
             }
@@ -223,7 +223,7 @@ function TranslationCheckingView() {
         const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
                 saveCallBack("uploadToDCS", resolve);
-                saveCallBack("DCSuploadStatus", dcsUpdateCallback);
+                saveCallBack("uploadToDcsStatusResponse", dcsUpdateCallback);
                 vscode.postMessage({
                     command: "uploadToDCS",
                     text: "Upload Repo to DCS",
