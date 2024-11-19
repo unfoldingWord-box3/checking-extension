@@ -131,15 +131,17 @@ function incrementContextLines() {
 
 export async function modifyRepoFileFromPath(server: string, owner: string, repo: string, branch: string, uploadPath: string, sourceFilePath: string, token: string, sha: string, downloadAndDiff = false): Promise<ModifyFileResponse> {
   let results:UploadFileResponse
+  let  forcedUpload = false
   
   if (!downloadAndDiff) {
-    const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
-    results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
+    forcedUpload = true
   } else {
+    forcedUpload = false
     //  https://git.door43.org/unfoldingWord/en_ult/raw/branch/auto-pjoakes-TIT/manifest.yaml
     // const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
     const importsFolder = path.join(projectsBasePath, 'imports')
     const tempFolder = path.join(importsFolder, 'temp')
+    console.log(`updateFilesInBranch - downloading dcs version`);
     const fileData = await fetchFileFromRepo(server, owner, repo, branch, tempFolder, uploadPath)
     if (fileData?.error) {
       // @ts-ignore
@@ -149,6 +151,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     const dcsContent = fs.readFileSync(tempFile, "UTF-8")?.toString()
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     if (dcsContent === content) { // if no change
+      console.log(`updateFilesInBranch - no change, skipping`);
       // nothing to do
       return {
         // @ts-ignore
@@ -159,20 +162,37 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     if (dcsContent) {
       const patchFileName = uploadPath[0] === '/' ? uploadPath : '/' + uploadPath;
       const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
-      // @ts-ignore
-      results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
-      results.content = content
-      if (results?.error) {
-        incrementContextLines();
-        const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
+      console.log(`updateFilesInBranch - patching file length ${diffPatch.length}`);
+      const ratio = diffPatch.length / content.length
+      
+      if ((ratio > 0.5) || (diffPatch.length > 100000)) {
+        forcedUpload = true
+        console.log(`updateFilesInBranch - dcsContent length ${dcsContent.length}, local content length ${content.length}`);
+
+        console.log(`updateFilesInBranch - patch length too large ${diffPatch.length}`);
+      } else {
+        forcedUpload = false
         // @ts-ignore
         results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
         results.content = content
+        if (results?.error) {
+          incrementContextLines();
+          const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
+          console.log(`updateFilesInBranch - retrying patching file`)
+          // @ts-ignore
+          results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
+          results.content = content
+        }
       }
     } else {
-      const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
-      results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
+      forcedUpload = true
     }
+  }
+  
+  if (forcedUpload) {
+    console.log(`updateFilesInBranch - doing forced upload`);
+    const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
+    results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
   }
 
   // @ts-ignore
@@ -539,6 +559,9 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
     console.log(`updateContentOnDCS - PR #${pr.number} has ${prStatus?.length} changes`, prStatus);
     if (!pr.mergeable) {
       console.warn(`updateContentOnDCS - PR #${pr.number} is not mergeable`);
+      return {
+        error: `PR #${pr.number} is not mergeable`
+      }
     } else if (pr.merged) {
       console.warn(`updateContentOnDCS - PR #${pr.number} has already been merged, deleting PR`);
       state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);

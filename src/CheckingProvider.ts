@@ -654,6 +654,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 cancellable: false
             }, async (progressTracker) => {
                 async function updateProgress(message:string) {
+                    message = message || ''
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment });
                     await showInformationMessage(message);
