@@ -14,6 +14,7 @@ import {
 import * as fs from "fs-extra";
 import * as path from "path";
 import {
+  delay,
   getAllFiles,
   getChecksum,
   getFilesOfType,
@@ -59,6 +60,25 @@ export const mergeFromMasterBranch = 'update_from_master'
 
 export const bibleCheckingTopic = 'bible-checking';
 let contextLines = 4;
+let statusUpdatesCallBack: ((status: string) => void) | null = null
+
+export function setStatusUpdatesCallback(callback: ((status: string) => void) | null) {
+  statusUpdatesCallBack = callback
+}
+
+export function sendStatusUpdates(message:string) {
+  statusUpdatesCallBack && statusUpdatesCallBack(message)
+}
+
+export function sendUpdateUploadStatus(methodName: string, statusMessage: string) {
+  console.log(`${methodName} - ${statusMessage}`)
+  sendStatusUpdates(statusMessage)
+}
+
+export function sendUpdateUploadErrorStatus(methodName: string, statusMessage: string) {
+  console.error(`${methodName} - ${statusMessage}`)
+  sendStatusUpdates(statusMessage)
+}
 
 function sortAndRemoveDuplicates(strings: string[]): string[] {
   // Convert the list to a Set to remove duplicates
@@ -141,7 +161,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     // const fileData = await getFileFromBranch(server, owner, repo, branch, uploadPath, token);
     const importsFolder = path.join(projectsBasePath, 'imports')
     const tempFolder = path.join(importsFolder, 'temp')
-    console.log(`updateFilesInBranch - downloading dcs version`);
+    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `downloading DCS file content ${uploadPath}`);
     const fileData = await fetchFileFromRepo(server, owner, repo, branch, tempFolder, uploadPath)
     if (fileData?.error) {
       // @ts-ignore
@@ -151,7 +171,8 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     const dcsContent = fs.readFileSync(tempFile, "UTF-8")?.toString()
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     if (dcsContent === content) { // if no change
-      console.log(`updateFilesInBranch - no change, skipping`);
+      console.log(`modifyRepoFileFromPath - no change, skipping`);
+      sendUpdateUploadStatus(`modifyRepoFileFromPath`, `no change, skipping upload`);
       // nothing to do
       return {
         // @ts-ignore
@@ -162,23 +183,26 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
     if (dcsContent) {
       const patchFileName = uploadPath[0] === '/' ? uploadPath : '/' + uploadPath;
       const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
-      console.log(`updateFilesInBranch - patching file length ${diffPatch.length}`);
+      console.log(`modifyRepoFileFromPath - patching file length ${diffPatch.length}`);
       const ratio = diffPatch.length / content.length
       
       if ((ratio > 0.5) || (diffPatch.length > 100000)) {
         forcedUpload = true
-        console.log(`updateFilesInBranch - dcsContent length ${dcsContent.length}, local content length ${content.length}`);
+        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `diff file too large ${diffPatch.length}, reverting to full upload`);
 
-        console.log(`updateFilesInBranch - patch length too large ${diffPatch.length}`);
+        console.log(`modifyRepoFileFromPath - dcsContent length ${dcsContent.length}, local content length ${content.length}`);
+        console.log(`modifyRepoFileFromPath - patch length too large ${diffPatch.length}`);
       } else {
         forcedUpload = false
+        sendUpdateUploadStatus(`modifyRepoFileFromPath`, `uploading patch content ${uploadPath}`);
         // @ts-ignore
         results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
         results.content = content
         if (results?.error) {
           incrementContextLines();
           const diffPatch = getPatch(patchFileName, dcsContent, content, false, getContextLines())
-          console.log(`updateFilesInBranch - retrying patching file`)
+          await delay(1000)
+          sendUpdateUploadStatus(`modifyRepoFileFromPath`, `retrying upload of patch content ${uploadPath}`);
           // @ts-ignore
           results = await uploadRepoDiffPatchFile(server, owner, repo, branch, uploadPath, diffPatch, sha, token)
           results.content = content
@@ -190,7 +214,7 @@ export async function modifyRepoFileFromPath(server: string, owner: string, repo
   }
   
   if (forcedUpload) {
-    console.log(`updateFilesInBranch - doing forced upload`);
+    sendUpdateUploadStatus(`modifyRepoFileFromPath`, `uploading new file content ${uploadPath}`);
     const content = fs.readFileSync(sourceFilePath, "UTF-8")?.toString()
     results = await modifyRepoFile(server, owner, repo, branch, uploadPath, content, token, sha);
   }
@@ -211,15 +235,15 @@ async function deleteTheBranchAndPR(server: string, owner: string, repo: string,
   const updateData = {
     state: 'closed'
   };
-  console.log(`updateFilesInBranch - closing PR #${pr.number}`)
+  sendUpdateUploadStatus(`deleteTheBranchAndPR`, `closing PR #${pr.number}`);
   const results = await updatePullRequest(server, owner, repo, pr.number, token, updateData);
   if (results.error) {
-    console.error(`updateFilesInBranch - PR closing failed`);
+    sendUpdateUploadErrorStatus(`deleteTheBranchAndPR`, `PR #${pr.number} closing failed`);
   } else {
-    console.log(`updateFilesInBranch - deleting branch`);
+    sendUpdateUploadStatus(`deleteTheBranchAndPR`, `deleting branch ${branch}`);
     const success = await deleteBranch(server, owner, repo, branch, token);
     if (!success) {
-      console.error(`updateFilesInBranch - branch  ${branch} deletion failed`);
+      sendUpdateUploadErrorStatus(`deleteTheBranchAndPR`, `branch  ${branch} deletion failed`);
     } else {
       return true;
     }
@@ -258,10 +282,10 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
     let results = null;
     if (!skip) {
       if (doUpload) { // uploading changed file
-        console.log(`updateFilesInBranch - uploading file ${localFile}`);
+        sendUpdateUploadStatus(`updateFilesInBranch`, `uploading file ${localFile}`);
         results = await uploadRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token);
       } else {
-        console.log(`updateFilesInBranch - updating changed file ${localFile}`);
+        sendUpdateUploadStatus(`updateFilesInBranch`, `updating changed file ${localFile}`);
         const sha = remoteFileData?.sha || "";
         results = await modifyRepoFileFromPath(server, owner, repo, branch, localFile, fullFilePath, token, sha, true);
       }
@@ -298,13 +322,13 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
     const fileData = handledFiles[file];
     const fileType = fileData?.type;
     if (fileType === "file" || fileType === "blob") {
-      console.log(`updateFilesInBranch - deleting ${file}`);
+      sendUpdateUploadStatus(`updateFilesInBranch`, `deleting ${file}`);
 
       const sha = fileData?.sha || "";
       const results = await deleteRepoFile(server, owner, repo, branch, file, token, sha);
 
       if (results?.error) {
-        console.log(results);
+        sendUpdateUploadErrorStatus(`updateFilesInBranch`, `deletion failed: ${file}`);
       }
     }
   }
@@ -444,10 +468,10 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
   }
 
   if (!repoExists) {
-    console.log(`updateFilesInBranch - creating repo ${owner}/${repo}`);
+    sendUpdateUploadStatus(`makeSureBranchExists`, `creating repo ${owner}/${repo}`);
     const results = await createCheckingRepository(server, owner, repo, token);
     if (results?.error) {
-      console.error(`updateFilesInBranch - error creating repo`);
+      sendUpdateUploadErrorStatus(`makeSureBranchExists`, `error creating repo ${owner}/${repo}`);
       return {
         error: results?.error,
         errorCreatingRepo: true,
@@ -466,11 +490,11 @@ async function makeSureBranchExists(server: string, owner: string, repo: string,
         head = previousCommit
       }
     }
-    
-    console.log(`updateFilesInBranch - creating repo branch from ${head}`);
+
+    sendUpdateUploadStatus(`makeSureBranchExists`, `creating repo branch from ${head}`);
     const results = await createRepoBranch(server, owner, repo, branch, token, head);
     if (results?.error) {
-      console.error(`updateFilesInBranch - error creating branch ${branch}`);
+      sendUpdateUploadErrorStatus(`makeSureBranchExists`, `error creating branch ${branch}`);
       return {
         error: results?.error,
         errorCreatingBranch: true,
@@ -539,40 +563,40 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
 
   // @ts-ignore
   if (pr) {
-    console.log(`updateFilesInBranch - PR already exists`);
+    sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `PR already exists`)
   } else {
-    console.log(`updateFilesInBranch - creating PR`);
+    sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `creating PR`)
     const title = `Merge ${branch} into master`;
     const body = `This pull request merges ${branch} into master.`;
     pr = await createPullRequest(server, owner, repo, branch, "master", title, body, token);
-    console.log(`updateFilesInBranch - Pull request created: #${pr.number} - ${pr.url}`);
+    sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `Pull request created: #${pr.number} - ${pr.url}`)
     state.prNumber = pr.number;
     state.prURL = getManualPullRequest(server, owner, repo, pr.number);
   }
 
   const prStatus = await getChangedFiles(server, owner, repo, pr.number, token);
   if (!prStatus?.length) {
-    console.log(`updateContentOnDCS - PR #${pr.number} has no changes, deleting PR`);
+    sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has no changes, deleting PR`)
     state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
     state.noChanges = true;
   } else {
-    console.log(`updateContentOnDCS - PR #${pr.number} has ${prStatus?.length} changes`, prStatus);
+    sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has ${prStatus?.length} changes`)
     if (!pr.mergeable) {
-      console.warn(`updateContentOnDCS - PR #${pr.number} is not mergeable`);
+      sendUpdateUploadErrorStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} is not mergeable`)
       return {
         error: `PR #${pr.number} is not mergeable`
       }
     } else if (pr.merged) {
-      console.warn(`updateContentOnDCS - PR #${pr.number} has already been merged, deleting PR`);
+      sendUpdateUploadErrorStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has already been merged, deleting PR`)
       state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
       state.noChanges = true;
     } else {
-      console.log(`updateContentOnDCS - merging PR #${pr.number}`);
+      sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `merging PR #${pr.number}`)
       const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token, 2);
       if (response.error) {
         return response;
       }
-      console.log(`updateContentOnDCS - merged PR`);
+      sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, ` merged PR #${pr.number}`)
       state.mergeComplete = true;
       updateSavedData = true;
     }
@@ -592,7 +616,7 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
     fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile, owner), newStatus);
   }
 
-  console.log(`updateContentOnDCS - upload complete`);
+  sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, ` upload complete`)
 
   // @ts-ignore
   return {
@@ -645,13 +669,15 @@ function checkforCheckingMergeBranches(branchesResult: GetBranchesResult, state:
   }
 
   if (state.branchPreviouslyCreated) {
-    console.log(`updateContentOnDCS - merge to master branch already exists`);
+    sendUpdateUploadStatus(`checkforCheckingMergeBranches`, ` merge to master branch already exists`)
   }
   return { mergeToMaster, mergeFromMaster };
 }
 
 async function handleFreshDcsUpload(repoExists: boolean, server: string, owner: string, repo: string, token: string, localRepoPath: string, dcsState: DcsUploadStatus, state: GeneralObject, updateSavedData: boolean) {
   if (repoExists) {
+    sendUpdateUploadErrorStatus(`handleFreshDcsUpload`, `content already exists on server`)
+
     const message = `updateContentOnDCS - content already exists on server`;
     console.warn(message);
     return {
@@ -756,7 +782,7 @@ function getProjectsForChecking(localRepoPath: string, checkingSubPath: string, 
       projects.push(project);
     });
   } catch (e) {
-    console.warn(`getCheckingFiles - error updating projects list for ${checkingSubPath}`);
+    sendUpdateUploadErrorStatus(`getProjectsForChecking`, `error updating projects list for ${checkingSubPath}`)
   }
 }
 
@@ -787,7 +813,7 @@ function updateOutputFiles(localRepoPath: string) {
       }
     });
   } catch (e) {
-    console.warn(`updateOutputFiles - error updating tN tsv`)
+    sendUpdateUploadErrorStatus(`updateOutputFiles`, `error updating tN tsv`)
   }
 
   try {
@@ -805,7 +831,7 @@ function updateOutputFiles(localRepoPath: string) {
       }
     });
   } catch (e) {
-    console.warn(`updateOutputFiles - error updating twl tsv`)
+    sendUpdateUploadErrorStatus(`updateOutputFiles`, `error updating twl tsv`)
   }
   
   try {
@@ -835,7 +861,7 @@ function updateOutputFiles(localRepoPath: string) {
       fs.outputFileSync(outputPath, USFM, "UTF-8");
     })
   } catch (e) {
-    console.warn(`updateOutputFiles - error updating twl tsv`)
+    sendUpdateUploadErrorStatus(`updateOutputFiles`, `error updating target bible`)
   }
 }
 
@@ -845,7 +871,7 @@ export async function uploadRepoToDCS(server: string, owner: string, repo: strin
   try {
     const results = await updateContentOnDCS(server, owner, repo, token, localRepoPath, state);
     if (results.error) {
-      console.error(`uploadRepoToDCS - upload error: ${results.error}`)
+      sendUpdateUploadErrorStatus(`uploadRepoToDCS`, `upload error: ${results.error}`)
       addErrorToDcsStatus(state, results, localRepoPath, owner)
       results.lastState = state
     } else {
@@ -855,6 +881,8 @@ export async function uploadRepoToDCS(server: string, owner: string, repo: strin
   } catch (error) {
     // @ts-ignore
     const message = error?.message || error?.toString()
+    sendUpdateUploadErrorStatus(`uploadRepoToDCS`, `upload error: ${message}`)
+
     const _message = `Error: ${message}`;
     // @ts-ignore
     const status: number = error.status;

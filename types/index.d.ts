@@ -17,7 +17,8 @@ export type ResourcesInfo = {
 export type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
     | { command: "getSecretResponse"; data: object }
-    | { command: "uploadToDCSResponse"; data: object };
+    | { command: "uploadToDCSResponse"; data: object }
+    | { command: "uploadToDcsStatusResponse"; data: string };
 
 export type NestedObject = {
   [key: string]: {

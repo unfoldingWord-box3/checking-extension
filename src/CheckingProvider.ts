@@ -64,7 +64,7 @@ import {
     downloadRepoFromDCS,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
-    getRepoName,
+    getRepoName, setStatusUpdatesCallback,
     uploadRepoToDCS,
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
@@ -787,7 +787,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const metaData = getMetaData(projectPath || '')
                 const { targetLanguageId, targetBibleId, gatewayLanguageId, bookId } = metaData?.["translation.checker"]
                 const repo = getRepoName(targetLanguageId, targetBibleId, gatewayLanguageId, bookId);
+                const statusUpdates = (message: string) => {
+                    webviewPanel.webview.postMessage({
+                        command: "uploadToDcsStatusResponse",
+                        data: message,
+                    } as TranslationCheckingPostMessages);
+                }
+                setStatusUpdatesCallback(statusUpdates)
                 const results = await uploadRepoToDCS(server, owner, repo, token, projectPath || '')
+                setStatusUpdatesCallback(null)
 
                 // send back value
                 webviewPanel.webview.postMessage({
