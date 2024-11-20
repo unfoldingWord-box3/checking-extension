@@ -1,11 +1,10 @@
 import axios from "axios";
 // @ts-ignore
 import * as fs from "fs-extra";
-import path from "path";
 // @ts-ignore
-import base64 from 'base-64';
+import base64 from "base-64";
 // @ts-ignore
-import utf8 from 'utf8';
+import utf8 from "utf8";
 
 
 interface TreeItem {
@@ -624,7 +623,6 @@ export async function uploadRepoDiffPatchFile(
     'Content-Type': 'application/json',
   };
 
-  const fromFolder = path.dirname(filePath) || '.';
   const author_ = {
     email: '',
     name: owner,
@@ -637,7 +635,7 @@ export async function uploadRepoDiffPatchFile(
     branch: branch,
     committer: author_,
     content: patch || '',
-    from_path: fromFolder,
+    from_path: '.',
     dates: {
       author: isoDate,
       committer: isoDate
