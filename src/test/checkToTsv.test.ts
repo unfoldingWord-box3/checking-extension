@@ -2,7 +2,9 @@ import {
   checkDataToTn,
   checkDataToTwl,
   flattenGroupData,
+  getParsedUSFM,
   importSelectionsDataIntoCheckData,
+  reMapGlVerseRefsToTarget_,
   tsvToObjects,
 } from "../utilities/resourceUtils";
 // @ts-ignore
@@ -63,6 +65,21 @@ suite('Test twl_check to twl selections tsv', () => {
     const results = checkDataToTwl(groupData);
     assert.ok(results);
     fs.outputFileSync(path.join(projectFolder, './testResults_twl.tsv'), results, 'UTF-8');
+  });
+
+  test('Test Titus remap refs', () => {
+    const targetBookUsfm = fs.readFileSync(path.join(projectFolder, './src/test/fixtures/es-419-gst-tit.usfm'), "UTF-8")?.toString() || '';
+    assert.ok(targetBookUsfm);
+    const targetBook = getParsedUSFM(targetBookUsfm)
+    const checkData = fs.readJsonSync(path.join(projectFolder, './src/test/fixtures/tit.tn_check'));
+    assert.ok(checkData);
+    const originalData = cloneDeep(checkData)
+
+    const bookId = 'tit';
+    reMapGlVerseRefsToTarget_(checkData, bookId, targetBook.chapters);
+    
+    fs.outputJsonSync(path.join(projectFolder, './testResults.tn_check.json'), checkData, { spaces: 2 });
+    assert.ok(!isEqual(checkData, originalData));
   });
 });
 

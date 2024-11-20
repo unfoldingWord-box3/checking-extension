@@ -1,6 +1,11 @@
 import axios from "axios";
 // @ts-ignore
 import * as fs from "fs-extra";
+// @ts-ignore
+import base64 from "base-64";
+// @ts-ignore
+import utf8 from "utf8";
+
 
 interface TreeItem {
   path: string;
@@ -570,10 +575,12 @@ export interface ModifyFileResponse {
   error?: string;
 }
 
-export async function modifyRepoFile(server: string, owner: string, repo: string, branch: string, filePath: string, content: Buffer, token: string, sha: string): Promise<UploadFileResponse> {
+export async function modifyRepoFile(server: string, owner: string, repo: string, branch: string, filePath: string, content: string, token: string, sha: string): Promise<UploadFileResponse> {
+  const encodedContent = base64.encode(utf8.encode(content || ''));
+
   const url = `${server}/api/v1/repos/${owner}/${repo}/contents/${filePath}`;
   const data = {
-    content: Buffer.from(content).toString('base64'),
+    content: encodedContent,
     message: `Update ${filePath}`,
     branch: branch,
     sha: sha
@@ -616,12 +623,23 @@ export async function uploadRepoDiffPatchFile(
     'Content-Type': 'application/json',
   };
 
-  const encodedPatch = Buffer.from(patch).toString('base64');
+  const author_ = {
+    email: '',
+    name: owner,
+  }
 
+  var date = new Date();
+  var isoDate = date.toISOString();
   const data = {
+    author: author_,
     branch: branch,
-    content: encodedPatch,
+    committer: author_,
+    content: patch || '',
     from_path: '.',
+    dates: {
+      author: isoDate,
+      committer: isoDate
+    },
     message: 'Applying diffpatch',
     sha,
     signoff: true

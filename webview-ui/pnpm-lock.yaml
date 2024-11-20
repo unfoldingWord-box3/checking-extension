@@ -27,8 +27,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0(react@18.3.1)
       checking-tool-rcl:
-        specifier: 0.9.17
-        version: 0.9.17(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0)
+        specifier: 0.9.18
+        version: 0.9.18(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0)
       deep-equal:
         specifier: 1.0.1
         version: 1.0.1
@@ -948,6 +948,9 @@ packages:
   bail@1.0.5:
     resolution: {integrity: sha512-xFbRxM1tahm08yHBP16MMjVUAvDaBMD38zsM9EMAUN61omwLmKlOpB/Zku5QkjZ8TZ4vn53pj+t518cH0S03RQ==, tarball: https://registry.npmjs.org/bail/-/bail-1.0.5.tgz}
 
+  balanced-match@1.0.2:
+    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==, tarball: https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz}
+
   base-64@0.1.0:
     resolution: {integrity: sha512-Y5gU45svrR5tI2Vt/X9GPd3L0HNIKzGu202EjxrXMpuc2V2CiKgemAbUUsqYmZJvPtCXoUKjNZwBJzsNScUbXA==, tarball: https://registry.npmjs.org/base-64/-/base-64-0.1.0.tgz}
 
@@ -959,6 +962,9 @@ packages:
 
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==, tarball: https://registry.npmjs.org/big.js/-/big.js-5.2.2.tgz}
+
+  brace-expansion@1.1.11:
+    resolution: {integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==, tarball: https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.11.tgz}
 
   browserslist@4.23.2:
     resolution: {integrity: sha512-qkqSyistMYdxAcw+CzbZwlBy8AGmS/eEWs+sEV5TnLRGDOL+C5M2EnH6tlZyg0YoAxGJAFKh61En9BR941GnHA==}
@@ -1002,8 +1008,8 @@ packages:
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==, tarball: https://registry.npmjs.org/charenc/-/charenc-0.0.2.tgz}
 
-  checking-tool-rcl@0.9.17:
-    resolution: {integrity: sha512-FAIb+2xI9InSFQ9Q0deVY531r8V76BsG9JoxyMUBr3fgU/g75tLGd4v6qFmaHMLkekO3DGTYUnM7sz7LBChtFA==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.17.tgz}
+  checking-tool-rcl@0.9.18:
+    resolution: {integrity: sha512-rRCbwA8uNIMCzaqpDAt06Ftjm63lz8VFn17fdg0p7k4xgQCxXojr45o4VvqOMbtrjojTohP8uXj+SGKk3ncxzQ==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.18.tgz}
     peerDependencies:
       prop-types: ^15.x
       react: 18.3.1
@@ -1039,6 +1045,9 @@ packages:
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==, tarball: https://registry.npmjs.org/commander/-/commander-2.20.3.tgz}
+
+  concat-map@0.0.1:
+    resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==, tarball: https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz}
 
   convert-source-map@1.9.0:
     resolution: {integrity: sha512-ASFBup0Mz1uyiIjANan1jzLQami9z1PoYSZCiiYW2FczPbenXc45FZdBZLzOT+r6+iciuEModtmCti+hjaAk0A==}
@@ -1256,6 +1265,9 @@ packages:
   for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==, tarball: https://registry.npmjs.org/for-each/-/for-each-0.3.3.tgz}
 
+  fs.realpath@1.0.0:
+    resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==, tarball: https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz}
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==, tarball: https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -1289,6 +1301,10 @@ packages:
 
   glob-to-regexp@0.4.1:
     resolution: {integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==, tarball: https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz}
+
+  glob@7.2.3:
+    resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==, tarball: https://registry.npmjs.org/glob/-/glob-7.2.3.tgz}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -1350,6 +1366,10 @@ packages:
   import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}
     engines: {node: '>=6'}
+
+  inflight@1.0.6:
+    resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==, tarball: https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==, tarball: https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz}
@@ -1612,6 +1632,9 @@ packages:
     resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==, tarball: https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz}
     engines: {node: '>= 0.6'}
 
+  minimatch@3.1.2:
+    resolution: {integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==, tarball: https://registry.npmjs.org/minimatch/-/minimatch-3.1.2.tgz}
+
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==, tarball: https://registry.npmjs.org/ms/-/ms-2.0.0.tgz}
 
@@ -1649,6 +1672,9 @@ packages:
     resolution: {integrity: sha512-byy+U7gp+FVwmyzKPYhW2h5l3crpmGsxl7X2s8y43IgxvG4g3QZ6CffDtsNQy1WsmZpQbO+ybo0AlW7TY6DcBQ==, tarball: https://registry.npmjs.org/object.assign/-/object.assign-4.1.5.tgz}
     engines: {node: '>= 0.4'}
 
+  once@1.4.0:
+    resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==, tarball: https://registry.npmjs.org/once/-/once-1.4.0.tgz}
+
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==, tarball: https://registry.npmjs.org/p-limit/-/p-limit-2.3.0.tgz}
     engines: {node: '>=6'}
@@ -1678,6 +1704,10 @@ packages:
   path-exists@3.0.0:
     resolution: {integrity: sha512-bpC7GYwiDYQ4wYLe+FA8lhRjhQCMcQGuSgGGqDkg/QerRWw9CmGRT0iSOVRSZJ29NMLZgIzqaljJ63oaL4NIJQ==, tarball: https://registry.npmjs.org/path-exists/-/path-exists-3.0.0.tgz}
     engines: {node: '>=4'}
+
+  path-is-absolute@1.0.1:
+    resolution: {integrity: sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==, tarball: https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz}
+    engines: {node: '>=0.10.0'}
 
   path-key@3.1.1:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}
@@ -1878,6 +1908,11 @@ packages:
     peerDependencies:
       react: '>=16.8'
 
+  rimraf@2.7.1:
+    resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==, tarball: https://registry.npmjs.org/rimraf/-/rimraf-2.7.1.tgz}
+    deprecated: Rimraf versions prior to v4 are no longer supported
+    hasBin: true
+
   rollup@4.19.0:
     resolution: {integrity: sha512-5r7EYSQIowHsK4eTZ0Y81qpZuJz+MUuYeqmmYmRMl1nwhdmbiYqt5jwzf6u7wyOzJgYqtCRMtVRKOtHANBz7rA==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -1996,6 +2031,9 @@ packages:
   tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==, tarball: https://registry.npmjs.org/tapable/-/tapable-2.2.1.tgz}
     engines: {node: '>=6'}
+
+  tc-strings@0.1.7:
+    resolution: {integrity: sha512-K4oc8bCLjSVz5I0eXoovy1wkZpIj/pRh43W9KszWyBW7X/5xI3vShAhetO9JiS2hepFzA+KRgmxPG9sf5OeZMQ==, tarball: https://registry.npmjs.org/tc-strings/-/tc-strings-0.1.7.tgz}
 
   terser-webpack-plugin@5.3.10:
     resolution: {integrity: sha512-BKFPWlPDndPs+NGGCr1U59t0XScL5317Y0UReNrHaw9/FwhPENlq6bfgs+4yPfyP51vqC1bQ4rp1EfXW5ZSH9w==, tarball: https://registry.npmjs.org/terser-webpack-plugin/-/terser-webpack-plugin-5.3.10.tgz}
@@ -2211,6 +2249,9 @@ packages:
   wrap-ansi@5.1.0:
     resolution: {integrity: sha512-QC1/iN/2/RPVJ5jYK8BGttj5z83LmSKmvbvrXPNCLZSEb32KKVDJDl/MOt2N01qU2H/FkzEa9PKto1BqDjtd7Q==, tarball: https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-5.1.0.tgz}
     engines: {node: '>=6'}
+
+  wrappy@1.0.2:
+    resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==, tarball: https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz}
 
   x-is-string@0.1.0:
     resolution: {integrity: sha512-GojqklwG8gpzOVEVki5KudKNoq7MbbjYZCbyWzEz7tyPA7eleiE0+ePwOWQQRb5fm86rD3S8Tc0tSFf3AOv50w==, tarball: https://registry.npmjs.org/x-is-string/-/x-is-string-0.1.0.tgz}
@@ -3124,6 +3165,8 @@ snapshots:
 
   bail@1.0.5: {}
 
+  balanced-match@1.0.2: {}
+
   base-64@0.1.0: {}
 
   batch-processor@1.0.0: {}
@@ -3131,6 +3174,11 @@ snapshots:
   bible-reference-range@1.1.1: {}
 
   big.js@5.2.2: {}
+
+  brace-expansion@1.1.11:
+    dependencies:
+      balanced-match: 1.0.2
+      concat-map: 0.0.1
 
   browserslist@4.23.2:
     dependencies:
@@ -3171,7 +3219,7 @@ snapshots:
 
   charenc@0.0.2: {}
 
-  checking-tool-rcl@0.9.17(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0):
+  checking-tool-rcl@0.9.18(@types/react@18.3.3)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0):
     dependencies:
       '@material-ui/core': 4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3191,6 +3239,7 @@ snapshots:
       react-redux: 7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-tooltip: 3.11.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       string-punctuation-tokenizer: 2.2.0
+      tc-strings: 0.1.7
       usfm-js: 3.4.3
       uw-tsv-parser: 1.0.3
       word-aligner: 1.0.3(usfm-js@3.4.3)
@@ -3222,6 +3271,8 @@ snapshots:
   color-name@1.1.3: {}
 
   commander@2.20.3: {}
+
+  concat-map@0.0.1: {}
 
   convert-source-map@1.9.0: {}
 
@@ -3460,6 +3511,8 @@ snapshots:
     dependencies:
       is-callable: 1.2.7
 
+  fs.realpath@1.0.0: {}
+
   fsevents@2.3.3:
     optional: true
 
@@ -3502,6 +3555,15 @@ snapshots:
       - supports-color
 
   glob-to-regexp@0.4.1: {}
+
+  glob@7.2.3:
+    dependencies:
+      fs.realpath: 1.0.0
+      inflight: 1.0.6
+      inherits: 2.0.4
+      minimatch: 3.1.2
+      once: 1.4.0
+      path-is-absolute: 1.0.1
 
   globals@11.12.0: {}
 
@@ -3559,6 +3621,11 @@ snapshots:
     dependencies:
       parent-module: 1.0.1
       resolve-from: 4.0.0
+
+  inflight@1.0.6:
+    dependencies:
+      once: 1.4.0
+      wrappy: 1.0.2
 
   inherits@2.0.4: {}
 
@@ -3825,6 +3892,10 @@ snapshots:
     dependencies:
       mime-db: 1.52.0
 
+  minimatch@3.1.2:
+    dependencies:
+      brace-expansion: 1.1.11
+
   ms@2.0.0: {}
 
   ms@2.1.2: {}
@@ -3852,6 +3923,10 @@ snapshots:
       define-properties: 1.2.1
       has-symbols: 1.0.3
       object-keys: 1.1.1
+
+  once@1.4.0:
+    dependencies:
+      wrappy: 1.0.2
 
   p-limit@2.3.0:
     dependencies:
@@ -3886,6 +3961,8 @@ snapshots:
       lines-and-columns: 1.2.4
 
   path-exists@3.0.0: {}
+
+  path-is-absolute@1.0.1: {}
 
   path-key@3.1.1: {}
 
@@ -4126,6 +4203,10 @@ snapshots:
     dependencies:
       react: 18.3.1
 
+  rimraf@2.7.1:
+    dependencies:
+      glob: 7.2.3
+
   rollup@4.19.0:
     dependencies:
       '@types/estree': 1.0.5
@@ -4261,6 +4342,13 @@ snapshots:
   tabbable@5.3.3: {}
 
   tapable@2.2.1: {}
+
+  tc-strings@0.1.7:
+    dependencies:
+      babel-runtime: 6.26.0
+      lodash: 4.17.21
+      rimraf: 2.7.1
+      transform-runtime: 0.0.0
 
   terser-webpack-plugin@5.3.10(webpack@5.93.0):
     dependencies:
@@ -4491,6 +4579,8 @@ snapshots:
       ansi-styles: 3.2.1
       string-width: 3.1.0
       strip-ansi: 5.2.0
+
+  wrappy@1.0.2: {}
 
   x-is-string@0.1.0: {}
 

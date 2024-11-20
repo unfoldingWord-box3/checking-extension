@@ -155,12 +155,26 @@ function TranslationCheckingView() {
             } else {
                 console.error(`No handler for uploadToDCSResponse(${key}) response`)
             }
+            saveCallBack("DCSuploadStatus", null);
+        };
+
+        const uploadToDcsStatusResponse = (value: string | undefined) => {
+            // @ts-ignore
+            const key = "uploadToDcsStatusResponse";
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+            } else {
+                console.error(`No handler for uploadToDcsStatusResponse(${key}) response`)
+            }
         };
 
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
             ["uploadToDCSResponse"]: uploadToDCSResponse,
+            ["uploadToDcsStatusResponse"]: uploadToDcsStatusResponse,
         };
 
         commandToFunctionMapping[command](data);
@@ -205,10 +219,11 @@ function TranslationCheckingView() {
         return promise
     }
 
-    async function uploadToDCS(server:string, owner: string, token: string): Promise<GeneralObject> {
+    async function uploadToDCS(server:string, owner: string, token: string, dcsUpdateCallback: (status: string) => void): Promise<GeneralObject> {
         const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
                 saveCallBack("uploadToDCS", resolve);
+                saveCallBack("uploadToDcsStatusResponse", dcsUpdateCallback);
                 vscode.postMessage({
                     command: "uploadToDCS",
                     text: "Upload Repo to DCS",
@@ -239,9 +254,8 @@ function TranslationCheckingView() {
 
     function saveCheckingData(newState:{}) { // send message back to extension to save new selection to file
         // @ts-ignore
-        const newSelections = newState?.selections
-        // @ts-ignore
-        const currentContextId = newState?.currentCheck?.contextId
+        const currentCheck = newState?.currentCheck;
+        const currentContextId = currentCheck?.contextId
         // @ts-ignore
         const checks = checkingObj?.checks;
         // @ts-ignore
@@ -267,12 +281,16 @@ function TranslationCheckingView() {
             const newItem = {
                 // @ts-ignore
                 ...newGroup[index],
-                ...check,
+                ...currentCheck,
             }
             // @ts-ignore
             newGroup[index] = newItem
-            // @ts-ignore
-            newItem.selections = newSelections
+            if (Object.hasOwn(newState,'selections')) {
+                // @ts-ignore
+                const newSelections = newState?.selections
+                // @ts-ignore
+                newItem.selections = newSelections
+            }
             setState({
                 checkingObj: newCheckingObj,
             })

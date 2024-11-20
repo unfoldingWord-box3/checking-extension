@@ -2,7 +2,7 @@
   "name": "checking-extension",
   "displayName": "checking-extension",
   "description": "A vscode extension to open tn_check and twl_check files for checking verses",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "publisher": "unfoldingWord",
   "engines": {
     "vscode": "^1.91.0"
@@ -179,6 +179,7 @@
     "@typescript-eslint/parser": "^7.11.0",
     "@vscode/codicons": "^0.0.35",
     "axios": "^1.7.7",
+    "base-64": "0.1.0",
     "bible-reference-range": "^1.1.1",
     "deep-equal": "1.0.1",
     "diff": "^5.2.0",
@@ -194,6 +195,7 @@
     "tsv-groupdata-parser": "^1.1.1",
     "typescript": "^5.4.5",
     "usfm-js": "^3.4.2",
+    "utf8": "3.0.0",
     "uw-tsv-parser": "^1.0.3",
     "yamljs": "^0.3.0"
   }

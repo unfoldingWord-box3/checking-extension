@@ -74,7 +74,7 @@ function hasResourceData(resource:object) {
 }
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
-type uploadToDCSFunction = (server:string, owner:string, token:string) => Promise<GeneralObject>;
+type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (status: string) => void) => Promise<GeneralObject>;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
@@ -194,7 +194,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     function uploadToDCS(server:string, owner: string, token: string) {
       _showDialogContent({ message: 'Doing Upload to DCS' })
-      _uploadToDCS(server, owner, token).then(results => {
+      const dcsUpdateCallback = (status: string) => {
+        _showDialogContent({ message: status || '' })
+      }
+      _uploadToDCS(server, owner, token, dcsUpdateCallback).then(results => {
         console.log(`uploadToDCS completed with results:`, results)
         // @ts-ignore
         const errorMessage = results?.error;

@@ -64,7 +64,7 @@ import {
     downloadRepoFromDCS,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
-    getRepoName,
+    getRepoName, setStatusUpdatesCallback,
     uploadRepoToDCS,
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
@@ -654,6 +654,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 cancellable: false
             }, async (progressTracker) => {
                 async function updateProgress(message:string) {
+                    message = message || ''
                     console.log(`updateProgress - ${message}`)
                     progressTracker.report({  increment });
                     await showInformationMessage(message);
@@ -753,6 +754,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     foundCheck.nothingToSelect = currentCheck?.nothingToSelect
                     // @ts-ignore
                     foundCheck.verseEdits = currentCheck?.verseEdits
+                    // @ts-ignore
+                    foundCheck.invalidated = currentCheck?.invalidated
+                    
                     this.updateChecks(document, checkingData) // save with updated
                 } else {
                     console.error(`saveCheckingData - did not find match`, foundCheck);
@@ -783,7 +787,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 const metaData = getMetaData(projectPath || '')
                 const { targetLanguageId, targetBibleId, gatewayLanguageId, bookId } = metaData?.["translation.checker"]
                 const repo = getRepoName(targetLanguageId, targetBibleId, gatewayLanguageId, bookId);
+                const statusUpdates = (message: string) => {
+                    webviewPanel.webview.postMessage({
+                        command: "uploadToDcsStatusResponse",
+                        data: message,
+                    } as TranslationCheckingPostMessages);
+                }
+                setStatusUpdatesCallback(statusUpdates)
                 const results = await uploadRepoToDCS(server, owner, repo, token, projectPath || '')
+                setStatusUpdatesCallback(null)
 
                 // send back value
                 webviewPanel.webview.postMessage({

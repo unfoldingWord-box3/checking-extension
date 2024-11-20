@@ -14,7 +14,7 @@
             "reference": {
               "bookId": "tit",
               "chapter": 1,
-              "verse": 3
+              "verse": "3-4"
             },
             "tool": "translationNotes",
             "groupId": "figs-explicit",
