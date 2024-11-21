@@ -68,6 +68,7 @@ import {
     uploadRepoToDCS,
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
+import path from "path";
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -783,6 +784,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const bookId = getBookIdFromPath(filePath) || ''
             delay(100).then(async () => {
                 console.log(`uploadToDCS: ${text} - ${owner}`)
+                await vscode.workspace.saveAll(); // write document changes to file system
                 const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
                 const metaData = getMetaData(projectPath || '')
                 const { targetLanguageId, targetBibleId, gatewayLanguageId, bookId } = metaData?.["translation.checker"]
@@ -873,7 +875,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     console.warn (`changeTargetVerse_() projectPath '${projectPath}' does not exist`)
                 }
             })
-            
+        }
+        
+        const saveAppSettings = (text:string, data:object) => {
+            // @ts-ignore
+            const newSettings = data?.settings
+            delay(100).then(async () => {
+                const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                if (repoFolderExists && projectPath) {
+                    const metaData = getMetaData(projectPath || '')
+                    const _metaData = metaData?.["translation.checker"]
+                    _metaData.settings = newSettings
+                    const outputPath = path.join(projectPath, 'metadata.json')
+                    fs.outputJsonSync(outputPath, metaData, { spaces: 2 })
+                } else {
+                    console.warn (`saveAppSettings() projectPath '${projectPath}' does not exist`)
+                }
+            })
         }
 
         const messageEventHandlers = (message: any) => {
@@ -888,6 +906,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["setLocale"]: setLocale_,
                 ["changeTargetVerse"]: changeTargetVerse_,
                 ["uploadToDCS"]: uploadToDCS,
+                ["saveAppSettings"]: saveAppSettings,
             };
 
             const commandFunction = commandToFunctionMapping[command];
