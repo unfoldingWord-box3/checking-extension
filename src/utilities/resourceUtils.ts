@@ -2779,7 +2779,7 @@ export function toInt(value:any):any {
 }
 
 function escapeString(content:string) {
-  const escaped = (content || '').replaceAll('\t', '\\t').replaceAll('\n', ' ').replaceAll('\r', ' ')
+  const escaped = (content || '').replaceAll('\t', '\\t').replaceAll('\n', '\\n').replaceAll('\r', '\\r')
   return escaped
 }
 
@@ -2888,7 +2888,7 @@ export function checkDataToTwl(checkData:{}) {
                 const TWLink = `rc://*/tw/dict/bible/${category}/${groupId}`
                 const selections = item.selections ? escapeString(JSON.stringify(item.selections)) : ''
                 const comments = escapeString(item.comments)
-                const bookmarks = item.reminder ? '1' : '0'
+                const bookmarks = item.reminders ? '1' : '0'
                 const verseEdits = item.verseEdits ? '1' : '0'
                 const invalidated = item.invalidated ? '1' : '0'
 
@@ -3035,7 +3035,7 @@ export function checkDataToTn(checkData:{}) {
                 const Note = `${_note}`;
                 const selections = item?.selections ? escapeString(JSON.stringify(item?.selections)) : ''
                 const comments = escapeString(item?.comments)
-                const bookmarks = item?.reminder ? '1' : '0'
+                const bookmarks = item?.reminders ? '1' : '0'
                 const verseEdits = item?.verseEdits ? '1' : '0'
                 const invalidated = item?.invalidated ? '1' : '0'
 

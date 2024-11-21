@@ -149,6 +149,14 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         // @ts-ignore
         saveCheckingData && saveCheckingData(newState)
     }
+    
+    function saveSettings(settings: GeneralObject) {
+      vscode.postMessage({
+        command: "saveAppSettings",
+        text: "Save APP Settings",
+        data: { settings },
+      });
+    }
 
     const contextId = initialContextId || {}
     const project = checkingObj.project;
@@ -285,7 +293,9 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     }
   }
   const initialSettings = {
-    manifest: _manifest
+    manifest: _manifest,
+    // @ts-ignore
+    ...(checkingObj?.metadata?.settings || {})
   }
   
   return haveResources ? (
@@ -346,6 +356,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 glWordsData={glWordsData}
                 initialSettings={initialSettings}
                 saveCheckingData={_saveCheckingData}
+                saveSettings={saveSettings}
                 showDocument={showDocument}
                 targetBible={targetBible}
                 targetLanguageDetails={targetLanguageDetails}
