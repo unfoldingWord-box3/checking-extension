@@ -246,7 +246,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           }
           const dialogContent = (
             <div>
-              <ErrorIcon /> <b>Upload Complete Successfully:</b>
+              <ErrorIcon /> <b>Upload Failed:</b>
               <br />
               <span>{`Current Status: ${message}`}</span>
               <hr />
