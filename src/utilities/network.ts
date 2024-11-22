@@ -251,7 +251,7 @@ async function deleteTheBranchAndPR(server: string, owner: string, repo: string,
   return false
 }
 
-async function updateFilesInBranch(localFiles: string[], localRepoPath: string, handledFiles: NestedObject, uploadedFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
+async function updateFilesInBranch(localFiles: string[], localRepoPath: string, unHandledFiles: NestedObject, uploadedFiles: NestedObject, server: string, owner: string, repo: string, branch: string, token: string): Promise<GeneralObject> {
   let changedFiles = 0;
   const importsFolder = path.join(projectsBasePath, 'imports')
   fs.emptyDirSync(importsFolder)
@@ -270,7 +270,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
     let skip = false;
     let localChecksum: string = "";
 
-    const remoteFileData = handledFiles[localFile];
+    const remoteFileData = unHandledFiles[localFile];
     const isOnDcs = !!remoteFileData;
     if (!isOnDcs) {
       doUpload = true;
@@ -278,7 +278,9 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
       localChecksum = await getChecksum(fullFilePath);
       const lastUploadData = uploadedFiles[localFile];
       const lastSha = lastUploadData?.sha;
-      if ((lastUploadData?.checksum === localChecksum) && (remoteFileData?.sha === lastSha)) {
+      const checksumUnchanged = lastUploadData?.checksum === localChecksum;
+      const shaUnchanged = remoteFileData?.sha === lastSha;
+      if (checksumUnchanged && shaUnchanged) {
         // if checksum unchanged and sha unchanged, then skip this file
         skip = true;
       }
@@ -309,7 +311,7 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
         delete newFileData["content"];
         uploadedFiles[localFile] = newFileData;
         if (isOnDcs) {
-          delete handledFiles[localFile];
+          delete unHandledFiles[localFile];
           changedFiles++
         }
       } else {
@@ -319,12 +321,12 @@ async function updateFilesInBranch(localFiles: string[], localRepoPath: string, 
         return results
       }
     } else {
-      delete handledFiles[localFile];
+      delete unHandledFiles[localFile];
     }
   }
 
-  for (const file of Object.keys(handledFiles)) {
-    const fileData = handledFiles[file];
+  for (const file of Object.keys(unHandledFiles)) {
+    const fileData = unHandledFiles[file];
     const fileType = fileData?.type;
     if (fileType === "file" || fileType === "blob") {
       sendUpdateUploadStatus(`updateFilesInBranch`, `deleting ${file}`);
@@ -537,7 +539,7 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
 
   const localFiles = getAllFiles(localRepoPath);
   const results = await getRepoTree(server, owner, repo, branch, token);
-  const handledFiles: NestedObject = {};
+  const unHandledFiles: NestedObject = {};
   let uploadedFiles: NestedObject = dcsState?.files || {};
   if (state.newRepo) { // if new repo then upload everything
     uploadedFiles = {};
@@ -545,10 +547,10 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
 
   for (const file of results?.tree || []) { // make object indexed by path
     // @ts-ignore
-    handledFiles[file.path] = file;
+    unHandledFiles[file.path] = file;
   }
   
-  const updateFilesResults  = await updateFilesInBranch(localFiles, localRepoPath, handledFiles, uploadedFiles, server, owner, repo, branch, token);
+  const updateFilesResults  = await updateFilesInBranch(localFiles, localRepoPath, unHandledFiles, uploadedFiles, server, owner, repo, branch, token);
   if (updateFilesResults.error) {
     return updateFilesResults
   }
@@ -584,6 +586,7 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
     sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has no changes, deleting PR`)
     state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
     state.noChanges = true;
+    updateSavedData = true; // need to update in case sha data is out ouf sync
   } else {
     sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has ${prStatus?.length} changes`)
     if (!pr.mergeable) {
@@ -595,6 +598,7 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
       sendUpdateUploadErrorStatus(`updateFilesAndMergeToMaster`, `PR #${pr.number} has already been merged, deleting PR`)
       state.mergeComplete = await deleteTheBranchAndPR(server, owner, repo, pr, token, branch);
       state.noChanges = true;
+      updateSavedData = true; // need to update in case sha data is out ouf sync
     } else {
       sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, `merging PR #${pr.number}`)
       const response = await squashMergePullRequest(server, owner, repo, pr.number, true, token, 2);
@@ -610,7 +614,18 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
   if (updateSavedData) {
     console.log(`updateContentOnDCS - updating saved data`);
     const branch = await getRepoBranch(server, owner, repo, "master", token);
-    const commit = branch?.commit?.id || null;
+    const commit = branch?.commit?.id || '';
+    const treeResults = await getRepoTree(server, owner, repo, commit, token);
+    if (!treeResults?.error) {
+      for (const file of treeResults?.tree || []) {
+        // @ts-ignore
+        const filePath = file.path;
+        const uploadedFile = uploadedFiles[filePath];
+        if (uploadedFile) {
+          uploadedFile.sha = file.sha;
+        }
+      }
+    }
     state.updatedSavedData = true;
     // save latest upload data
     const newStatus = {

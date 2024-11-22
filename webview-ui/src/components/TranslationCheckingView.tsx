@@ -55,6 +55,15 @@ const useStyles = makeStyles(theme => ({
 }))
 
 let _callbacks:object = { } // saves callback by key
+let uploadProgress: string[] = []
+
+function clearUploadProgress() {
+    uploadProgress = []
+}
+
+function addToUploadProgress(status: string) {
+    uploadProgress.push(status)
+}
 
 function saveCallBack(key: string, callback: any) {
     // @ts-ignore
@@ -162,9 +171,15 @@ function TranslationCheckingView() {
             // @ts-ignore
             const key = "uploadToDcsStatusResponse";
             const callback = getCallBack(key);
+            value = value || ''
+            addToUploadProgress(value)
             if (callback) {
+                const update = {
+                    status: value,
+                    log: uploadProgress,
+                }
                 // @ts-ignore
-                callback(value);
+                callback(update);
             } else {
                 console.error(`No handler for uploadToDcsStatusResponse(${key}) response`)
             }
@@ -219,11 +234,12 @@ function TranslationCheckingView() {
         return promise
     }
 
-    async function uploadToDCS(server:string, owner: string, token: string, dcsUpdateCallback: (status: string) => void): Promise<GeneralObject> {
+    async function uploadToDCS(server:string, owner: string, token: string, dcsUpdateCallback: (update: object) => void): Promise<GeneralObject> {
         const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
                 saveCallBack("uploadToDCS", resolve);
                 saveCallBack("uploadToDcsStatusResponse", dcsUpdateCallback);
+                clearUploadProgress()
                 vscode.postMessage({
                     command: "uploadToDCS",
                     text: "Upload Repo to DCS",
