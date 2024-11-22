@@ -12,8 +12,17 @@ from 'checking-tool-rcl'
 
 import { GeneralObject, ResourcesObject } from "../../../types/index";
 import { ALL_BIBLE_BOOKS } from "../../../src/utilities/BooksOfTheBible";
-import { AppBar, IconButton, makeStyles, Toolbar, Typography } from "@material-ui/core";
+import {
+  AppBar,
+  CircularProgress,
+  IconButton,
+  makeStyles,
+  Toolbar,
+  Typography,
+} from "@material-ui/core";
 import MenuIcon from '@material-ui/icons/Menu'
+import ErrorIcon from '@material-ui/icons/Error';
+import DoneOutlineIcon from '@material-ui/icons/DoneOutline';
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
@@ -74,7 +83,7 @@ function hasResourceData(resource:object) {
 }
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
-type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (status: string) => void) => Promise<GeneralObject>;
+type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
 
 type TranslationCheckingProps = {
     checkingObj: ResourcesObject;
@@ -202,8 +211,27 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     function uploadToDCS(server:string, owner: string, token: string) {
       _showDialogContent({ message: 'Doing Upload to DCS' })
-      const dcsUpdateCallback = (status: string) => {
-        _showDialogContent({ message: status || '' })
+      let log: string[] = []
+      const dcsUpdateCallback = (update: object) => {
+        // @ts-ignore
+        const status = update?.status || '';
+        // @ts-ignore
+        log = update?.log || []
+        _showDialogContent({
+          message:
+            <div>
+              <CircularProgress /> <b>Upload is in Process</b>
+              <br />
+              <span><b>{`Current Status: ${status}`}</b></span>
+              <hr />
+              <b>Log:</b><br />
+              {log.map((item: string) => (
+                <>
+                  <span>{item}</span><br />
+                </>
+              ))}
+            </div>
+        })
       }
       _uploadToDCS(server, owner, token, dcsUpdateCallback).then(results => {
         console.log(`uploadToDCS completed with results:`, results)
@@ -216,7 +244,21 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
             message = `${message}.  Repo is at ${url}`
           }
-          _showDialogContent({ message });
+          const dialogContent = (
+            <div>
+              <ErrorIcon /> <b>Upload Complete Successfully:</b>
+              <br />
+              <span>{`Current Status: ${message}`}</span>
+              <hr />
+              <b>Log:</b><br />
+              {log.map((item: string) => (
+                <>
+                  <span>{item}</span><br />
+                </>
+              ))}
+            </div>
+          )
+          _showDialogContent({ message: dialogContent });
         } else {
           let message = 'Upload Success'
           const lastState = results?.lastState;
@@ -224,7 +266,21 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
             message = `${message} to ${url}`
           }
-          _showDialogContent({ message });
+          const dialogContent =(
+            <div>
+              <DoneOutlineIcon /> <b>Upload Complete Successfully:</b>
+              <br />
+              <span>{`Current Status: ${message}`}</span>
+              <hr />
+              <b>Log:</b><br />
+              {log.map((item: string) => (
+                <>
+                  <span>{item}</span><br />
+                </>
+              ))}
+            </div>
+          )
+          _showDialogContent({ message: dialogContent });
         }
       })
     }

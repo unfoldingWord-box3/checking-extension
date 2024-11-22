@@ -1,6 +1,6 @@
 {
   "name": "checking-extension-webview",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "private": true,
   "scripts": {
     "start": "vite",
@@ -17,7 +17,7 @@
     "@material-ui/lab": "4.0.0-alpha.61",
     "@mui/lab": "5.0.0-alpha.89",
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "checking-tool-rcl": "0.9.19",
+    "checking-tool-rcl": "0.9.20",
     "deep-equal": "1.0.1",
     "dompurify": "^3.0.9",
     "gitea-react-toolkit": "2.4.1",
