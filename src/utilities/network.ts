@@ -616,12 +616,14 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
     const branch = await getRepoBranch(server, owner, repo, "master", token);
     const commit = branch?.commit?.id || '';
     const treeResults = await getRepoTree(server, owner, repo, commit, token);
-    for (const file of treeResults?.tree || []) { 
-      // @ts-ignore
-      const filePath = file.path;
-      const uploadedFile = uploadedFiles[filePath];
-      if (uploadedFile) {
-        uploadedFile.sha = file.sha
+    if (!treeResults?.error) {
+      for (const file of treeResults?.tree || []) {
+        // @ts-ignore
+        const filePath = file.path;
+        const uploadedFile = uploadedFiles[filePath];
+        if (uploadedFile) {
+          uploadedFile.sha = file.sha;
+        }
       }
     }
     state.updatedSavedData = true;
