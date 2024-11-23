@@ -97,7 +97,11 @@ function TranslationCheckingView() {
         _setState(prevState => ({ ...prevState, ...newState }))
     }
 
-    function getKey(checkingObj:object):string {
+    /**
+     * generate an unique key for this project
+     * @param checkingObj
+     */
+    function getProjectKey(checkingObj:object):string {
         // @ts-ignore
         const project = checkingObj?.project || {};
         // @ts-ignore
@@ -109,19 +113,25 @@ function TranslationCheckingView() {
         // @ts-ignore
         const languageId = metadata?.targetLanguageId || 'en'
         // @ts-ignore
+        const targetBibleId = metadata?.targetBibleId || 'en'
+        // @ts-ignore
+        const targetOwner = metadata?.targetOwner || 'en'
+        // @ts-ignore
         const gatewayLanguageId = metadata?.gatewayLanguageId || ''
-        const key = `${languageId}_${resourceId}_${gatewayLanguageId}_${bookId}`
+        // @ts-ignore
+        const gatewayLanguageOwner = metadata?.gatewayLanguageOwner || ''
+        const key = `${languageId}_${targetBibleId}_${targetOwner}_${resourceId}_${gatewayLanguageId}_${gatewayLanguageOwner}_${bookId}`
         return key
     }
 
-    const projectKey = getKey(checkingObj)
+    const projectKey = getProjectKey(checkingObj)
 
     function getContextIdKey(projectKey:string) {
         return `${projectKey}.contextId`;
     }
 
     async function initData(data: TnTSV) {
-        const key = getContextIdKey(getKey(data))
+        const key = getContextIdKey(getProjectKey(data))
         secretProvider.getItem(key).then(value => {
             // @ts-ignore
             const contextId = value || {};
