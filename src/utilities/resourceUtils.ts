@@ -1603,17 +1603,19 @@ export function reMapGlVerseRefsToTarget_(groupsData: GeneralObject, bookId: str
                         if (length === 1) {
                             const verseRef = verseRefs[0];
                             if ((verseRef.verse !== verse) || (verseRef.chapter !== chapter)) {
-                                reference.chapter = chapter;
-                                reference.verse = verse;
+                                reference.chapter = verseRef.chapter;
+                                reference.verse = verseRef.verse;
+                                console.log(`converting ${chapter}:${verse} to ${verseRef.chapter}:${verseRef.verse}`)
                             }
                         } else if (length > 1) {
                             const newRef = referenceHelpers.convertReferenceChunksToString(verseRefs);
                             const parts = newRef.split(":");
-                            const chapter = parts[0];
+                            const _chapter = parts[0];
                             const remaining = parts.slice(1);
-                            const verse = remaining.join(":");
-                            reference.chapter = chapter;
-                            reference.verse = verse;
+                            const _verse = remaining.join(":");
+                            reference.chapter = _chapter;
+                            reference.verse = _verse;
+                            console.log(`converting ${chapter}:${verse} to ${_chapter}:${_verse}`)
                         }
                     }
                     return item;
@@ -1633,6 +1635,7 @@ export function reMapGlVerseRefsToTarget_(groupsData: GeneralObject, bookId: str
  * @param targetBook
  */
 function reMapGlVerseRefsToTarget(repoPath: string, resourceId: string, bookId: string, targetBook: GeneralObject) {
+    console.log(`Converting references for ${resourceId}`)
     const checkingPath = path.join(repoPath, "checking", resourceId);
     const fileName = getCheckingFileNameForBook(bookId || "", resourceId);
     const checkingFilePath = path.join(checkingPath, fileName);
