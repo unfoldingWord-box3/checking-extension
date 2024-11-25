@@ -209,7 +209,21 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       showDialogContent && showDialogContent(params)
     }
 
-    function uploadToDCS(server:string, owner: string, token: string) {
+  function getLogDiv(log: string[]) {
+    return (
+      <div>
+        {
+          log.map((item: string) => (
+            <>
+              <span>{item}</span><br />
+            </>
+          ))
+        }
+      </div>
+    )
+  }
+
+  function uploadToDCS(server:string, owner: string, token: string) {
       _showDialogContent({ message: 'Doing Upload to DCS' })
       let log: string[] = []
       const dcsUpdateCallback = (update: object) => {
@@ -225,11 +239,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
               <span><b>{`Current Status: ${status}`}</b></span>
               <hr />
               <b>Log:</b><br />
-              {log.map((item: string) => (
-                <>
-                  <span>{item}</span><br />
-                </>
-              ))}
+              {getLogDiv(log)}
             </div>
         })
       }
@@ -251,11 +261,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
               <span>{`Current Status: ${message}`}</span>
               <hr />
               <b>Log:</b><br />
-              {log.map((item: string) => (
-                <>
-                  <span>{item}</span><br />
-                </>
-              ))}
+              {getLogDiv(log)}
             </div>
           )
           _showDialogContent({ message: dialogContent });
@@ -273,11 +279,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
               <span>{`Current Status: ${message}`}</span>
               <hr />
               <b>Log:</b><br />
-              {log.map((item: string) => (
-                <>
-                  <span>{item}</span><br />
-                </>
-              ))}
+              {getLogDiv(log)}
             </div>
           )
           _showDialogContent({ message: dialogContent });

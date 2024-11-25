@@ -636,7 +636,7 @@ async function updateFilesAndMergeToMaster(localRepoPath: string, server: string
     fs.outputJsonSync(path.join(localRepoPath, dcsStatusFile, owner), newStatus);
   }
 
-  sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, ` upload complete`)
+  sendUpdateUploadStatus(`updateFilesAndMergeToMaster`, ` upload complete - saving state`)
 
   // @ts-ignore
   return {
