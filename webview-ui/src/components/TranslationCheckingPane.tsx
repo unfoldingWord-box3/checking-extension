@@ -328,6 +328,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         return message;
     }
 
+  function importBook() {
+    console.log(`${name}-importBook`)
+    // TODO
+  }
+
   // @ts-ignore
   const currentLanguageSelection = translations?.['_']?.['full_name'] || '';
   let projectManifest = null
@@ -412,6 +417,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
                 contextId={contextId}
                 getLexiconData={getLexiconData_}
                 glWordsData={glWordsData}
+                importBook={importBook}
                 initialSettings={initialSettings}
                 saveCheckingData={_saveCheckingData}
                 saveSettings={saveSettings}
