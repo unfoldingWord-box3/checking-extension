@@ -383,6 +383,40 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await delay(100);
     }
 
+    private static async createGlCheck(promptUser: any) {
+        
+        let success = false;
+        const catalog = getSavedCatalog(false)
+        let loadCatalog = true
+        if (catalog) {
+            // TODO prompt if we should load new catalog
+            let reloadCatalog = true
+            // await this.gotoWorkFlowStep('selectTargetBible')
+            loadCatalog = reloadCatalog
+        }
+        if (loadCatalog) {
+            // TODO prompt loading catalog
+            console.log("checking-extension.downloadCatalog")
+            await delay(100)
+            const preRelease = this.getContext('preRelease');
+            const catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
+            if (!catalog) {
+                showErrorMessage(`Error Downloading Updated Resource Catalog!`, true);
+                return { 
+                    errorMessage: `Error Downloading Updated Resource Catalog!`,
+                    success: false
+                }
+            } else {
+                saveCatalog(catalog, preRelease)
+                await this.gotoWorkFlowStep('selectTargetBible')
+                await this.setContext('fetchedCatalog', true);
+                success = true
+            }
+        }
+
+        return { success }
+    }
+
     private static setConfiguration(key:string, value:any) {
         vscode.workspace.getConfiguration("checking-extension").update(key, value);
     }
@@ -773,6 +807,25 @@ export class CheckingProvider implements CustomTextEditorProvider {
             return CheckingProvider.secretStorage
         }
 
+        const initializeNewGl = (text:string, data:object) => {
+            delay(100).then(async () => {
+                console.log(`initializeNewGl: ${text} - ${data}`)
+                const promptUser = (data: object) => {
+                    webviewPanel.webview.postMessage({
+                        command: "initializeNewGlPrompt",
+                        data,
+                    } as TranslationCheckingPostMessages);
+                }
+                const results = await CheckingProvider.createGlCheck(promptUser)
+
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "initializeNewGlResponse",
+                    data: results,
+                } as TranslationCheckingPostMessages);
+            })
+        }
+        
         const uploadToDCS = (text:string, data:object) => {
             // @ts-ignore
             const token = data?.token as string
@@ -806,7 +859,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 } as TranslationCheckingPostMessages);
             })
         }
-        
+
         const getSecret = (text:string, data:object) => {
             const _getSecret = async (text:string, key:string) => {
                 console.log(`getSecret: ${text}, ${data} - key ${key}`)
@@ -899,14 +952,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
             // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
-                ["loaded"]: firstLoad,
-                ["saveCheckingData"]: saveCheckingData,
+                ["changeTargetVerse"]: changeTargetVerse_,
                 ["getSecret"]: getSecret,
+                ["initializeNewGl"]: initializeNewGl,
+                ["loaded"]: firstLoad,
+                ["saveAppSettings"]: saveAppSettings,
+                ["saveCheckingData"]: saveCheckingData,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
-                ["changeTargetVerse"]: changeTargetVerse_,
                 ["uploadToDCS"]: uploadToDCS,
-                ["saveAppSettings"]: saveAppSettings,
             };
 
             const commandFunction = commandToFunctionMapping[command];

@@ -84,21 +84,24 @@ function hasResourceData(resource:object) {
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
+type initializeNewGlFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
 
 type TranslationCheckingProps = {
-    checkingObj: ResourcesObject;
-    saveCheckingData: saveCheckingDataFunction;
-    uploadToDCS: uploadToDCSFunction;
-    initialContextId: object;
-    projectKey: string;
+  checkingObj: ResourcesObject;
+  initialContextId: object;
+  initializeNewGl: initializeNewGlFunction,
+  projectKey: string;
+  saveCheckingData: saveCheckingDataFunction;
+  uploadToDCS: uploadToDCSFunction;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
-  saveCheckingData,
   initialContextId,
+  initializeNewGl: _initializeNewGl,
   projectKey,
-  uploadToDCS: _uploadToDCS
+  saveCheckingData,
+  uploadToDCS: _uploadToDCS,
  }) => {
     const classes = useStyles()
     const [noteIndex, setNoteIndex] = useState<number>(0);
@@ -286,8 +289,72 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         }
       })
     }
-    
-    const handleDrawerOpen = () => {
+
+  function initializeNewGlCallback(data: object) {
+    _showDialogContent({ message: 'Initializing new Gateway Language' })
+    let log: string[] = []
+    const dcsUpdateCallback = (data: object) => {
+      // @ts-ignore
+      const status = update?.status || '';
+      // @ts-ignore
+      log = update?.log || []
+      _showDialogContent({
+        message:
+          <div>
+            <CircularProgress /> <b>Upload is in Process</b>
+            <br />
+            <span><b>{`Current Status: ${status}`}</b></span>
+            <hr />
+            <b>Log:</b><br />
+            {}
+          </div>
+      })
+    }
+    _initializeNewGl({ data: 'testing' }, initializeNewGlCallback).then(results => {
+      console.log(`initializeNewGl completed with results:`, results)
+      // @ts-ignore
+      const errorMessage = results?.error;
+      if (errorMessage) {
+        let message = errorMessage;
+        const lastState = results?.lastState;
+        if (lastState) {
+          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+          message = `${message}.  Repo is at ${url}`
+        }
+        const dialogContent = (
+          <div>
+            <ErrorIcon /> <b>Upload Failed:</b>
+            <br />
+            <span>{`Current Status: ${message}`}</span>
+            <hr />
+            <b>Log:</b><br />
+            {getLogDiv(log)}
+          </div>
+        )
+        _showDialogContent({ message: dialogContent });
+      } else {
+        let message = 'Upload Success'
+        const lastState = results?.lastState;
+        if (lastState) {
+          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
+          message = `${message} to ${url}`
+        }
+        const dialogContent =(
+          <div>
+            <DoneOutlineIcon /> <b>Upload Complete Successfully:</b>
+            <br />
+            <span>{`Current Status: ${message}`}</span>
+            <hr />
+            <b>Log:</b><br />
+            {getLogDiv(log)}
+          </div>
+        )
+        _showDialogContent({ message: dialogContent });
+      }
+    })
+  }
+
+  const handleDrawerOpen = () => {
         if (!drawerOpen) {
             setOpen(true)
         }

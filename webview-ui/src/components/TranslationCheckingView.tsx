@@ -262,6 +262,23 @@ function TranslationCheckingView() {
         return results
     }
 
+    async function initializeNewGl(data: object, initializeNewGlCallback: (data: object) => void): Promise<GeneralObject> {
+        const _initializeNewGl = (data: object): Promise<GeneralObject> => {
+            const promise = new Promise<object>((resolve) => {
+                saveCallBack("initializeNewGl", resolve);
+                saveCallBack("initializeNewGlStatusResponse", initializeNewGlCallback);
+                vscode.postMessage({
+                    command: "initializeNewGl",
+                    text: "initializeNewGl",
+                    data
+                });
+            })
+            return promise
+        }
+        const results = await _initializeNewGl(data)
+        return results
+    }
+    
     function sendFirstLoadMessage() {
         vscode.postMessage({
             command: "loaded",
@@ -421,6 +438,7 @@ function TranslationCheckingView() {
                 initialContextId={initialContextId}
                 projectKey={projectKey}
                 uploadToDCS={uploadToDCS}
+                initializeNewGl={initializeNewGl}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>
