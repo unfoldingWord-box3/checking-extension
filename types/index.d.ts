@@ -19,8 +19,7 @@ export type TranslationCheckingPostMessages =
     | { command: "getSecretResponse"; data: object }
     | { command: "uploadToDCSResponse"; data: object }
     | { command: "uploadToDcsStatusResponse"; data: string }
-    | { command: "initializeNewGlPrompt"; data: object }
-    | { command: "initializeNewGlResponse"; data: object };
+    | { command: "initializeNewGlCheckResponse"; data: object };
 
 export type NestedObject = {
   [key: string]: {

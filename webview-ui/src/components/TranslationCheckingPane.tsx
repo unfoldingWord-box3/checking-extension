@@ -84,12 +84,12 @@ function hasResourceData(resource:object) {
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
-type initializeNewGlFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
+type initializeNewGlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
 
 type TranslationCheckingProps = {
   checkingObj: ResourcesObject;
   initialContextId: object;
-  initializeNewGl: initializeNewGlFunction,
+  initializeNewGlCheck: initializeNewGlCheckFunction,
   projectKey: string;
   saveCheckingData: saveCheckingDataFunction;
   uploadToDCS: uploadToDCSFunction;
@@ -98,7 +98,7 @@ type TranslationCheckingProps = {
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
   initialContextId,
-  initializeNewGl: _initializeNewGl,
+  initializeNewGlCheck: _initializeNewGlCheck,
   projectKey,
   saveCheckingData,
   uploadToDCS: _uploadToDCS,
@@ -290,10 +290,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       })
     }
 
-  function initializeNewGl(e: object) {
+  function initializeNewGlCheck(e: object) {
     _showDialogContent({ message: 'Initializing new Gateway Language' })
     let log: string[] = []
-    const initializeNewGlCallback = (data: object) => {
+    const initializeNewGlCheckCallback = (data: object) => {
       // @ts-ignore
       const status = '';
       _showDialogContent({
@@ -306,8 +306,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           </div>
       })
     }
-    _initializeNewGl({ data: 'testing' }, initializeNewGlCallback).then(results => {
-      console.log(`initializeNewGl completed with results:`, results)
+    _initializeNewGlCheck({ data: 'testing' }, initializeNewGlCheckCallback).then(results => {
+      console.log(`initializeNewGlCheck completed with results:`, results)
       // @ts-ignore
       const errorMessage = results?.error;
       if (errorMessage) {
@@ -463,7 +463,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
             uploadToDCS={uploadToDCS}
-            initializeNewGl={initializeNewGl}
+            initializeNewGlCheck={initializeNewGlCheck}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

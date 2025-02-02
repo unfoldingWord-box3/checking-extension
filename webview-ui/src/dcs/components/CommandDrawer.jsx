@@ -15,6 +15,7 @@ import { AuthContext } from "../context/AuthContext";
 import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authentication";
 import PersonIcon from '@material-ui/icons/Person';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import CreateNewFolder from '@material-ui/icons/CreateNewFolder';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import LockIcon from '@material-ui/icons/Lock';
 // TODO: Enable buttons once ready to fully implement functionality
@@ -39,7 +40,7 @@ export default function CommandDrawer({
   currentLanguageSelection,
   translate,
   uploadToDCS,
-  initializeNewGl,
+  initializeNewGlCheck,
 }) {
   const {
     state: {
@@ -182,11 +183,11 @@ export default function CommandDrawer({
         {/*</ListItem>*/}
         
         {            
-          <ListItem button key={'initializeNewGl'} onClick={initializeNewGl}>
+          <ListItem button key={'initializeNewGlCheck'} onClick={initializeNewGlCheck}>
             <ListItemIcon>
-              <CloudUploadIcon />
+              <CreateNewFolder />
             </ListItemIcon>
-            <ListItemText primary={'initializeNewGl'} />
+            <ListItemText primary={'initializeNewGlCheck'} />
           </ListItem>
         }
         {user ? ( // if logged in give logout option

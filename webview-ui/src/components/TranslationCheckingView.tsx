@@ -262,20 +262,20 @@ function TranslationCheckingView() {
         return results
     }
 
-    async function initializeNewGl(data: object, initializeNewGlCallback: (data: object) => void): Promise<GeneralObject> {
-        const _initializeNewGl = (data: object): Promise<GeneralObject> => {
+    async function initializeNewGlCheck(data: object, initializeNewGlCheckCallback: (data: object) => void): Promise<GeneralObject> {
+        const _initializeNewGlCheck = (data: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
-                saveCallBack("initializeNewGl", resolve);
-                saveCallBack("initializeNewGlStatusResponse", initializeNewGlCallback);
+                saveCallBack("initializeNewGlCheck", resolve);
+                saveCallBack("initializeNewGlCheckStatusResponse", initializeNewGlCheckCallback);
                 vscode.postMessage({
-                    command: "initializeNewGl",
-                    text: "initializeNewGl",
+                    command: "initializeNewGlCheck",
+                    text: "initializeNewGlCheck",
                     data
                 });
             })
             return promise
         }
-        const results = await _initializeNewGl(data)
+        const results = await _initializeNewGlCheck(data)
         return results
     }
     
@@ -438,7 +438,7 @@ function TranslationCheckingView() {
                 initialContextId={initialContextId}
                 projectKey={projectKey}
                 uploadToDCS={uploadToDCS}
-                initializeNewGl={initializeNewGl}
+                initializeNewGlCheck={initializeNewGlCheck}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

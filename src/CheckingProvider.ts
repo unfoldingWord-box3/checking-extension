@@ -840,14 +840,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
             return CheckingProvider.secretStorage
         }
 
-        const initializeNewGl = (text:string, data:object) => {
+        const initializeNewGlCheck = (text:string, data:object) => {
             delay(100).then(async () => {
-                console.log(`initializeNewGl: ${text} - ${data}`)
+                console.log(`initializeNewGlCheck: ${text} - ${data}`)
                 const results = await CheckingProvider.createGlCheck(webviewPanel)
 
                 // send back value
                 webviewPanel.webview.postMessage({
-                    command: "initializeNewGlResponse",
+                    command: "initializeNewGlCheckResponse",
                     data: results,
                 } as TranslationCheckingPostMessages);
             })
@@ -994,7 +994,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["changeTargetVerse"]: changeTargetVerse_,
                 ["getSecret"]: getSecret,
-                ["initializeNewGl"]: initializeNewGl,
+                ["initializeNewGlCheck"]: initializeNewGlCheck,
                 ["loaded"]: firstLoad,
                 ["saveAppSettings"]: saveAppSettings,
                 ["saveCheckingData"]: saveCheckingData,
