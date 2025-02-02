@@ -159,7 +159,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`No handler for getSecret(${key}) response`)
+                console.error(`getSecretResponse - No handler for getSecret(${key}) response`)
             }
         };
 
@@ -172,7 +172,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`No handler for uploadToDCSResponse(${key}) response`)
+                console.error(`uploadToDCSResponse - No handler for uploadToDCSResponse(${key}) response`)
             }
             saveCallBack("DCSuploadStatus", null);
         };
@@ -191,18 +191,36 @@ function TranslationCheckingView() {
                 // @ts-ignore
                 callback(update);
             } else {
-                console.error(`No handler for uploadToDcsStatusResponse(${key}) response`)
+                console.error(`uploadToDcsStatusResponse - No handler for uploadToDcsStatusResponse(${key}) response`)
             }
         };
 
+        const promptUserForOption = (value: object|undefined) => {
+            // @ts-ignore
+            const key = 'initializeNewGlCheckCallback'
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+            } else {
+                console.error(`promptUserForOption - No handler for getSecret(${key}) response`)
+            }
+        };
+        
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
+            ["promptUserForOption"]: promptUserForOption,
             ["uploadToDCSResponse"]: uploadToDCSResponse,
             ["uploadToDcsStatusResponse"]: uploadToDcsStatusResponse,
         };
 
-        commandToFunctionMapping[command](data);
+        const mappedCommand = commandToFunctionMapping[command];
+        if (mappedCommand) {
+            mappedCommand(data);
+        } else {
+            console.error(`handleMessage() - Command missing for (${command}) response`)
+        }
     };
 
     const secretProvider = {
@@ -266,7 +284,7 @@ function TranslationCheckingView() {
         const _initializeNewGlCheck = (data: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
                 saveCallBack("initializeNewGlCheck", resolve);
-                saveCallBack("initializeNewGlCheckStatusResponse", initializeNewGlCheckCallback);
+                saveCallBack("initializeNewGlCheckCallback", initializeNewGlCheckCallback);
                 vscode.postMessage({
                     command: "initializeNewGlCheck",
                     text: "initializeNewGlCheck",
@@ -278,7 +296,15 @@ function TranslationCheckingView() {
         const results = await _initializeNewGlCheck(data)
         return results
     }
-    
+
+    async function promptUserForOptionCallback(data: object){
+        vscode.postMessage({
+            command: "promptUserForOptionResponse",
+            text: "promptUserForOptionResponse",
+            data
+        });
+    }
+
     function sendFirstLoadMessage() {
         vscode.postMessage({
             command: "loaded",
@@ -439,6 +465,7 @@ function TranslationCheckingView() {
                 projectKey={projectKey}
                 uploadToDCS={uploadToDCS}
                 initializeNewGlCheck={initializeNewGlCheck}
+                promptUserForOptionCallback={promptUserForOptionCallback}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

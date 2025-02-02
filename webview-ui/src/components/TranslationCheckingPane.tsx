@@ -85,6 +85,7 @@ function hasResourceData(resource:object) {
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
 type initializeNewGlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
+type promptUserForOptionCallbackFunction = (data: GeneralObject) => void;
 
 type TranslationCheckingProps = {
   checkingObj: ResourcesObject;
@@ -93,6 +94,7 @@ type TranslationCheckingProps = {
   projectKey: string;
   saveCheckingData: saveCheckingDataFunction;
   uploadToDCS: uploadToDCSFunction;
+  promptUserForOptionCallback: promptUserForOptionCallbackFunction;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
@@ -100,6 +102,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   initialContextId,
   initializeNewGlCheck: _initializeNewGlCheck,
   projectKey,
+  promptUserForOptionCallback,
   saveCheckingData,
   uploadToDCS: _uploadToDCS,
  }) => {
@@ -208,8 +211,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             name: bookName
         }
     }
-    function _showDialogContent(params: object) {
-      showDialogContent && showDialogContent(params)
+    function _showDialogContent(options: object) {
+      showDialogContent && showDialogContent(options)
     }
 
   function getLogDiv(log: string[]) {
@@ -290,21 +293,59 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       })
     }
 
+  function getPrompt(data: object) {
+    const NO = 'NO';
+    const YES = 'YES';
+
+    let prompt = <div>
+      <span><b>{`Prompt:`}</b></span>
+      <hr />
+      <b>Data:</b><br />
+      {JSON.stringify(data)}
+    </div>;
+
+    const options = {
+      message: prompt,
+    }
+
+    // @ts-ignore
+    const message = data?.message;
+    // @ts-ignore
+    const type = data?.type;
+    if (message && (type === 'yes/No') )  {
+      function closeCallbackYesNo(responseStr: String) {
+        promptUserForOptionCallback({ 
+          responseStr,
+          response: (responseStr === YES)
+        })
+      }
+
+      options.message = <div>
+        <span><b>{message}</b></span>
+        <hr />
+        <b>Type:</b><br />
+        {type}
+      </div>;
+
+      // @ts-ignore
+      options.closeButtonStr = YES
+      // @ts-ignore
+      options.otherButtonStr = NO
+      // @ts-ignore
+      options.closeCallback = closeCallbackYesNo
+    }
+    
+    return options;
+  }
+
   function initializeNewGlCheck(e: object) {
     _showDialogContent({ message: 'Initializing new Gateway Language' })
     let log: string[] = []
     const initializeNewGlCheckCallback = (data: object) => {
       // @ts-ignore
       const status = '';
-      _showDialogContent({
-        message:
-          <div>
-            <span><b>{`Prompt:`}</b></span>
-            <hr />
-            <b>Data:</b><br />
-            {JSON.stringify(data)}
-          </div>
-      })
+      const options = getPrompt(data);
+      _showDialogContent(options)
     }
     _initializeNewGlCheck({ data: 'testing' }, initializeNewGlCheckCallback).then(results => {
       console.log(`initializeNewGlCheck completed with results:`, results)

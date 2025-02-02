@@ -6,10 +6,15 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 
-export default function CustomDialog({ onClose, title, open, isLoading = false, content = "", closeButtonStr = null }) {
+export default function CustomDialog({ onClose, title, open, isLoading = false, content = "", closeButtonStr = null, otherButtonStr = null, closeCallback = null }) {
+
+  function _onClose(buttonStr) {
+    closeCallback && closeCallback(buttonStr)
+    onClose()
+  }
 
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby="form-dialog-title">
+    <Dialog open={open} onClose={() => _onClose()} aria-labelledby="form-dialog-title">
       <DialogTitle id="form-dialog-title">{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>
@@ -17,9 +22,14 @@ export default function CustomDialog({ onClose, title, open, isLoading = false, 
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary" disabled={isLoading}>
+        <Button onClick={() => _onClose(closeButtonStr)} color="primary" disabled={isLoading}>
           {closeButtonStr || 'Accept'}
         </Button>
+        { otherButtonStr &&
+          <Button onClick={() => _onClose(otherButtonStr)} color="secondary" disabled={isLoading}>
+            {otherButtonStr}
+          </Button>
+        }
       </DialogActions>
     </Dialog>
   );

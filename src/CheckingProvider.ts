@@ -413,14 +413,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return results
     }
 
-
     private static async createGlCheck(webviewPanel: WebviewPanel) {
         let success = false;
         const catalog = getSavedCatalog(false)
         let loadCatalog = true
         if (catalog) {
             // TODO prompt if we should load new catalog
-            const response = this.promptUserForOption(webviewPanel, { message: 'Do you wish to load recent catalog?', type: "yes/No"})
+            const response = this.promptUserForOption(webviewPanel, { message: 'Do you wish to load recent catalog?', type: 'yes/No'})
             // @ts-ignore
             let reloadCatalog = !!response?.selection
             loadCatalog = reloadCatalog

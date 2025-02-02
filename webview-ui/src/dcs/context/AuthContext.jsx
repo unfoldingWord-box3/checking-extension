@@ -77,12 +77,9 @@ export default function AuthContextProvider(props) {
     showDialogContent({ message: content })
   }
   
-  function showDialogContent({ message, closeButtonStr }) {
-    if (message) {
-      _setDialogContent({
-        message,
-        closeButtonStr,
-      });
+  function showDialogContent(options) {
+    if (options?.message) {
+      _setDialogContent(options);
     } else {
       _setDialogContent(null)
     }
@@ -212,6 +209,8 @@ export default function AuthContextProvider(props) {
         content={dialogContent?.message}
         onClose={() => clearContent()}
         closeButtonStr={dialogContent?.closeButtonStr || CLOSE}
+        otherButtonStr={dialogContent?.otherButtonStr || null}
+        closeCallback={dialogContent?.closeCallback}
       />
     </AuthContext.Provider>
   )
