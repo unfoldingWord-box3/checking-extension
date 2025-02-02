@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { GeneralObject, RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
@@ -69,6 +69,19 @@ import {
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
 import path from "path";
+
+let _callbacks:object = { } // stores callback by key
+
+function saveCallBack(key: string, callback: any) {
+    // @ts-ignore
+    _callbacks[key] = callback;
+}
+
+function getCallBack(key:string):any {
+    // @ts-ignore
+    const callback = _callbacks?.[key];
+    return callback;
+}
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -383,15 +396,33 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await delay(100);
     }
 
-    private static async createGlCheck(promptUser: any) {
-        
+    private static async  promptUserForOption (webviewPanel: WebviewPanel, options: object) {
+        const _promptUserForOption = (options: object): Promise<GeneralObject> => {
+            const promise = new Promise<object>((resolve) => {
+                saveCallBack("promptUserForOption", resolve);
+                webviewPanel.webview.postMessage({
+                    command: "promptUserForOption",
+                    text: "prompt User For Option",
+                    data: options
+                });
+            })
+            return promise
+        }
+        const results = await _promptUserForOption(options)
+        saveCallBack("promptUserForOption", null);
+        return results
+    }
+
+
+    private static async createGlCheck(webviewPanel: WebviewPanel) {
         let success = false;
         const catalog = getSavedCatalog(false)
         let loadCatalog = true
         if (catalog) {
             // TODO prompt if we should load new catalog
-            let reloadCatalog = true
-            // await this.gotoWorkFlowStep('selectTargetBible')
+            const response = this.promptUserForOption(webviewPanel, { message: 'Do you wish to load recent catalog?', type: "yes/No"})
+            // @ts-ignore
+            let reloadCatalog = !!response?.selection
             loadCatalog = reloadCatalog
         }
         if (loadCatalog) {
@@ -413,6 +444,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 success = true
             }
         }
+
+        // await this.gotoWorkFlowStep('selectTargetBible')
 
         return { success }
     }
@@ -810,13 +843,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const initializeNewGl = (text:string, data:object) => {
             delay(100).then(async () => {
                 console.log(`initializeNewGl: ${text} - ${data}`)
-                const promptUser = (data: object) => {
-                    webviewPanel.webview.postMessage({
-                        command: "initializeNewGlPrompt",
-                        data,
-                    } as TranslationCheckingPostMessages);
-                }
-                const results = await CheckingProvider.createGlCheck(promptUser)
+                const results = await CheckingProvider.createGlCheck(webviewPanel)
 
                 // send back value
                 webviewPanel.webview.postMessage({
@@ -947,6 +974,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
             })
         }
 
+        const promptUserForOptionResponse = (text:string, data:object) => {
+            console.log(`promptUserForOptionResponse: ${text}`)
+            const key = "promptUserForOption";
+            const callback = getCallBack(key)
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+                saveCallBack(key, null) // clear callback after use
+            } else {
+                console.error(`No handler for promptUserForOptionResponse(${key}) response`)
+            }
+        }
+        
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
@@ -961,6 +1001,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
                 ["uploadToDCS"]: uploadToDCS,
+                ["promptUserForOptionResponse"]: promptUserForOptionResponse,
             };
 
             const commandFunction = commandToFunctionMapping[command];

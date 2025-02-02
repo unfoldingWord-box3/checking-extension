@@ -38,7 +38,8 @@ export default function CommandDrawer({
   languages,
   currentLanguageSelection,
   translate,
-  uploadToDCS
+  uploadToDCS,
+  initializeNewGl,
 }) {
   const {
     state: {
@@ -179,6 +180,15 @@ export default function CommandDrawer({
         {/*  </ListItemIcon>*/}
         {/*  <ListItemText primary={'Bug Report or Feedback'} />*/}
         {/*</ListItem>*/}
+        
+        {            
+          <ListItem button key={'initializeNewGl'} onClick={initializeNewGl}>
+            <ListItemIcon>
+              <CloudUploadIcon />
+            </ListItemIcon>
+            <ListItemText primary={'initializeNewGl'} />
+          </ListItem>
+        }
         {user ? ( // if logged in give logout option
           <>
             <ListItem button key={'UploadToDCS'} onClick={handleUpload}>

@@ -290,23 +290,19 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       })
     }
 
-  function initializeNewGlCallback(data: object) {
+  function initializeNewGl(e: object) {
     _showDialogContent({ message: 'Initializing new Gateway Language' })
     let log: string[] = []
-    const dcsUpdateCallback = (data: object) => {
+    const initializeNewGlCallback = (data: object) => {
       // @ts-ignore
-      const status = update?.status || '';
-      // @ts-ignore
-      log = update?.log || []
+      const status = '';
       _showDialogContent({
         message:
           <div>
-            <CircularProgress /> <b>Upload is in Process</b>
-            <br />
-            <span><b>{`Current Status: ${status}`}</b></span>
+            <span><b>{`Prompt:`}</b></span>
             <hr />
-            <b>Log:</b><br />
-            {}
+            <b>Data:</b><br />
+            {JSON.stringify(data)}
           </div>
       })
     }
@@ -467,6 +463,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
             uploadToDCS={uploadToDCS}
+            initializeNewGl={initializeNewGl}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker
