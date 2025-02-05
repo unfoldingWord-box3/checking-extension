@@ -32,7 +32,7 @@ import isEqual from 'deep-equal'
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
 
-const showDocument = true // set this to false, to disable showing ta or tw articles
+const showDocument = true // set this to false to disable showing ta or tw articles
 
 // @ts-ignore
 const useStyles = makeStyles(theme => ({
@@ -312,29 +312,38 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const message = data?.message;
     // @ts-ignore
     const type = data?.type;
-    if (message && (type === 'yes/No') )  {
-      function closeCallbackYesNo(responseStr: String) {
-        promptUserForOptionCallback({ 
-          responseStr,
-          response: (responseStr === YES)
-        })
+    if (message) {
+      // @ts-ignore
+      if (data?.busy) {
+        options.message = <div>
+          <CircularProgress />
+          <span><b>{message}</b></span>
+        </div>
+      } else {
+        options.message = <div>
+          <span><b>{message}</b></span>
+          <hr />
+          <b>Type:</b><br />
+          {type}
+        </div>;
       }
 
-      options.message = <div>
-        <span><b>{message}</b></span>
-        <hr />
-        <b>Type:</b><br />
-        {type}
-      </div>;
+      if (type === "yes/No") {
+        function closeCallbackYesNo(responseStr: String) {
+          promptUserForOptionCallback({
+            responseStr,
+            response: (responseStr === YES),
+          });
+        }
 
-      // @ts-ignore
-      options.closeButtonStr = YES
-      // @ts-ignore
-      options.otherButtonStr = NO
-      // @ts-ignore
-      options.closeCallback = closeCallbackYesNo
+        // @ts-ignore
+        options.closeButtonStr = YES
+        // @ts-ignore
+        options.otherButtonStr = NO
+        // @ts-ignore
+        options.closeCallback = closeCallbackYesNo
+      }
     }
-    
     return options;
   }
 
