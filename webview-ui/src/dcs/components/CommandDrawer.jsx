@@ -187,7 +187,7 @@ export default function CommandDrawer({
             <ListItemIcon>
               <CreateNewFolder />
             </ListItemIcon>
-            <ListItemText primary={'initializeNewGlCheck'} />
+            <ListItemText primary={translate('prompts.initializeNewGlCheck')} />
           </ListItem>
         }
         {user ? ( // if logged in give logout option

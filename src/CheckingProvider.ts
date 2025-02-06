@@ -418,15 +418,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const catalog = getSavedCatalog(false)
         let loadCatalog = true
         if (catalog) {
-            // TODO prompt if we should load new catalog
-            const response = this.promptUserForOption(webviewPanel, { message: 'Do you wish to load recent catalog?', type: 'yes/No'})
+            // prompt if we should load new catalog
+            const data = await this.promptUserForOption(webviewPanel, { message: 'Do you wish to download the current catalog?', type: 'yes/No'})
             // @ts-ignore
-            let reloadCatalog = !!response?.selection
+            const reloadCatalog = !!data?.response
             loadCatalog = reloadCatalog
         }
         if (loadCatalog) {
             // TODO prompt loading catalog
             console.log("checking-extension.downloadCatalog")
+            // show user we are loading new catalog
+            this.promptUserForOption(webviewPanel, { message: 'Downloading current catalog', busy: true})
             await delay(100)
             const preRelease = this.getContext('preRelease');
             const catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
@@ -436,16 +438,52 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     errorMessage: `Error Downloading Updated Resource Catalog!`,
                     success: false
                 }
-            } else {
-                saveCatalog(catalog, preRelease)
-                await this.gotoWorkFlowStep('selectTargetBible')
-                await this.setContext('fetchedCatalog', true);
-                success = true
             }
+            
+            saveCatalog(catalog, preRelease)
         }
 
         // await this.gotoWorkFlowStep('selectTargetBible')
 
+        // const { targetLanguagePick, targetOwnerPick, targetBibleIdPick } = await this.getTargetLanguageSelection(catalog);
+
+        //////////////////////////////////
+        // Target language
+
+        // @ts-ignore
+        const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
+
+        // prompt if we should load new catalog
+        const data = await this.promptUserForOption(webviewPanel, { message: 'Select the target language:', type: 'option', choices: targetLangChoices})
+        // @ts-ignore
+        let targetLanguagePick = data?.responseStr
+        
+        // @ts-ignore
+
+        targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
+        // await showInformationMessage(`Target language selected ${targetLanguagePick}`);
+        
+        // const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
+        // const targetOwnerPick = await vscode.window.showQuickPick(
+        //   targetOwners,
+        //   {
+        //       placeHolder: "Select the target organization:",
+        //   }
+        // );
+        // await showInformationMessage(`Target owner selected ${targetOwnerPick}`);
+        //
+        // const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
+        // const bibles = findBibleResources(resources || [])
+        // const bibleIds = getResourceIdsInCatalog(bibles || [])
+        // const targetBibleIdPick = await vscode.window.showQuickPick(
+        //   bibleIds,
+        //   {
+        //       placeHolder: "Select the target Bible ID:",
+        //   }
+        // );
+        // await showInformationMessage(`Bible selected ${targetBibleIdPick}`);
+        // return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
+        //
         return { success }
     }
 
@@ -979,7 +1017,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             const callback = getCallBack(key)
             if (callback) {
                 // @ts-ignore
-                callback(value);
+                callback(data);
                 saveCallBack(key, null) // clear callback after use
             } else {
                 console.error(`No handler for promptUserForOptionResponse(${key}) response`)

@@ -12,7 +12,6 @@ import { makeStyles } from "@material-ui/core";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
-import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'

@@ -107,10 +107,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   uploadToDCS: _uploadToDCS,
  }) => {
     const classes = useStyles()
-    const [noteIndex, setNoteIndex] = useState<number>(0);
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
     const [drawerOpen, setOpen] = useState(false)
-    const [auth, setAuth] = useState({ })
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -137,7 +135,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
       
-    const translate = (key:string, data:object) => {
+    const translate = (key:string, data:object|null = null) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
         return translation
     };
@@ -294,8 +292,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     }
 
   function getPrompt(data: object) {
-    const NO = 'NO';
-    const YES = 'YES';
+    const NO = translate('buttons.no_button');
+    const YES = translate('buttons.yes_button');
 
     let prompt = <div>
       <span><b>{`Prompt:`}</b></span>
@@ -322,13 +320,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       } else {
         options.message = <div>
           <span><b>{message}</b></span>
-          <hr />
-          <b>Type:</b><br />
-          {type}
         </div>;
       }
 
-      if (type === "yes/No") {
+      if (type === 'yes/No') {
         function closeCallbackYesNo(responseStr: String) {
           promptUserForOptionCallback({
             responseStr,
@@ -342,6 +337,30 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         options.otherButtonStr = NO
         // @ts-ignore
         options.closeCallback = closeCallbackYesNo
+      }
+      
+      else if (type === 'option') {
+        const OK = translate('buttons.ok_button')
+
+        function closeCallbackOption(responseStr: String) {
+          promptUserForOptionCallback({
+            responseStr,
+            response: responseStr,
+          });
+        }
+        
+        // @ts-ignore
+        options.message = <div>
+          <span><b>{message}</b></span>
+          <hr />
+        </div>;
+        
+        // @ts-ignore
+        options.closeButtonStr = OK
+        // @ts-ignore
+        options.closeCallback = closeCallbackOption
+        // @ts-ignore
+        options.choices = data?.choices
       }
     }
     return options;

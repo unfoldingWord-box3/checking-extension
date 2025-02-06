@@ -211,6 +211,7 @@ export default function AuthContextProvider(props) {
         closeButtonStr={dialogContent?.closeButtonStr || CLOSE}
         otherButtonStr={dialogContent?.otherButtonStr || null}
         closeCallback={dialogContent?.closeCallback}
+        choices={dialogContent?.choices}
       />
     </AuthContext.Provider>
   )
