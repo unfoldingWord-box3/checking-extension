@@ -530,7 +530,7 @@ const locales_ =
       "no_button": "NO"
     },
     "prompts": {
-      "initializeNewGlCheck": "Create new Checking Project"
+      "createNewOlCheck": "Create new Checking Project"
     },
     "alignments_reset_wa_tool": "Changes have been detected in your project which have invalidated some of your alignments.\nThese verses display an icon of a broken chain next to the reference in the side menu.",
     "invalid_verse_alignments_and_selections": "Changes have been detected in your project which have invalidated some selections and some alignments. These verses display an icon of a broken chain next to the reference in the side menu.",

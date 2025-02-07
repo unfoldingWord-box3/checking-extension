@@ -196,7 +196,7 @@ function TranslationCheckingView() {
 
         const promptUserForOption = (value: object|undefined) => {
             // @ts-ignore
-            const key = 'initializeNewGlCheckCallback'
+            const key = 'createNewOlCheckCallback'
             const callback = getCallBack(key);
             if (callback) {
                 // @ts-ignore
@@ -279,20 +279,20 @@ function TranslationCheckingView() {
         return results
     }
 
-    async function initializeNewGlCheck(data: object, initializeNewGlCheckCallback: (data: object) => void): Promise<GeneralObject> {
-        const _initializeNewGlCheck = (data: object): Promise<GeneralObject> => {
+    async function createNewOlCheck(data: object, createNewOlCheckCallback: (data: object) => void): Promise<GeneralObject> {
+        const _createNewOlCheck = (data: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
-                saveCallBack("initializeNewGlCheck", resolve);
-                saveCallBack("initializeNewGlCheckCallback", initializeNewGlCheckCallback);
+                saveCallBack("createNewOlCheck", resolve);
+                saveCallBack("createNewOlCheckCallback", createNewOlCheckCallback);
                 vscode.postMessage({
-                    command: "initializeNewGlCheck",
-                    text: "initializeNewGlCheck",
+                    command: "createNewOlCheck",
+                    text: "createNewOlCheck",
                     data
                 });
             })
             return promise
         }
-        const results = await _initializeNewGlCheck(data)
+        const results = await _createNewOlCheck(data)
         return results
     }
 
@@ -463,7 +463,7 @@ function TranslationCheckingView() {
                 initialContextId={initialContextId}
                 projectKey={projectKey}
                 uploadToDCS={uploadToDCS}
-                initializeNewGlCheck={initializeNewGlCheck}
+                createNewOlCheck={createNewOlCheck}
                 promptUserForOptionCallback={promptUserForOptionCallback}
               />
               {/*</StoreContextProvider>*/}

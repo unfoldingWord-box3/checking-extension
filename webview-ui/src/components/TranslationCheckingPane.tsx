@@ -84,13 +84,13 @@ function hasResourceData(resource:object) {
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
-type initializeNewGlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
+type createNewOlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
 type promptUserForOptionCallbackFunction = (data: GeneralObject) => void;
 
 type TranslationCheckingProps = {
   checkingObj: ResourcesObject;
   initialContextId: object;
-  initializeNewGlCheck: initializeNewGlCheckFunction,
+  createNewOlCheck: createNewOlCheckFunction,
   projectKey: string;
   saveCheckingData: saveCheckingDataFunction;
   uploadToDCS: uploadToDCSFunction;
@@ -100,7 +100,7 @@ type TranslationCheckingProps = {
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
   initialContextId,
-  initializeNewGlCheck: _initializeNewGlCheck,
+  createNewOlCheck: _createNewOlCheck,
   projectKey,
   promptUserForOptionCallback,
   saveCheckingData,
@@ -366,17 +366,17 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     return options;
   }
 
-  function initializeNewGlCheck(e: object) {
+  function createNewOlCheck(e: object) {
     _showDialogContent({ message: 'Initializing new Gateway Language' })
     let log: string[] = []
-    const initializeNewGlCheckCallback = (data: object) => {
+    const createNewOlCheckCallback = (data: object) => {
       // @ts-ignore
       const status = '';
       const options = getPrompt(data);
       _showDialogContent(options)
     }
-    _initializeNewGlCheck({ data: 'testing' }, initializeNewGlCheckCallback).then(results => {
-      console.log(`initializeNewGlCheck completed with results:`, results)
+    _createNewOlCheck({ data: 'testing' }, createNewOlCheckCallback).then(results => {
+      console.log(`createNewOlCheck completed with results:`, results)
       // @ts-ignore
       const errorMessage = results?.error;
       if (errorMessage) {
@@ -532,7 +532,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
             uploadToDCS={uploadToDCS}
-            initializeNewGlCheck={initializeNewGlCheck}
+            createNewOlCheck={createNewOlCheck}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

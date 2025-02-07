@@ -40,7 +40,7 @@ export default function CommandDrawer({
   currentLanguageSelection,
   translate,
   uploadToDCS,
-  initializeNewGlCheck,
+  createNewOlCheck,
 }) {
   const {
     state: {
@@ -183,11 +183,11 @@ export default function CommandDrawer({
         {/*</ListItem>*/}
         
         {            
-          <ListItem button key={'initializeNewGlCheck'} onClick={initializeNewGlCheck}>
+          <ListItem button key={'createNewOlCheck'} onClick={createNewOlCheck}>
             <ListItemIcon>
               <CreateNewFolder />
             </ListItemIcon>
-            <ListItemText primary={translate('prompts.initializeNewGlCheck')} />
+            <ListItemText primary={translate('prompts.createNewOlCheck')} />
           </ListItem>
         }
         {user ? ( // if logged in give logout option
