@@ -396,6 +396,10 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await delay(100);
     }
 
+    private static async  showUserInformation (webviewPanel: WebviewPanel, options: object) {
+        this.promptUserForOption(webviewPanel, options)
+    }
+    
     private static async  promptUserForOption (webviewPanel: WebviewPanel, options: object) {
         const _promptUserForOption = (options: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
@@ -428,7 +432,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         if (loadCatalog) {
             console.log("checking-extension.downloadCatalog")
             // show user we are loading new catalog
-            this.promptUserForOption(webviewPanel, { message: 'Downloading current catalog', busy: true})
+            this.showUserInformation(webviewPanel, { message: 'Downloading current catalog', busy: true})
             await delay(100)
             catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
             if (!catalog) {
@@ -463,7 +467,9 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 success: false
             }
         }
-        
+
+        await showInformationMessage(`Target Language selected ${targetLanguagePick}`);
+
         const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
         
         data = await this.promptUserForOption(webviewPanel, { message: 'Select the target organization:', type: 'option', choices: targetOwners })
@@ -477,6 +483,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 success: false
             }
         }
+
+        await showInformationMessage(`Target Language Owner selected ${targetOwnerPick}`);
         
         const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
         const bibles = findBibleResources(resources || [])
@@ -494,8 +502,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             }
         }
 
-        // show user we are loading new catalog
-        this.promptUserForOption(webviewPanel, { message: 'Loading target Bible', busy: true})
+        await showInformationMessage(`Target Bible selected ${targetBibleIdPick}`);
 
         const targetBibleOptions = {
             languageId: targetLanguagePick,
@@ -520,7 +527,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
 
         //////////////////////////////////
-        // GL language
+        // select GL language
 
         const gatewayLanguages = getGatewayLanguages();
         const glChoices = getLanguagePrompts(gatewayLanguages);
@@ -530,8 +537,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         // @ts-ignore
         gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || "en";
-        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
-
         if (!gwLanguagePick) {
             showErrorMessage(`No GL checking language selected!`, true);
             return {
@@ -539,15 +544,76 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 success: false
             }
         }
+        
+        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
 
         const owners = findOwnersForLang(catalog || [], gwLanguagePick);
 
         data = await this.promptUserForOption(webviewPanel, { message: 'Select the gateway checking organization:', type: 'option', choices: owners })
         const gwOwnerPick = data?.responseStr
-        
-        // TODO initialize project
+        if (!gwOwnerPick) {
+            showErrorMessage(`No GL checking owner selected!`, true);
+            return {
+                errorMessage: `Error No GL checking owner selected!`,
+                success: false
+            }
+        }
 
-        return { success }
+        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
+
+        this.showUserInformation(webviewPanel, { message: 'Initializing Project', busy: true})
+
+        const glOptions = {
+            languageId: gwLanguagePick,
+            owner: gwOwnerPick
+        }
+
+        const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
+
+        // @ts-ignore
+        if (results.error) {
+            showErrorMessage(`Error Downloading Gateway Language resources!`, true);
+            return {
+                errorMessage: `Error Downloading Gateway Language resources!`,
+                success: false
+            }
+        }
+         
+        await showInformationMessage(`Gateway Language Resources Loaded`, true);
+
+        const targetLanguageId = targetBibleOptions.languageId;
+        const targetBibleId = targetBibleOptions.bibleId || "";
+        const targetOwner = targetBibleOptions.owner;
+        await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
+        // @ts-ignore
+        const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId, 'master');
+        if (!targetFoundPath) {
+            await showErrorMessage(`Target Bible Failed to Load`, true);
+            showErrorMessage(`Target Bible Failed to Load`, true);
+            return {
+                errorMessage: `Target Bible Failed to Load`,
+                success: false
+            }
+        }
+
+        const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetLanguageId, targetBibleId, glOptions.languageId, targetOwner, glOptions.owner, catalog, bookId, preRelease);
+
+
+        if (!repoInitSuccess) {
+            await showErrorMessage(`Failed to Initialize Checking Project`, true);
+            showErrorMessage(`Failed to Initialize Checking Project`, true);
+            return {
+                errorMessage: `Failed to Initialize Checking Project`,
+                success: false
+            }
+        }
+
+        // navigate to new folder
+        const repoPathUri = vscode.Uri.file(repoPath);
+        await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
+        vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+
+        return { success: true }
     }
 
     private static setConfiguration(key:string, value:any) {
