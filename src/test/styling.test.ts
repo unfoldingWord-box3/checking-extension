@@ -67,7 +67,7 @@ suite('fixUrls', () => {
     const pathFromWebPack = '/stuff/glyphicons-halflings-regular.eot';
     const initialPath = pathFromWebPack;
     const initialCss = preContent + initialPath + postContent;
-    const expectedFinalCss = preContent + path.join(runTimeFolder, pathFromWebPack) + postContent;
+    const expectedFinalCss = preContent + pathFromWebPack + postContent;
     const expectedConverts = 0
 
     // when
