@@ -203,3 +203,42 @@ export function getPatch(fileName:string, originalFileContents:string, editedFil
   return diffResult
 }
 
+/**
+ * do URL path fixing
+ * @param css - css content to clean up
+ * @param runTimeFolder - path to current app folder
+ */
+export function fixUrls(css: string, runTimeFolder: string) {
+  let changes = 0;
+  const ASSETS = "/assets"
+  const parts = css.split("url(");
+  if (parts.length > 1) {
+    // iterate through each URL
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i];
+      const pathParts = part.split(")");
+      // for assets, replace with absolute path to work with vscode
+      const pos = pathParts[0].indexOf(ASSETS)
+      
+      if (pos >= 0) {
+        const subPath = pathParts[0].substring(pos)
+        const newUrlPath = path.join(runTimeFolder, subPath);
+        const newUrlFsPath = newUrlPath.replaceAll("\\", "/");
+        if (pathParts[0] !== newUrlFsPath) {
+          changes++;
+          console.log(`fixCSS - found ${pathParts[0]} and changed to ${newUrlFsPath}`);
+          // replace asset path with absolute path
+          pathParts[0] = newUrlFsPath;
+          const joinedStr = pathParts.join(")");
+          parts[i] = joinedStr;
+        } else { // asset path is already absolute path
+          // console.log(`fixCSS - valid URL ${pathParts[0]}`);
+        }
+      } else {
+        // console.log(`fixCSS - invalid URL: url(pathParts[0])`);
+      }
+    }
+  }
+  const newCss = parts.join('url(');
+  return { parts, changes, newCss };
+}

@@ -44,7 +44,8 @@ import {
 } from "./utilities/resourceUtils";
 import {
     delay,
-    fileExists
+    fileExists,
+    fixUrls,
 } from "./utilities/fileUtils";
 import {
     DEFAULT_LOCALE,
@@ -1214,39 +1215,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
      */
     private fixCSS(assetsPath: vscode.Uri) {
         console.log(`fixCSS - assetsPath`, assetsPath.fsPath);
-        const buildPath = vscode.Uri.joinPath(assetsPath, '..')
+        const runTimeFolder = vscode.Uri.joinPath(assetsPath, '..')
         const cssPath = vscode.Uri.joinPath(assetsPath, "index.css");
         console.log(`fixCSS - cssPath.path`, cssPath.path);
         console.log(`fixCSS - cssPath.fsPath`, cssPath.fsPath);
         try {
-            let count = 0
             const data = fs.readFileSync(cssPath.fsPath, "UTF-8")?.toString() || '';
             console.log(`data.length`, data?.length);
-            const parts = data.split('url(')
-            if (parts.length > 1) {
-                // iterate through each URL
-                for (let i = 1; i < parts.length; i++) {
-                    let part = parts[i]
-                    const pathParts = part.split(')')
-                    // for asset times replay with absolute path to work with vscode
-                    if (pathParts[0].substring(0, 7) === "/assets") {
-                        count++
-                        console.log(`fixCSS - found ${pathParts[0]}`);
-                        let newUrlPath = vscode.Uri.joinPath(buildPath, pathParts[0]);
-                        let newUrlFsPath = newUrlPath.fsPath.replaceAll('\\', '/')
-                        console.log(`fixCSS - found ${pathParts[0]} and changed to new newUrlFsPath - ${newUrlFsPath}`);
-                        // replace asset path with absolute path
-                        pathParts[0] = newUrlFsPath
-                        const joinedStr = pathParts.join(')')
-                        parts[i] = joinedStr
-                    } else {
-                        console.log(`fixCSS - not 'url(/assets' to convert ${pathParts}`);
-                    }
-                }
-            }
-            
-            if (count) {
-                const newCss = parts.join('url(')
+            const { changes, parts, newCss } = fixUrls(data, runTimeFolder.fsPath);
+
+            if (changes) {
                 fs.outputFileSync(cssPath.fsPath, newCss, 'UTF-8');
             }
         } catch (e) {
