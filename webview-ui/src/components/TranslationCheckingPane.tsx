@@ -307,7 +307,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     }
 
     // @ts-ignore
-    const message = data?.message;
+    const message = translate(data?.message);
     // @ts-ignore
     const type = data?.type;
     if (message) {
@@ -367,7 +367,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   }
 
   function createNewOlCheck(e: object) {
-    _showDialogContent({ message: 'Initializing new Gateway Language' })
+    const message = translate('status.creatingCheckingProject')
+    _showDialogContent({ message })
     let log: string[] = []
     const createNewOlCheckCallback = (data: object) => {
       // @ts-ignore

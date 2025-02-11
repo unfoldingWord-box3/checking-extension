@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { GeneralObject, RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { GeneralObject, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
@@ -50,26 +50,26 @@ import {
 import {
     DEFAULT_LOCALE,
     getCurrentLanguageCode,
+    getGatewayLanguages,
+    getLanguageCodeFromPrompts,
+    getLanguagePrompts,
     LOCALE_KEY,
     setLocale,
 } from "./utilities/languages";
-import {
-    getGatewayLanguages,
-    getLanguageCodeFromPrompts,
-    getLanguagePrompts
-} from "./utilities/languages";
 // @ts-ignore
-import isEqual from 'deep-equal'
+import isEqual from "deep-equal";
 import { isNT } from "./utilities/BooksOfTheBible";
 import {
     downloadRepoFromDCS,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
-    getRepoName, setStatusUpdatesCallback,
+    getRepoName,
+    setStatusUpdatesCallback,
     uploadRepoToDCS,
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
 import path from "path";
+import { lookupTranslationForKey } from "./utilities/translations";
 
 let _callbacks:object = { } // stores callback by key
 
@@ -144,7 +144,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     public static currentState = {}
     public static secretStorage:SecretStorage|null = null
-    
+    public static translations: object | null = null
+
     constructor(private readonly context: ExtensionContext) {}
 
     public static register(context: ExtensionContext):Disposable[]
@@ -418,14 +419,29 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return results
     }
 
+    private static translate(key:string, data:object|null = null){
+        const translation = lookupTranslationForKey(CheckingProvider.translations, key, data)
+        return translation
+    };
+
+    private static showError(key:string, data: object|null = null){
+        const message = this.translate(key, data)
+        showErrorMessage(`${key} - ${message}`, true);
+        return {
+            errorMessage: message,
+            success: false
+        }
+    };
+
     private static async createGlCheck(webviewPanel: WebviewPanel) {
         let success = false;
         let catalog = getSavedCatalog(false)
         const preRelease = this.getContext('preRelease');
         let loadCatalog = true
+        
         if (catalog) {
             // prompt if we should load new catalog
-            const data = await this.promptUserForOption(webviewPanel, { message: 'Do you wish to download the current catalog?', type: 'yes/No'})
+            const data = await this.promptUserForOption(webviewPanel, { message: 'prompts.downloadCatalog', type: 'yes/No'})
             // @ts-ignore
             const reloadCatalog = !!data?.response
             loadCatalog = reloadCatalog
@@ -433,15 +449,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         if (loadCatalog) {
             console.log("checking-extension.downloadCatalog")
             // show user we are loading new catalog
-            this.showUserInformation(webviewPanel, { message: 'Downloading current catalog', busy: true})
+            this.showUserInformation(webviewPanel, { message: 'status.downloadingCatalog', busy: true})
             await delay(100)
             catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
             if (!catalog) {
-                showErrorMessage(`Error Downloading Updated Resource Catalog!`, true);
-                return { 
-                    errorMessage: `Error Downloading Updated Resource Catalog!`,
-                    success: false
-                }
+                return this.showError('status.catalogDownloadError')
             }
             
             saveCatalog(catalog, preRelease)
@@ -454,7 +466,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
 
         // prompt for GL language selection
-        let data = await this.promptUserForOption(webviewPanel, { message: 'Select the target language:', type: 'option', choices: targetLangChoices})
+        let data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetLanguage', type: 'option', choices: targetLangChoices})
         // @ts-ignore
         let targetLanguagePick = data?.responseStr
         
@@ -462,48 +474,39 @@ export class CheckingProvider implements CustomTextEditorProvider {
         targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
 
         if (!targetLanguagePick) {
-            showErrorMessage(`No target language selected!`, true);
-            return {
-                errorMessage: `Error No target language selected!`,
-                success: false
-            }
+            return this.showError('status.noLanguage')
         }
 
-        await showInformationMessage(`Target Language selected ${targetLanguagePick}`);
+        let message = this.translate('status.languageSelected', { targetLanguagePick })
+        await showInformationMessage(message);
 
         const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
         
-        data = await this.promptUserForOption(webviewPanel, { message: 'Select the target organization:', type: 'option', choices: targetOwners })
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectOrganization', type: 'option', choices: targetOwners })
         // @ts-ignore
         let targetOwnerPick = data?.responseStr
 
         if (!targetOwnerPick) {
-            showErrorMessage(`No target owner selected!`, true);
-            return {
-                errorMessage: `Error No target owner selected!`,
-                success: false
-            }
+            return this.showError('status.noOwner')
         }
 
-        await showInformationMessage(`Target Language Owner selected ${targetOwnerPick}`);
+        message = this.translate('status.ownerSelected', { targetOwnerPick })
+        await showInformationMessage(message);
         
         const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
         const bibles = findBibleResources(resources || [])
         const bibleIds = getResourceIdsInCatalog(bibles || [])
 
-        data = await this.promptUserForOption(webviewPanel, { message: 'Select the target Bible ID:', type: 'option', choices: bibleIds })
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetBible', type: 'option', choices: bibleIds })
         // @ts-ignore
         let targetBibleIdPick = data?.responseStr
 
         if (!targetBibleIdPick) {
-            showErrorMessage(`No target Bible selected!`, true);
-            return {
-                errorMessage: `Error No target Bible selected!`,
-                success: false
-            }
+            return this.showError('status.noBible')
         }
 
-        await showInformationMessage(`Target Bible selected ${targetBibleIdPick}`);
+        message = this.translate('status.bibleSelected', { targetBibleIdPick })
+        await showInformationMessage(message);
 
         const targetBibleOptions = {
             languageId: targetLanguagePick,
@@ -516,16 +519,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         // @ts-ignore
         const bookIds = manifest?.projects?.map((project: {}) => project.identifier)
 
-        data = await this.promptUserForOption(webviewPanel, { message: 'Select the target Book:', type: 'option', choices: bookIds })
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetBook', type: 'option', choices: bookIds })
         
         const bookId = data?.responseStr
         if (!bookId) {
-            showErrorMessage(`No target Book selected!`, true);
-            return {
-                errorMessage: `Error No target Book selected!`,
-                success: false
-            }
+            return this.showError('status.noBook')
         }
+
+        message = this.translate('status.bookSelected', { targetBookPick: bookId })
+        await showInformationMessage(message);
 
         //////////////////////////////////
         // select GL language
@@ -533,36 +535,30 @@ export class CheckingProvider implements CustomTextEditorProvider {
         const gatewayLanguages = getGatewayLanguages();
         const glChoices = getLanguagePrompts(gatewayLanguages);
 
-        data = await this.promptUserForOption(webviewPanel, { message: 'Select the gateway checking language:', type: 'option', choices: glChoices })
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectGatewayLanguage', type: 'option', choices: glChoices })
         let gwLanguagePick = data?.responseStr
 
         // @ts-ignore
         gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || "en";
         if (!gwLanguagePick) {
-            showErrorMessage(`No GL checking language selected!`, true);
-            return {
-                errorMessage: `Error GL checking language selected!`,
-                success: false
-            }
+            return this.showError('status.noCheckingLanguage')
         }
-        
-        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
+
+        message = this.translate('status.glSelected', {  gwLanguagePick })
+        await showInformationMessage(message);
 
         const owners = findOwnersForLang(catalog || [], gwLanguagePick);
 
-        data = await this.promptUserForOption(webviewPanel, { message: 'Select the gateway checking organization:', type: 'option', choices: owners })
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectGatewayOwner', type: 'option', choices: owners })
         const gwOwnerPick = data?.responseStr
         if (!gwOwnerPick) {
-            showErrorMessage(`No GL checking owner selected!`, true);
-            return {
-                errorMessage: `Error No GL checking owner selected!`,
-                success: false
-            }
+            return this.showError('status.noGlOwner')
         }
 
-        await showInformationMessage(`GL checking language selected ${gwLanguagePick}`);
+        message = this.translate('status.glOwnerSelected', {  gwOwnerPick })
+        await showInformationMessage(message);
 
-        this.showUserInformation(webviewPanel, { message: 'Initializing Project', busy: true})
+        this.showUserInformation(webviewPanel, { message: 'status.creatingProject', busy: true})
 
         const glOptions = {
             languageId: gwLanguagePick,
@@ -573,45 +569,31 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         // @ts-ignore
         if (results.error) {
-            showErrorMessage(`Error Downloading Gateway Language resources!`, true);
-            return {
-                errorMessage: `Error Downloading Gateway Language resources!`,
-                success: false
-            }
+            return this.showError('status.glResourceDownloadError')
         }
-         
-        await showInformationMessage(`Gateway Language Resources Loaded`, true);
 
         const targetLanguageId = targetBibleOptions.languageId;
         const targetBibleId = targetBibleOptions.bibleId || "";
         const targetOwner = targetBibleOptions.owner;
-        await showInformationMessage(`Downloading Target Bible ${targetOwner}/${targetLanguageId}/${targetBibleId}`);
+        const targetBibleDescr = `${targetOwner}/${targetLanguageId}/${targetBibleId}`
+        message = this.translate('status.downloadingTargetBible', {  targetBible: targetBibleDescr })
+        await showInformationMessage(message);
         // @ts-ignore
         const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId, 'master');
         if (!targetFoundPath) {
-            await showErrorMessage(`Target Bible Failed to Load`, true);
-            showErrorMessage(`Target Bible Failed to Load`, true);
-            return {
-                errorMessage: `Target Bible Failed to Load`,
-                success: false
-            }
+            return this.showError('status.targetBibleDownloadError')
         }
 
         const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetLanguageId, targetBibleId, glOptions.languageId, targetOwner, glOptions.owner, catalog, bookId, preRelease);
-
-
+        
         if (!repoInitSuccess) {
-            await showErrorMessage(`Failed to Initialize Checking Project`, true);
-            showErrorMessage(`Failed to Initialize Checking Project`, true);
-            return {
-                errorMessage: `Failed to Initialize Checking Project`,
-                success: false
-            }
+            return this.showError('status.errorCreatingProject')
         }
 
         // navigate to new folder
         const repoPathUri = vscode.Uri.file(repoPath);
-        await showInformationMessage(`Successfully initialized project at ${repoPath}`, true, 'You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`');
+        message = this.translate('status.successCreatingProject', {  repoPath })
+        await showInformationMessage(message, true, this.translate('status.checkingInstructions'));
         vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
 
         return { success: true }
@@ -1311,6 +1293,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             checks = JSON.parse(checks)
             // @ts-ignore
             resources.checks = checks
+            CheckingProvider.translations = resources?.locales
             return resources;
         } catch {
             throw new Error(
