@@ -256,7 +256,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           const lastState = results?.lastState;
           if (lastState) {
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-            message = `${message}.  Repo is at ${url}`
+            message = translate( 'status.uploadError', { message, url })
           }
           const dialogContent = (
             <div>
@@ -270,11 +270,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           )
           _showDialogContent({ message: dialogContent });
         } else {
-          let message = 'Upload Success'
+          let message = translate('status.uploadSuccess')
           const lastState = results?.lastState;
           if (lastState) {
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-            message = `${message} to ${url}`
+            message = translate('status.uploadSuccess', {url})
           }
           const dialogContent =(
             <div>
@@ -448,15 +448,14 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`, checkingObj)
     function getResourceMissingErrorMsg(checkingObj:any) {
-        let message = "Checking resources missing.";
+        let message = translate('status.resourceMissing');
         if (!hasTargetBibleBook) {
-            message = `Target bible missing for ${bookId}.`
+            message = translate('status.bibleMissing', { bookId })
         } else if (checkingObj.validResources) {
             if (!haveCheckingData) {
-                message = `Empty checks file: './checking/${checkingObj?.project?.resourceId}/${bookId}.${checkingObj?.project?.resourceId}_check'`
+              const checksPath = `./checking/${checkingObj?.project?.resourceId}/${bookId}.${checkingObj?.project?.resourceId}_check`
+                message = translate('status.invalidCheckingFile', { checksPath })
             }
-        } else {
-            message = "Checking resources missing.";
         }
         return message;
     }

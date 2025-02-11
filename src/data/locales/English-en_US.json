@@ -55,7 +55,12 @@
     "targetBibleDownloadError": "Error Downloading Target Bible!",
     "errorCreatingProject": "Failed to Create Checking Project",
     "successCreatingProject": "Successfully initialized project at ${repoPath}",
-    "checkingInstructions": "You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`"
+    "checkingInstructions": "You can now do checking by opening translationWords checks in `checking/twl` or translationNotes checks in `checking/tn`",
+    "resourceMissing": "Checking resources missing.",
+    "bibleMissing": "Target bible missing for ${bookId}.",
+    "invalidCheckingFile": "Empty checks file: ${checksPath}",
+    "uploadError": "${message}.  Repo is at ${url}",
+    "uploadSuccess": "Upload Success to ${url}"
   },
   "alignments_reset_wa_tool": "Changes have been detected in your project which have invalidated some of your alignments.\nThese verses display an icon of a broken chain next to the reference in the side menu.",
   "invalid_verse_alignments_and_selections": "Changes have been detected in your project which have invalidated some selections and some alignments. These verses display an icon of a broken chain next to the reference in the side menu.",
