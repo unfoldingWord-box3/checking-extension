@@ -135,8 +135,14 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
       
-    const translate = (key:string, data:object|null = null) => {
-        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
+    const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
+        let translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
+        if (defaultStr && (typeof translation === 'string')) {
+          const pos = translation.indexOf('translate(')
+          if (pos === 0) {
+            translation = defaultStr
+          }
+        }
         return translation
     };
 
@@ -448,9 +454,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`, checkingObj)
     function getResourceMissingErrorMsg(checkingObj:any) {
-        let message = translate('status.resourceMissing');
+        const defaultMessage = 'Checking resources missing.'
+        let message = translate('status.resourceMissing', null, defaultMessage);
         if (!hasTargetBibleBook) {
-            message = translate('status.bibleMissing', { bookId })
+            message = translate('status.bibleMissing', { bookId }, defaultMessage)
         } else if (checkingObj.validResources) {
             if (!haveCheckingData) {
               const checksPath = `./checking/${checkingObj?.project?.resourceId}/${bookId}.${checkingObj?.project?.resourceId}_check`

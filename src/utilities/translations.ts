@@ -21,7 +21,7 @@ export function lookupTranslationForKey(translations: object|null, key: string, 
     }
   }
 
-  if (data) {
+  if ((typeof newTranslation === 'string') && data) {
     for (const key of Object.keys(data)) {
       // @ts-ignore
       newTranslation = newTranslation.replaceAll('${' + key + '}', data[key])

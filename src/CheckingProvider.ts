@@ -419,8 +419,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return results
     }
 
-    private static translate(key:string, data:object|null = null){
-        const translation = lookupTranslationForKey(CheckingProvider.translations, key, data)
+    private static translate(key:string, data:object|null = null, defaultStr: string|null = null){
+        let translation = lookupTranslationForKey(CheckingProvider.translations, key, data)
+        if (defaultStr && (typeof translation === 'string')) {
+            const pos = translation.indexOf('translate(')
+            if (pos === 0) {
+                translation = defaultStr
+            }
+        }
         return translation
     };
 
