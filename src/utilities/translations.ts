@@ -3,10 +3,11 @@
  * @param {object} translations - hierarchical object
  * @param {string} key - in format such as 'alert' or 'menu.label'
  * @param {object} data - data to insert into translated string (e.g. instances of `${name}` will be replaced with `value.name`)
+ * @param {string} defaultStr - default string to return if translation is not found
  * @returns {string}
  */
-export function lookupTranslationForKey(translations: object|null, key: string, data: object|null = null) {
-  const translation = `translate(${key})` // set to default value
+export function lookupTranslationForKey(translations: object|null, key: string, data: object|null = null, defaultStr: string|null = null) {
+  const translation = defaultStr || `translate(${key})` // set to default value
   const steps = (key || '').split('.') // each level delimited by period
   let current: object|null = translations
   let newTranslation = null

@@ -136,13 +136,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     }, [initialContextId]);
       
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
-        let translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
-        if (defaultStr && (typeof translation === 'string')) {
-          const pos = translation.indexOf('translate(')
-          if (pos === 0) {
-            translation = defaultStr
-          }
-        }
+        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
         return translation
     };
 
@@ -375,7 +369,6 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   function createNewOlCheck(e: object) {
     const message = translate('status.creatingCheckingProject')
     _showDialogContent({ message })
-    let log: string[] = []
     const createNewOlCheckCallback = (data: object) => {
       // @ts-ignore
       const status = '';
@@ -385,40 +378,23 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     _createNewOlCheck({ data: 'testing' }, createNewOlCheckCallback).then(results => {
       console.log(`createNewOlCheck completed with results:`, results)
       // @ts-ignore
-      const errorMessage = results?.error;
+      const errorMessage = results?.errorMessage;
       if (errorMessage) {
-        let message = errorMessage;
-        const lastState = results?.lastState;
-        if (lastState) {
-          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-          message = `${message}.  Repo is at ${url}`
-        }
+        const title = translate('status.errorCreatingProjectTitle')
+        const message = errorMessage;
         const dialogContent = (
           <div>
-            <ErrorIcon /> <b>Upload Failed:</b>
+            <ErrorIcon /> <b>{title}</b>
             <br />
-            <span>{`Current Status: ${message}`}</span>
-            <hr />
-            <b>Log:</b><br />
-            {getLogDiv(log)}
+            <span>{`Message: ${message}`}</span>
           </div>
         )
         _showDialogContent({ message: dialogContent });
       } else {
-        let message = 'Upload Success'
-        const lastState = results?.lastState;
-        if (lastState) {
-          const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-          message = `${message} to ${url}`
-        }
+        const title = translate('status.successCreatingProjectTitle')
         const dialogContent =(
           <div>
-            <DoneOutlineIcon /> <b>Upload Complete Successfully:</b>
-            <br />
-            <span>{`Current Status: ${message}`}</span>
-            <hr />
-            <b>Log:</b><br />
-            {getLogDiv(log)}
+            <DoneOutlineIcon /> <b>{title}</b>
           </div>
         )
         _showDialogContent({ message: dialogContent });

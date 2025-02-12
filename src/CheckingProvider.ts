@@ -420,13 +420,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static translate(key:string, data:object|null = null, defaultStr: string|null = null){
-        let translation = lookupTranslationForKey(CheckingProvider.translations, key, data)
-        if (defaultStr && (typeof translation === 'string')) {
-            const pos = translation.indexOf('translate(')
-            if (pos === 0) {
-                translation = defaultStr
-            }
-        }
+        const translation = lookupTranslationForKey(CheckingProvider.translations, key, data, defaultStr)
         return translation
     };
 
@@ -553,7 +547,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         message = this.translate('status.glSelected', {  gwLanguagePick })
         await showInformationMessage(message);
 
-        const owners = findOwnersForLang(catalog || [], gwLanguagePick);
+        const ignoreOwners:string[] = ['Door43-Catalog'];
+        const owners = findOwnersForLang(catalog || [], gwLanguagePick, ignoreOwners);
+        if (!owners?.length) {
+            return this.showError('status.noGlOwner')
+        }
 
         data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectGatewayOwner', type: 'option', choices: owners })
         const gwOwnerPick = data?.responseStr

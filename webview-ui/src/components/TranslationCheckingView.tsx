@@ -158,7 +158,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`getSecretResponse - No handler for getSecret(${key}) response`)
+                console.error(`getSecretResponse - No handler for ${key} response`)
             }
         };
 
@@ -171,7 +171,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`uploadToDCSResponse - No handler for uploadToDCSResponse(${key}) response`)
+                console.error(`uploadToDCSResponse - No handler for ${key} response`)
             }
             saveCallBack("DCSuploadStatus", null);
         };
@@ -190,7 +190,7 @@ function TranslationCheckingView() {
                 // @ts-ignore
                 callback(update);
             } else {
-                console.error(`uploadToDcsStatusResponse - No handler for uploadToDcsStatusResponse(${key}) response`)
+                console.error(`uploadToDcsStatusResponse - No handler for ${key} response`)
             }
         };
 
@@ -202,16 +202,30 @@ function TranslationCheckingView() {
                 // @ts-ignore
                 callback(value);
             } else {
-                console.error(`promptUserForOption - No handler for getSecret(${key}) response`)
+                console.error(`promptUserForOption - No handler for ${key} response`)
             }
         };
-        
+
+        const createNewOlCheckResponse = (value: object|undefined) => {
+            // @ts-ignore
+            const key = 'createNewOlCheck'
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+            } else {
+                console.error(`createNewOlCheckResponse - No handler for ${key} response`)
+            }
+        };
+
+
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
             ["promptUserForOption"]: promptUserForOption,
             ["uploadToDCSResponse"]: uploadToDCSResponse,
             ["uploadToDcsStatusResponse"]: uploadToDcsStatusResponse,
+            ["createNewOlCheckResponse"]: createNewOlCheckResponse,
         };
 
         const mappedCommand = commandToFunctionMapping[command];
