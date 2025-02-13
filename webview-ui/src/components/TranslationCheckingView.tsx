@@ -12,7 +12,6 @@ import { makeStyles } from "@material-ui/core";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
-import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'
@@ -159,7 +158,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`No handler for getSecret(${key}) response`)
+                console.error(`getSecretResponse - No handler for ${key} response`)
             }
         };
 
@@ -172,7 +171,7 @@ function TranslationCheckingView() {
                 callback(value);
                 saveCallBack(key, null) // clear callback after use
             } else {
-                console.error(`No handler for uploadToDCSResponse(${key}) response`)
+                console.error(`uploadToDCSResponse - No handler for ${key} response`)
             }
             saveCallBack("DCSuploadStatus", null);
         };
@@ -191,18 +190,50 @@ function TranslationCheckingView() {
                 // @ts-ignore
                 callback(update);
             } else {
-                console.error(`No handler for uploadToDcsStatusResponse(${key}) response`)
+                console.error(`uploadToDcsStatusResponse - No handler for ${key} response`)
             }
         };
+
+        const promptUserForOption = (value: object|undefined) => {
+            // @ts-ignore
+            const key = 'createNewOlCheckCallback'
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+            } else {
+                console.error(`promptUserForOption - No handler for ${key} response`)
+            }
+        };
+
+        const createNewOlCheckResponse = (value: object|undefined) => {
+            // @ts-ignore
+            const key = 'createNewOlCheck'
+            const callback = getCallBack(key);
+            if (callback) {
+                // @ts-ignore
+                callback(value);
+            } else {
+                console.error(`createNewOlCheckResponse - No handler for ${key} response`)
+            }
+        };
+
 
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
+            ["promptUserForOption"]: promptUserForOption,
             ["uploadToDCSResponse"]: uploadToDCSResponse,
             ["uploadToDcsStatusResponse"]: uploadToDcsStatusResponse,
+            ["createNewOlCheckResponse"]: createNewOlCheckResponse,
         };
 
-        commandToFunctionMapping[command](data);
+        const mappedCommand = commandToFunctionMapping[command];
+        if (mappedCommand) {
+            mappedCommand(data);
+        } else {
+            console.error(`handleMessage() - Command missing for (${command}) response`)
+        }
     };
 
     const secretProvider = {
@@ -260,6 +291,31 @@ function TranslationCheckingView() {
         }
         const results = await _uploadToDCS(server, owner, token)
         return results
+    }
+
+    async function createNewOlCheck(data: object, createNewOlCheckCallback: (data: object) => void): Promise<GeneralObject> {
+        const _createNewOlCheck = (data: object): Promise<GeneralObject> => {
+            const promise = new Promise<object>((resolve) => {
+                saveCallBack("createNewOlCheck", resolve);
+                saveCallBack("createNewOlCheckCallback", createNewOlCheckCallback);
+                vscode.postMessage({
+                    command: "createNewOlCheck",
+                    text: "createNewOlCheck",
+                    data
+                });
+            })
+            return promise
+        }
+        const results = await _createNewOlCheck(data)
+        return results
+    }
+
+    async function promptUserForOptionCallback(data: object){
+        vscode.postMessage({
+            command: "promptUserForOptionResponse",
+            text: "promptUserForOptionResponse",
+            data
+        });
     }
 
     function sendFirstLoadMessage() {
@@ -421,6 +477,8 @@ function TranslationCheckingView() {
                 initialContextId={initialContextId}
                 projectKey={projectKey}
                 uploadToDCS={uploadToDCS}
+                createNewOlCheck={createNewOlCheck}
+                promptUserForOptionCallback={promptUserForOptionCallback}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

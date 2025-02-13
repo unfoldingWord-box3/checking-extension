@@ -58,5 +58,5 @@ pnpm run build:all-debug
 
   h. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
 
-  i. Adding New Locales - copy locales file from translationWords to `src\data\locales`. Then do `yarn run test:unit` which will integrate current localization files into extension.
+  i. Adding New Locales - copy locales file from translationWords to `src\data\locales`. Then do `yarn run test:unit` which will run `locales.test.ts` to integrate current localization files into extension.  `locales.test.ts` compiles all the `.json` locale files into `locales.ts` which is used by the application.
 

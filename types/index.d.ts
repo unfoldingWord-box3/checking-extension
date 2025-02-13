@@ -18,7 +18,8 @@ export type TranslationCheckingPostMessages =
     | { command: "update"; data: ScriptureTSV }
     | { command: "getSecretResponse"; data: object }
     | { command: "uploadToDCSResponse"; data: object }
-    | { command: "uploadToDcsStatusResponse"; data: string };
+    | { command: "uploadToDcsStatusResponse"; data: string }
+    | { command: "createNewOlCheckResponse"; data: object };
 
 export type NestedObject = {
   [key: string]: {

@@ -32,7 +32,7 @@ import isEqual from 'deep-equal'
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
 
-const showDocument = true // set this to false, to disable showing ta or tw articles
+const showDocument = true // set this to false to disable showing ta or tw articles
 
 // @ts-ignore
 const useStyles = makeStyles(theme => ({
@@ -84,27 +84,31 @@ function hasResourceData(resource:object) {
 
 type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
+type createNewOlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
+type promptUserForOptionCallbackFunction = (data: GeneralObject) => void;
 
 type TranslationCheckingProps = {
-    checkingObj: ResourcesObject;
-    saveCheckingData: saveCheckingDataFunction;
-    uploadToDCS: uploadToDCSFunction;
-    initialContextId: object;
-    projectKey: string;
+  checkingObj: ResourcesObject;
+  initialContextId: object;
+  createNewOlCheck: createNewOlCheckFunction,
+  projectKey: string;
+  saveCheckingData: saveCheckingDataFunction;
+  uploadToDCS: uploadToDCSFunction;
+  promptUserForOptionCallback: promptUserForOptionCallbackFunction;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   checkingObj,
-  saveCheckingData,
   initialContextId,
+  createNewOlCheck: _createNewOlCheck,
   projectKey,
-  uploadToDCS: _uploadToDCS
+  promptUserForOptionCallback,
+  saveCheckingData,
+  uploadToDCS: _uploadToDCS,
  }) => {
     const classes = useStyles()
-    const [noteIndex, setNoteIndex] = useState<number>(0);
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
     const [drawerOpen, setOpen] = useState(false)
-    const [auth, setAuth] = useState({ })
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -131,8 +135,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
       
-    const translate = (key:string, data:object) => {
-        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data)
+    const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
+        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
         return translation
     };
 
@@ -205,8 +209,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             name: bookName
         }
     }
-    function _showDialogContent(params: object) {
-      showDialogContent && showDialogContent(params)
+    function _showDialogContent(options: object) {
+      showDialogContent && showDialogContent(options)
     }
 
   function getLogDiv(log: string[]) {
@@ -252,7 +256,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           const lastState = results?.lastState;
           if (lastState) {
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-            message = `${message}.  Repo is at ${url}`
+            message = translate( 'status.uploadError', { message, url })
           }
           const dialogContent = (
             <div>
@@ -266,11 +270,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           )
           _showDialogContent({ message: dialogContent });
         } else {
-          let message = 'Upload Success'
+          let message = translate('status.uploadSuccess')
           const lastState = results?.lastState;
           if (lastState) {
             const url = `${lastState.server}/${lastState.owner}/${lastState.repo}`
-            message = `${message} to ${url}`
+            message = translate('status.uploadSuccess', {url})
           }
           const dialogContent =(
             <div>
@@ -286,8 +290,119 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         }
       })
     }
-    
-    const handleDrawerOpen = () => {
+
+  function getPrompt(data: object) {
+    const NO = translate('buttons.no_button');
+    const YES = translate('buttons.yes_button');
+
+    let prompt = <div>
+      <span><b>{`Prompt:`}</b></span>
+      <hr />
+      <b>Data:</b><br />
+      {JSON.stringify(data)}
+    </div>;
+
+    const options = {
+      message: prompt,
+    }
+
+    // @ts-ignore
+    const message = translate(data?.message);
+    // @ts-ignore
+    const type = data?.type;
+    if (message) {
+      // @ts-ignore
+      if (data?.busy) {
+        options.message = <div>
+          <CircularProgress />
+          <span><b>{message}</b></span>
+        </div>
+      } else {
+        options.message = <div>
+          <span><b>{message}</b></span>
+        </div>;
+      }
+
+      if (type === 'yes/No') {
+        function closeCallbackYesNo(responseStr: String) {
+          promptUserForOptionCallback({
+            responseStr,
+            response: (responseStr === YES),
+          });
+        }
+
+        // @ts-ignore
+        options.closeButtonStr = YES
+        // @ts-ignore
+        options.otherButtonStr = NO
+        // @ts-ignore
+        options.closeCallback = closeCallbackYesNo
+      }
+      
+      else if (type === 'option') {
+        const OK = translate('buttons.ok_button')
+
+        function closeCallbackOption(responseStr: String) {
+          promptUserForOptionCallback({
+            responseStr,
+            response: responseStr,
+          });
+        }
+        
+        // @ts-ignore
+        options.message = <div>
+          <span><b>{message}</b></span>
+          <hr />
+        </div>;
+        
+        // @ts-ignore
+        options.closeButtonStr = OK
+        // @ts-ignore
+        options.closeCallback = closeCallbackOption
+        // @ts-ignore
+        options.choices = data?.choices
+      }
+    }
+    return options;
+  }
+
+  function createNewOlCheck(e: object) {
+    const message = translate('status.creatingCheckingProject')
+    _showDialogContent({ message })
+    const createNewOlCheckCallback = (data: object) => {
+      // @ts-ignore
+      const status = '';
+      const options = getPrompt(data);
+      _showDialogContent(options)
+    }
+    _createNewOlCheck({ data: 'testing' }, createNewOlCheckCallback).then(results => {
+      console.log(`createNewOlCheck completed with results:`, results)
+      // @ts-ignore
+      const errorMessage = results?.errorMessage;
+      if (errorMessage) {
+        const title = translate('status.errorCreatingProjectTitle')
+        const message = errorMessage;
+        const dialogContent = (
+          <div>
+            <ErrorIcon /> <b>{title}</b>
+            <br />
+            <span>{`Message: ${message}`}</span>
+          </div>
+        )
+        _showDialogContent({ message: dialogContent });
+      } else {
+        const title = translate('status.successCreatingProjectTitle')
+        const dialogContent =(
+          <div>
+            <DoneOutlineIcon /> <b>{title}</b>
+          </div>
+        )
+        _showDialogContent({ message: dialogContent });
+      }
+    })
+  }
+
+  const handleDrawerOpen = () => {
         if (!drawerOpen) {
             setOpen(true)
         }
@@ -315,15 +430,15 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
     console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`, checkingObj)
     function getResourceMissingErrorMsg(checkingObj:any) {
-        let message = "Checking resources missing.";
+        const defaultMessage = 'Checking resources missing.'
+        let message = translate('status.resourceMissing', null, defaultMessage);
         if (!hasTargetBibleBook) {
-            message = `Target bible missing for ${bookId}.`
+            message = translate('status.bibleMissing', { bookId }, defaultMessage)
         } else if (checkingObj.validResources) {
             if (!haveCheckingData) {
-                message = `Empty checks file: './checking/${checkingObj?.project?.resourceId}/${bookId}.${checkingObj?.project?.resourceId}_check'`
+              const checksPath = `./checking/${checkingObj?.project?.resourceId}/${bookId}.${checkingObj?.project?.resourceId}_check`
+                message = translate('status.invalidCheckingFile', { checksPath })
             }
-        } else {
-            message = "Checking resources missing.";
         }
         return message;
     }
@@ -400,6 +515,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             currentLanguageSelection={currentLanguageSelection}
             translate={translate}
             uploadToDCS={uploadToDCS}
+            createNewOlCheck={createNewOlCheck}
           />
           <div id="checkerWrapper" style={{ marginTop: "10px" }}>
               <Checker

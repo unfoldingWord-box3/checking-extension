@@ -15,7 +15,7 @@ import {
 import * as fs from "fs-extra";
 
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
-import { RepoSelection, ResourcesObject, TranslationCheckingPostMessages } from "../types";
+import { GeneralObject, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
     changeTargetVerse,
     cleanUpFailedCheck,
@@ -44,31 +44,45 @@ import {
 } from "./utilities/resourceUtils";
 import {
     delay,
-    fileExists
+    fileExists,
+    fixUrls,
 } from "./utilities/fileUtils";
 import {
     DEFAULT_LOCALE,
     getCurrentLanguageCode,
+    getGatewayLanguages,
+    getLanguageCodeFromPrompts,
+    getLanguagePrompts,
     LOCALE_KEY,
     setLocale,
 } from "./utilities/languages";
-import {
-    getGatewayLanguages,
-    getLanguageCodeFromPrompts,
-    getLanguagePrompts
-} from "./utilities/languages";
 // @ts-ignore
-import isEqual from 'deep-equal'
+import isEqual from "deep-equal";
 import { isNT } from "./utilities/BooksOfTheBible";
 import {
     downloadRepoFromDCS,
     getOwnerReposFromRepoList,
     getOwnersFromRepoList,
-    getRepoName, setStatusUpdatesCallback,
+    getRepoName,
+    setStatusUpdatesCallback,
     uploadRepoToDCS,
 } from "./utilities/network";
 import { getCheckingRepos } from "./utilities/gitUtils";
 import path from "path";
+import { lookupTranslationForKey } from "./utilities/translations";
+
+let _callbacks:object = { } // stores callback by key
+
+function saveCallBack(key: string, callback: any) {
+    // @ts-ignore
+    _callbacks[key] = callback;
+}
+
+function getCallBack(key:string):any {
+    // @ts-ignore
+    const callback = _callbacks?.[key];
+    return callback;
+}
 
 type CommandToFunctionMap = Record<string, (text: string, data:{}) => void>;
 
@@ -130,7 +144,8 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     public static currentState = {}
     public static secretStorage:SecretStorage|null = null
-    
+    public static translations: object | null = null
+
     constructor(private readonly context: ExtensionContext) {}
 
     public static register(context: ExtensionContext):Disposable[]
@@ -381,6 +396,211 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await this.setContext("preRelease", !!preRelease);
         await vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `unfoldingWord.checking-extension#initChecking`, false);
         await delay(100);
+    }
+
+    private static async  showUserInformation (webviewPanel: WebviewPanel, options: object) {
+        this.promptUserForOption(webviewPanel, options)
+    }
+    
+    private static async  promptUserForOption (webviewPanel: WebviewPanel, options: object) {
+        const _promptUserForOption = (options: object): Promise<GeneralObject> => {
+            const promise = new Promise<object>((resolve) => {
+                saveCallBack("promptUserForOption", resolve);
+                webviewPanel.webview.postMessage({
+                    command: "promptUserForOption",
+                    text: "prompt User For Option",
+                    data: options
+                });
+            })
+            return promise
+        }
+        const results = await _promptUserForOption(options)
+        saveCallBack("promptUserForOption", null);
+        return results
+    }
+
+    private static translate(key:string, data:object|null = null, defaultStr: string|null = null){
+        const translation = lookupTranslationForKey(CheckingProvider.translations, key, data, defaultStr)
+        return translation
+    };
+
+    private static showError(key:string, data: object|null = null){
+        const message = this.translate(key, data)
+        showErrorMessage(`${key} - ${message}`, true);
+        return {
+            errorMessage: message,
+            success: false
+        }
+    };
+
+    private static async createGlCheck(webviewPanel: WebviewPanel) {
+        let success = false;
+        let catalog = getSavedCatalog(false)
+        const preRelease = this.getContext('preRelease');
+        let loadCatalog = true
+        
+        if (catalog) {
+            // prompt if we should load new catalog
+            const data = await this.promptUserForOption(webviewPanel, { message: 'prompts.downloadCatalog', type: 'yes/No'})
+            // @ts-ignore
+            const reloadCatalog = !!data?.response
+            loadCatalog = reloadCatalog
+        }
+        if (loadCatalog) {
+            console.log("checking-extension.downloadCatalog")
+            // show user we are loading new catalog
+            this.showUserInformation(webviewPanel, { message: 'status.downloadingCatalog', busy: true})
+            await delay(100)
+            catalog = await getLatestResourcesCatalog(resourcesPath, preRelease)
+            if (!catalog) {
+                return this.showError('status.catalogDownloadError')
+            }
+            
+            saveCatalog(catalog, preRelease)
+        }
+
+        //////////////////////////////////
+        // Target language
+
+        // @ts-ignore
+        const targetLangChoices = getLanguagePrompts(getLanguagesInCatalog(catalog))
+
+        // prompt for GL language selection
+        let data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetLanguage', type: 'option', choices: targetLangChoices})
+        // @ts-ignore
+        let targetLanguagePick = data?.responseStr
+        
+        // @ts-ignore
+        targetLanguagePick = getLanguageCodeFromPrompts(targetLanguagePick) || 'en'
+
+        if (!targetLanguagePick) {
+            return this.showError('status.noLanguage')
+        }
+
+        let message = this.translate('status.languageSelected', { targetLanguagePick })
+        await showInformationMessage(message);
+
+        const targetOwners = findOwnersForLang(catalog || [], targetLanguagePick)
+        
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectOrganization', type: 'option', choices: targetOwners })
+        // @ts-ignore
+        let targetOwnerPick = data?.responseStr
+
+        if (!targetOwnerPick) {
+            return this.showError('status.noOwner')
+        }
+
+        message = this.translate('status.ownerSelected', { targetOwnerPick })
+        await showInformationMessage(message);
+        
+        const resources = findResourcesForLangAndOwner(catalog || [], targetLanguagePick, targetOwnerPick || '')
+        const bibles = findBibleResources(resources || [])
+        const bibleIds = getResourceIdsInCatalog(bibles || [])
+
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetBible', type: 'option', choices: bibleIds })
+        // @ts-ignore
+        let targetBibleIdPick = data?.responseStr
+
+        if (!targetBibleIdPick) {
+            return this.showError('status.noBible')
+        }
+
+        message = this.translate('status.bibleSelected', { targetBibleIdPick })
+        await showInformationMessage(message);
+
+        const targetBibleOptions = {
+            languageId: targetLanguagePick,
+            owner: targetOwnerPick,
+            bibleId: targetBibleIdPick
+        }
+
+        // @ts-ignore
+        const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none', 'master');
+        // @ts-ignore
+        const bookIds = manifest?.projects?.map((project: {}) => project.identifier)
+
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectTargetBook', type: 'option', choices: bookIds })
+        
+        const bookId = data?.responseStr
+        if (!bookId) {
+            return this.showError('status.noBook')
+        }
+
+        message = this.translate('status.bookSelected', { targetBookPick: bookId })
+        await showInformationMessage(message);
+
+        //////////////////////////////////
+        // select GL language
+
+        const gatewayLanguages = getGatewayLanguages();
+        const glChoices = getLanguagePrompts(gatewayLanguages);
+
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectGatewayLanguage', type: 'option', choices: glChoices })
+        let gwLanguagePick = data?.responseStr
+
+        // @ts-ignore
+        gwLanguagePick = getLanguageCodeFromPrompts(gwLanguagePick) || "en";
+        if (!gwLanguagePick) {
+            return this.showError('status.noCheckingLanguage')
+        }
+
+        message = this.translate('status.glSelected', {  gwLanguagePick })
+        await showInformationMessage(message);
+
+        const ignoreOwners:string[] = ['Door43-Catalog'];
+        const owners = findOwnersForLang(catalog || [], gwLanguagePick, ignoreOwners);
+        if (!owners?.length) {
+            return this.showError('status.noGlOwner')
+        }
+
+        data = await this.promptUserForOption(webviewPanel, { message: 'prompts.selectGatewayOwner', type: 'option', choices: owners })
+        const gwOwnerPick = data?.responseStr
+        if (!gwOwnerPick) {
+            return this.showError('status.noGlOwner')
+        }
+
+        message = this.translate('status.glOwnerSelected', {  gwOwnerPick })
+        await showInformationMessage(message);
+
+        this.showUserInformation(webviewPanel, { message: 'status.creatingProject', busy: true})
+
+        const glOptions = {
+            languageId: gwLanguagePick,
+            owner: gwOwnerPick
+        }
+
+        const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
+
+        // @ts-ignore
+        if (results.error) {
+            return this.showError('status.glResourceDownloadError')
+        }
+
+        const targetLanguageId = targetBibleOptions.languageId;
+        const targetBibleId = targetBibleOptions.bibleId || "";
+        const targetOwner = targetBibleOptions.owner;
+        const targetBibleDescr = `${targetOwner}/${targetLanguageId}/${targetBibleId}`
+        message = this.translate('status.downloadingTargetBible', {  targetBible: targetBibleDescr })
+        await showInformationMessage(message);
+        // @ts-ignore
+        const targetFoundPath = await downloadTargetBible(targetBibleId, resourcesPath, targetLanguageId, targetOwner, catalog, bookId, 'master');
+        if (!targetFoundPath) {
+            return this.showError('status.targetBibleDownloadError')
+        }
+
+        const { repoInitSuccess, repoPath} = await this.doRepoInitAll(targetLanguageId, targetBibleId, glOptions.languageId, targetOwner, glOptions.owner, catalog, bookId, preRelease);
+        
+        if (!repoInitSuccess) {
+            return this.showError('status.errorCreatingProject')
+        }
+
+        // navigate to new folder
+        const repoPathUri = vscode.Uri.file(repoPath);
+        message = this.translate('status.successCreatingProject', {  repoPath })
+        await showInformationMessage(message, true, this.translate('status.checkingInstructions'));
+        vscode.commands.executeCommand("vscode.openFolder", repoPathUri);
+
+        return { success: true }
     }
 
     private static setConfiguration(key:string, value:any) {
@@ -773,6 +993,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
             return CheckingProvider.secretStorage
         }
 
+        const createNewOlCheck = (text:string, data:object) => {
+            delay(100).then(async () => {
+                console.log(`createNewOlCheck: ${text} - ${data}`)
+                const results = await CheckingProvider.createGlCheck(webviewPanel)
+
+                // send back value
+                webviewPanel.webview.postMessage({
+                    command: "createNewOlCheckResponse",
+                    data: results,
+                } as TranslationCheckingPostMessages);
+            })
+        }
+        
         const uploadToDCS = (text:string, data:object) => {
             // @ts-ignore
             const token = data?.token as string
@@ -806,7 +1039,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 } as TranslationCheckingPostMessages);
             })
         }
-        
+
         const getSecret = (text:string, data:object) => {
             const _getSecret = async (text:string, key:string) => {
                 console.log(`getSecret: ${text}, ${data} - key ${key}`)
@@ -894,19 +1127,34 @@ export class CheckingProvider implements CustomTextEditorProvider {
             })
         }
 
+        const promptUserForOptionResponse = (text:string, data:object) => {
+            console.log(`promptUserForOptionResponse: ${text}`)
+            const key = "promptUserForOption";
+            const callback = getCallBack(key)
+            if (callback) {
+                // @ts-ignore
+                callback(data);
+                saveCallBack(key, null) // clear callback after use
+            } else {
+                console.error(`No handler for promptUserForOptionResponse(${key}) response`)
+            }
+        }
+        
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
 
             const commandToFunctionMapping: CommandToFunctionMap = {
-                ["loaded"]: firstLoad,
-                ["saveCheckingData"]: saveCheckingData,
+                ["changeTargetVerse"]: changeTargetVerse_,
                 ["getSecret"]: getSecret,
+                ["createNewOlCheck"]: createNewOlCheck,
+                ["loaded"]: firstLoad,
+                ["saveAppSettings"]: saveAppSettings,
+                ["saveCheckingData"]: saveCheckingData,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
-                ["changeTargetVerse"]: changeTargetVerse_,
                 ["uploadToDCS"]: uploadToDCS,
-                ["saveAppSettings"]: saveAppSettings,
+                ["promptUserForOptionResponse"]: promptUserForOptionResponse,
             };
 
             const commandFunction = commandToFunctionMapping[command];
@@ -953,39 +1201,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
      */
     private fixCSS(assetsPath: vscode.Uri) {
         console.log(`fixCSS - assetsPath`, assetsPath.fsPath);
-        const buildPath = vscode.Uri.joinPath(assetsPath, '..')
+        const runTimeFolder = vscode.Uri.joinPath(assetsPath, '..')
         const cssPath = vscode.Uri.joinPath(assetsPath, "index.css");
         console.log(`fixCSS - cssPath.path`, cssPath.path);
         console.log(`fixCSS - cssPath.fsPath`, cssPath.fsPath);
         try {
-            let count = 0
             const data = fs.readFileSync(cssPath.fsPath, "UTF-8")?.toString() || '';
             console.log(`data.length`, data?.length);
-            const parts = data.split('url(')
-            if (parts.length > 1) {
-                // iterate through each URL
-                for (let i = 1; i < parts.length; i++) {
-                    let part = parts[i]
-                    const pathParts = part.split(')')
-                    // for asset times replay with absolute path to work with vscode
-                    if (pathParts[0].substring(0, 7) === "/assets") {
-                        count++
-                        console.log(`fixCSS - found ${pathParts[0]}`);
-                        let newUrlPath = vscode.Uri.joinPath(buildPath, pathParts[0]);
-                        let newUrlFsPath = newUrlPath.fsPath.replaceAll('\\', '/')
-                        console.log(`fixCSS - found ${pathParts[0]} and changed to new newUrlFsPath - ${newUrlFsPath}`);
-                        // replace asset path with absolute path
-                        pathParts[0] = newUrlFsPath
-                        const joinedStr = pathParts.join(')')
-                        parts[i] = joinedStr
-                    } else {
-                        console.log(`fixCSS - not 'url(/assets' to convert ${pathParts}`);
-                    }
-                }
-            }
-            
-            if (count) {
-                const newCss = parts.join('url(')
+            const { changes, parts, newCss } = fixUrls(data, runTimeFolder.fsPath);
+
+            if (changes) {
                 fs.outputFileSync(cssPath.fsPath, newCss, 'UTF-8');
             }
         } catch (e) {
@@ -1072,6 +1297,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             checks = JSON.parse(checks)
             // @ts-ignore
             resources.checks = checks
+            CheckingProvider.translations = resources?.locales
             return resources;
         } catch {
             throw new Error(
@@ -1332,7 +1558,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
         // @ts-ignore
         const pickedKey = keys.find(key => pickedText === choices[key]) || ''
         return { pickedKey, pickedText }
-        
     }
 
     private static async getGatewayLangSelection(preRelease = false) {

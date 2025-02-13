@@ -53,7 +53,7 @@ jobs:
       - name: Set artifact name
         run: echo "ARTIFACT_NAME=$(echo "$APP_NAME-$APP_VERSION-$HASH.vsix")" >> $GITHUB_ENV
         
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         name: Upload Package
         with:
           name: ${{ env.ARTIFACT_NAME }}

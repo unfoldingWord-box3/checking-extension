@@ -317,15 +317,18 @@ export function findResource(catalog:any[], languageId:string, owner:string, res
  * search catalog to find a match for owner, languageId, resourceId
  * @param {object[]} catalog - list of items in catalog
  * @param {string} languageId
+ * @param {string[]} ignoreOwners - list of owners to ignore
  */
-export function findOwnersForLang(catalog:any[], languageId:string) {
+export function findOwnersForLang(catalog:any[], languageId:string, ignoreOwners:string[] = []) {
     const owners = {}
     for (const item of catalog) {
         const langId = item.languageId
         if (langId === languageId) {
             const owner_ = item.owner
-            // @ts-ignore
-            owners[owner_] = true
+            if (!ignoreOwners.includes(owner_)) {
+                // @ts-ignore
+                owners[owner_] = true;
+            }
         }
     }
     return Object.keys(owners).sort()
@@ -594,14 +597,21 @@ async function fetchBibleResourceBook(catalog:any[], languageId:string, owner:st
             
             const parts = item.downloadUrl?.split(owner)
             let baseUrl = ''
-            if (parts?.length) {
+            let downloadOwner = owner
+            if (parts?.length > 1) {
                 baseUrl = parts[0]
+            } else { // url is redirect to different owner
+                const parts = item.downloadUrl?.split('/')
+                const baseParts = parts.slice(0, 3)
+                baseUrl = baseParts.join('/') + '/'
+                downloadOwner = parts[3]
             }
             const {
                 rawUrl,
                 manifest,
                 manifestYaml,
-            } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId, version);
+            } = await fetchBibleManifest(baseUrl, downloadOwner, languageId, resourceId, resourcesPath, bookId, version);
+            
             const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
             fs.emptyDirSync(destFolder);
             fs.outputFileSync(path.join(destFolder, 'manifest.yaml'), manifestYaml, 'UTF-8')
@@ -654,14 +664,20 @@ async function fetchHelpsResourceBook(catalog:any[], languageId:string, owner:st
 
             const parts = item.downloadUrl?.split(owner)
             let baseUrl = ''
-            if (parts?.length) {
+            let downloadOwner = owner
+            if (parts?.length > 1) {
                 baseUrl = parts[0]
+            } else { // url is redirect to different owner
+                const parts = item.downloadUrl?.split('/')
+                const baseParts = parts.slice(0, 3)
+                baseUrl = baseParts.join('/') + '/'
+                downloadOwner = parts[3]
             }
             const {
                 rawUrl,
                 manifest,
                 manifestYaml,
-            } = await fetchBibleManifest(baseUrl, owner, languageId, resourceId, resourcesPath, bookId, version);
+            } = await fetchBibleManifest(baseUrl, downloadOwner, languageId, resourceId, resourcesPath, bookId, version);
 
             const destFolder = getDestFolderForRepoFile(resourcesPath, languageId, resourceId, bookId, version, owner);
             fs.emptyDirSync(destFolder);
