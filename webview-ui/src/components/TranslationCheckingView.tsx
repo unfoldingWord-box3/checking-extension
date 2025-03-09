@@ -129,6 +129,12 @@ function TranslationCheckingView() {
         return `${projectKey}.contextId`;
     }
 
+    /**
+     * Initializes checking data.
+     *
+     * @param {TnTSV} data - The data object used to determine the project key and context id.
+     * @return {Promise<void>} A promise that resolves when the data initialization completes.
+     */
     async function initData(data: TnTSV) {
         const key = getContextIdKey(getProjectKey(data))
         secretProvider.getItem(key).then(value => {
@@ -141,9 +147,36 @@ function TranslationCheckingView() {
         })
     }
 
+    /**
+     * Handles incoming message events and executes specific functions based on the command within the event's data.
+     *
+     * The `handleMessage` function listens for `MessageEvent` objects and processes them by extracting the `command`
+     * and `data` properties. Based on the command, it invokes the corresponding handler function from a predefined
+     * command-to-function mapping. If no matching command is found, an error message is logged.
+     *
+     * Functionality:
+     * - Processes specific commands contained in `MessageEvent` data.
+     * - Supports handling commands like `update`, `getSecretResponse`, `uploadToDCSResponse`, `uploadToDcsStatusResponse`,
+     *   `promptUserForOption`, and `createNewOlCheckResponse`.
+     * - Logs an error if no handler is available for a specific command.
+     *
+     * Command-to-function mapping:
+     * - "update": Calls a function to initialize specific data.
+     * - "getSecretResponse": Handles responses for secret retrieval using a callback mechanism.
+     * - "uploadToDCSResponse": Completes the upload process to DCS and clears callback.
+     * - "uploadToDcsStatusResponse": Manages upload status updates and updates upload progress.
+     * - "promptUserForOption": Triggers a callback to prompt the user for options.
+     * - "createNewOlCheckResponse": Executes a callback related to creating a new OL check.
+     *
+     * Error Handling:
+     * - Logs an error when a callback or handler for a specific command is not found or missing.
+     * - Logs an error when an unrecognized command is received.
+     *
+     * @param {MessageEvent} event - The message event received, containing the `command` and associated `data`.
+     */
     const handleMessage = (event: MessageEvent) => {
         const { command, data } = event.data;
-        console.log(`handleMessage`, data)
+        console.log(`handleMessage`, command)
 
         const update = (data: TnTSV) => {
             initData(data);
@@ -334,7 +367,14 @@ function TranslationCheckingView() {
         };
     }, []);
 
-    function saveCheckingData(newState:{}) { // send message back to extension to save new selection to file
+    /**
+     * send message back to extension to save new selection to file
+     *
+     * @param {Object} newState - The new state object containing updated checking data
+     *
+     * @return {void} This method does not return any value.
+     */
+    function saveCheckingData(newState:{}) {
         // @ts-ignore
         const currentCheck = newState?.currentCheck;
         const currentContextId = currentCheck?.contextId

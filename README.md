@@ -74,8 +74,10 @@ pnpm run build:all-debug
     - doRepoInitAll - creates new checking project
 
 - webview-ui/src/components/TranslationCheckingView.tsx - wrapper for TranslationCheckingPane, provides authentication
-- 
-- webview-ui/src/components/TranslationCheckingPane.tsx - UI for checking webview
+  - handleMessage - Handles incoming message events from backend
+    - update - handler for when client side has loaded the checking data.  This is in response to sendFirstLoadMessage() being called when view is opened
+
+- webview-ui/src/components/TranslationCheckingPane.tsx - UI for checking webview - uses checking-tool-rcl
 
 - src/utilities/resourceUtils.ts - business logic for checking tool
   - loadResources - loads all the resources for checking tool

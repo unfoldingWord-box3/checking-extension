@@ -28,8 +28,6 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
-import isEqual from 'deep-equal'
-// @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
 
 const showDocument = true // set this to false to disable showing ta or tw articles
@@ -428,7 +426,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const hasTargetBibleBook = hasResourceData(checkingObj?.targetBible);
     const haveResources = hasTargetBibleBook && checkingObj.validResources && haveCheckingData
 
-    console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`, checkingObj)
+    console.log(`TranslationNotesView - redraw haveResources ${!!haveResources}, haveCheckingData ${!!haveCheckingData}, haveChecks ${!!haveChecks}`)
     function getResourceMissingErrorMsg(checkingObj:any) {
         const defaultMessage = 'Checking resources missing.'
         let message = translate('status.resourceMissing', null, defaultMessage);
