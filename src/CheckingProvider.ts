@@ -433,6 +433,11 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     };
 
+    /**
+     * create a new checking project to check translation against a gateway language.
+     * @param webviewPanel
+     * @private
+     */
     private static async createGlCheck(webviewPanel: WebviewPanel) {
         let success = false;
         let catalog = getSavedCatalog(false)
@@ -757,6 +762,22 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * Initializes a repository based on the provided parameters. If the repository does not already exist,
+     * this method attempts to create it. If the repository already exists, an error message is displayed.
+     *
+     * @param {string} targetLanguageId - The ID of the target language for the repository.
+     * @param {string | undefined} targetBibleId - The ID of the target Bible, or undefined if not provided.
+     * @param {string} glLanguageId - The ID of the gateway language.
+     * @param {string | undefined} targetOwner - The owner of the target repository, or undefined if not provided.
+     * @param {string | undefined} glOwner - The owner of the gateway language repository, or undefined if not provided.
+     * @param {object[] | null} catalog - The catalog data related to the repository, or null if not provided.
+     * @param {string | null} bookId - The ID of the book, or null if not provided.
+     * @param {boolean} [preRelease=false] - Indicates whether to initialize the repository in pre-release mode. Defaults to false.
+     *
+     * @return {Promise<{repoInitSuccess: boolean, repoPath: string}>} - An object containing a boolean indicating
+     * whether the repository initialization was successful and the path of the repository.
+     */
     private static async doRepoInitAll(targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false) {
         let repoInitSuccess = false;
         const repoPath = getRepoPath(targetLanguageId, targetBibleId || "", glLanguageId, undefined, bookId || '');
@@ -894,8 +915,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     private static readonly viewType = "checking-extension.translationChecker";
+
     /**
-     * Called when our custom editor is opened.
+     * Loads and renders a custom text editor for the checking document.
+     * This method initializes the webview with appropriate settings, handles localization setup, and manages various
+     * actions such as saving data, updating the webview, and handling specific commands invoked by the webview.
+     *
+     * @param {TextDocument} document - The document that this custom editor is being used with.
+     * @param {WebviewPanel} webviewPanel - The webview panel created for the custom text editor.
+     * @param {CancellationToken} _token - A token that signals if the editor resolving should be canceled.
+     * @return {Promise<void>} - A promise that resolves when the custom editor is successfully initialized and ready.
      */
     public async resolveCustomTextEditor(
         document: TextDocument,
@@ -1005,7 +1034,23 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 } as TranslationCheckingPostMessages);
             })
         }
-        
+
+        /**
+         * Message handler that Uploads changes to checking project data to a DCS server.
+         * This function performs the following tasks:
+         *  - Retrieves metadata and repository information for the project.
+         *  - Saves all current changes in the workspace to the filesystem.
+         *  - Creates and uploads the project repository to DCS.
+         *  - Sends status updates and the final response back to the webview panel.
+         *
+         * @param {string} text - Message to be logged.
+         * @param {object} data - An object containing configuration data required for the upload process.
+         * @param {string} data.token - Authentication token for DCS.
+         * @param {string} data.owner - The owner of the repository on DCS.
+         * @param {string} data.server - The server URL of DCS.
+         *
+         * @returns {void} - Sends progress status and final results via a webview panel.
+         */
         const uploadToDCS = (text:string, data:object) => {
             // @ts-ignore
             const token = data?.token as string
@@ -1139,7 +1184,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
                 console.error(`No handler for promptUserForOptionResponse(${key}) response`)
             }
         }
-        
+
+        /**
+         * Handles message events by processing the message properties and executing the corresponding command function.
+         *
+         * This function extracts the `command`, `text`, and `data` properties from the incoming message and maps the command
+         * to a specific handler function defined in the `commandToFunctionMapping` object. If a handler function exists for the
+         * command, it is executed with the given `text` and `data` parameters. If no handler is found, an error message is logged.
+         *
+         * @param {object} message - The message object containing command information.
+         * @param {string} message.command - The command to be executed.
+         * @param {string} message.text - The text passed along with the command.
+         * @param {any} message.data - Additional data required for processing the command.
+         */
         const messageEventHandlers = (message: any) => {
             const { command, text, data } = message;
             // console.log(`messageEventHandlers ${command}: ${text}`)
@@ -1277,9 +1334,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
         return foundCheck;
     }
-
+    
     /**
-     * Try to get a current document as a scripture TSV object
+     * Retrieves and parses the checking document and loads the related checking resources.
+     *
+     * @param {TextDocument} document - The text document containing the checks.
+     * @return {ResourcesObject} The resources object parsed from the document, including associated checks and translations.
+     *                            If the document is empty or invalid, an empty object is returned. An error is thrown if the content cannot be parsed.
      */
     private getCheckingResources(document: TextDocument):ResourcesObject {
         let checks = document.getText();
