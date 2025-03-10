@@ -1,6 +1,6 @@
 {
   "name": "checking-extension-webview",
-  "version": "0.9.14",
+  "version": "0.9.16",
   "private": true,
   "scripts": {
     "start": "vite",
