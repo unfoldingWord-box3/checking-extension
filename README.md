@@ -48,7 +48,7 @@ yarn run build:all-debug
   f. Press `F5` to open a new Extension Development Host window.  If you get error that the module could not be installed, try the following which should show the errors:
 
 ```bash
-pnpm run build:all-debug
+yarn run build:all-debug
 ```
 
   g. Initialize a project:
@@ -59,6 +59,17 @@ pnpm run build:all-debug
   h. In the checking/twl or checking/tn folders, click on any twl_check or tn_check file to see the checking tool in action!
 
   i. Adding New Locales - copy locales file from translationWords to `src\data\locales`. Then do `yarn run test:unit` which will run `locales.test.ts` to integrate current localization files into extension.  `locales.test.ts` compiles all the `.json` locale files into `locales.ts` which is used by the application.
+
+
+## Package the Extension
+
+- Package the extension into a vsix file by running:
+
+```bash
+yarn run pre-package:webview
+yarn run install:extension
+yarn run package:extension
+```
 
 
 ## Extension Code
