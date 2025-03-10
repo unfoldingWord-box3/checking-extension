@@ -1,5 +1,5 @@
 // import { vscode } from "./utilities/vscode";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
@@ -123,6 +123,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     // @ts-ignore
     const haveChecks = hasResourceData(checks)
     const targetBible = checkingObj.targetBible
+    const isEmptyProject = checkingObj.EMPTY
 
     // @ts-ignore
     const _authContext = useContext(AuthContext);
@@ -132,7 +133,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     useEffect(() => {
       setCurrentContextId(initialContextId)
     }, [initialContextId]);
-      
+
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
         return translation
@@ -400,6 +401,13 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     })
   }
 
+  useEffect(() => {
+    if (isEmptyProject) {
+      console.log(`createNewOlCheck empty project detected, create new project`)
+      createNewOlCheck({})
+    }
+  }, [isEmptyProject]);
+
   const handleDrawerOpen = () => {
         if (!drawerOpen) {
             setOpen(true)
@@ -468,73 +476,76 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     // @ts-ignore
     ...(checkingObj?.metadata?.settings || {})
   }
-  
-  return haveResources ? (
+
+  const showCheckingPane = haveResources || isEmptyProject;
+
+  return showCheckingPane ? (
       <>
-          <AppBar position='static'>
-              <Toolbar>
-                  <div id='title-bar' className={classes.root}>
-                      <IconButton
-                        edge='start'
-                        className={classes.menuButton}
-                        color='inherit'
-                        aria-label='menu'
-                        onClick={handleDrawerOpen}
-                      >
-                          <MenuIcon />
-                      </IconButton>
-                      <Typography
-                        variant='h6'
-                        className={classes.title}
-                        onClick={() => {
-                        }}
-                      >
-                          {`${APP_NAME} - v${APP_VERSION}`}
-                      </Typography>
-                    <Typography
-                      variant='h1'
-                      className={classes.title}
-                      onClick={() => {
-                      }}
-                    >
-                      {`${resourceTitle}`}
-                    </Typography>
-                  </div>
-              </Toolbar>
-          </AppBar>
-          <CommandDrawer
-            open={drawerOpen}
-            onOpen={handleDrawerOpen}
-            onClose={handleDrawerClose}
-            checkUnsavedChanges={null}
-            resetResourceLayout={null}
-            showFeedback={null}
-            languages={languages}
-            currentLanguageSelection={currentLanguageSelection}
+        <AppBar position='static'>
+          <Toolbar>
+            <div id='title-bar' className={classes.root}>
+              <IconButton
+                edge='start'
+                className={classes.menuButton}
+                color='inherit'
+                aria-label='menu'
+                onClick={handleDrawerOpen}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Typography
+                variant='h6'
+                className={classes.title}
+                onClick={() => {
+                }}
+              >
+                {`${APP_NAME} - v${APP_VERSION}`}
+              </Typography>
+              <Typography
+                variant='h1'
+                className={classes.title}
+                onClick={() => {
+                }}
+              >
+                {`${resourceTitle}`}
+              </Typography>
+            </div>
+          </Toolbar>
+        </AppBar>
+        <CommandDrawer
+          open={drawerOpen}
+          onOpen={handleDrawerOpen}
+          onClose={handleDrawerClose}
+          checkUnsavedChanges={null}
+          resetResourceLayout={null}
+          showFeedback={null}
+          languages={languages}
+          currentLanguageSelection={currentLanguageSelection}
+          translate={translate}
+          uploadToDCS={uploadToDCS}
+          createNewOlCheck={createNewOlCheck}
+          isEmptyProject={isEmptyProject}
+        />
+        {!isEmptyProject ? <div id="checkerWrapper" style={{ marginTop: "10px" }}>
+          <Checker
+            styles={{ width: "97vw", height: "65vw", overflowX: "auto", overflowY: "auto" }}
+            alignedGlBible={alignedGlBible}
+            bibles={bibles}
+            changeTargetVerse={changeTargetVerse}
+            checkingData={checkingData}
+            checkType={checkType}
+            contextId={contextId}
+            getLexiconData={getLexiconData_}
+            glWordsData={glWordsData}
+            initialSettings={initialSettings}
+            saveCheckingData={_saveCheckingData}
+            saveSettings={saveSettings}
+            showDocument={showDocument}
+            targetBible={targetBible}
+            targetLanguageDetails={targetLanguageDetails}
             translate={translate}
-            uploadToDCS={uploadToDCS}
-            createNewOlCheck={createNewOlCheck}
           />
-          <div id="checkerWrapper" style={{ marginTop: "10px" }}>
-              <Checker
-                styles={{ width: '97vw', height: '65vw', overflowX: 'auto', overflowY: 'auto' }}
-                alignedGlBible={alignedGlBible}
-                bibles={bibles}
-                changeTargetVerse={changeTargetVerse}
-                checkingData={checkingData}
-                checkType={checkType}
-                contextId={contextId}
-                getLexiconData={getLexiconData_}
-                glWordsData={glWordsData}
-                initialSettings={initialSettings}
-                saveCheckingData={_saveCheckingData}
-                saveSettings={saveSettings}
-                showDocument={showDocument}
-                targetBible={targetBible}
-                targetLanguageDetails={targetLanguageDetails}
-                translate={translate}
-              />
-          </div>
+        </div> : 'No Project Selected'}
       </>
     ) : getResourceMissingErrorMsg(checkingObj);
 }
