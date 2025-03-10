@@ -60,3 +60,24 @@ pnpm run build:all-debug
 
   i. Adding New Locales - copy locales file from translationWords to `src\data\locales`. Then do `yarn run test:unit` which will run `locales.test.ts` to integrate current localization files into extension.  `locales.test.ts` compiles all the `.json` locale files into `locales.ts` which is used by the application.
 
+
+## Extension Code
+
+- src/CheckingProvider.ts - extension backend code
+  - CheckingProvider
+    - register - commands are declared here
+      - "checking-extension.launchWorkflow" - walks the user through creating a new checking project
+    - createGlCheck - create a new checking project to check translation against a gateway language.
+    - messageEventHandlers - handles all the messages from the webview
+    - resolveCustomTextEditor - Loads and renders a custom text editor for the checking document
+      - getCheckingResources - loads checking document and the related checking resources
+    - doRepoInitAll - creates new checking project
+
+- webview-ui/src/components/TranslationCheckingView.tsx - wrapper for TranslationCheckingPane, provides authentication
+  - handleMessage - Handles incoming message events from backend
+    - update - handler for when client side has loaded the checking data.  This is in response to sendFirstLoadMessage() being called when view is opened
+
+- webview-ui/src/components/TranslationCheckingPane.tsx - UI for checking webview - uses checking-tool-rcl
+
+- src/utilities/resourceUtils.ts - business logic for checking tool
+  - loadResources - loads all the resources for checking tool

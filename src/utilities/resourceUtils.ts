@@ -213,7 +213,7 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
 }
 
 /**
- * fetches all the resources for doing checking.
+ * loads all the resources for checking tool.
  * @param filePath path to the file.
  * @returns A resource collection object.
  */
@@ -2155,7 +2155,16 @@ export function getMetaData(repoPath:string) {
     const metaData = readJsonFile(pathToMetaData);
     return metaData
 }
-        
+
+function getBaseResources(results:ResourcesObject) {
+    // @ts-ignore
+    results.lexicons = lexicons;
+    // @ts-ignore
+    results.locales = getCurrentLocale();
+    // @ts-ignore
+    results.localeOptions = Object.keys(getLocales());
+}
+
 /**
  * load all the resources needed for checking
  * @param repoPath
@@ -2172,14 +2181,9 @@ export function getResourcesForChecking(repoPath:string, resourcesBasePath:strin
       const metadata = _metadata[checkingName]
       if (metadata) {
           // @ts-ignore
-          results.lexicons = lexicons
-          // @ts-ignore
           results.metadata = metadata
-          // @ts-ignore
-          results.locales = getCurrentLocale()
-          // @ts-ignore
-          results.localeOptions = Object.keys(getLocales())
-          
+          getBaseResources(results);
+
           // get the dependent original bibles for resource
           const key = `${resourceId}_relation`
           // @ts-ignore
@@ -2695,6 +2699,24 @@ export function loadResourcesFromPath(filePath: string, resourcesBasePath:string
         const repoPath = path.join(path.dirname(filePath), '../..')
         const resources = getResourcesForChecking(repoPath, resourcesBasePath, projectId, bookId)
         return resources
+    } else {
+        try {
+            // see if empty project
+            const fileExists = fs.existsSync(filePath);
+            const project = fileExists ? fs.readJsonSync(filePath) : null;
+            if (project) {
+                const keys = Object.keys(project);
+                if (keys.length === 0) {
+                    const results:ResourcesObject = {}
+                    getBaseResources(results);
+                    // @ts-ignore
+                    results.EMPTY = true
+                    return results
+                }
+            }
+        } catch (e) {
+            console.warn(`loadResourcesFromPath() - failed to load ${filePath}`, e)
+        }
     }
     return null
 }
