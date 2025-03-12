@@ -9,7 +9,9 @@
     "comments": "Comentarios",
     "menu": "Menú",
     "grouping": "Organizar por referencia",
-    "select_locale": "Seleccionar localización"
+    "select_locale": "Seleccionar localización",
+    "open_translation_words": "Open Translation Words Checking",
+    "open_translation_notes": "Open Translation Notes Checking"
   },
   "buttons": {
     "ok_button": "Aceptar",

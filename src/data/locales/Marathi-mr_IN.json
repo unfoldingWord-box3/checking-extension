@@ -9,7 +9,9 @@
     "comments": "टिप्पण्या",
     "menu": "सूची",
     "grouping": "Organize by Reference",
-    "select_locale": "स्थानिक निवडा"
+    "select_locale": "स्थानिक निवडा",
+    "open_translation_words": "Open Translation Words Checking",
+    "open_translation_notes": "Open Translation Notes Checking"
   },
   "buttons": {
     "ok_button": "ठीक",

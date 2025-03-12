@@ -10,7 +10,9 @@ const locale_ =
     "comments": "Comments",
     "menu": "Menu",
     "grouping": "Organize by Reference",
-    "select_locale": "Select Locale"
+    "select_locale": "Select Locale",
+    "open_translation_words": "Open Translation Words Checking",
+    "open_translation_notes": "Open Translation Notes Checking"
   },
   "buttons": {
     "ok_button": "OK",

@@ -84,25 +84,28 @@ type saveCheckingDataFunction = (resources: ResourcesObject) => void;
 type uploadToDCSFunction = (server: string, owner: string, token: string, dcsUpdate: (update: object) => void) => Promise<GeneralObject>;
 type createNewOlCheckFunction = (data: object, initializeUpdate: (data: object) => void) => Promise<GeneralObject>;
 type promptUserForOptionCallbackFunction = (data: GeneralObject) => void;
+type openCheckingFileFunction = (openTNotes: boolean) => void;
 
 type TranslationCheckingProps = {
   checkingObj: ResourcesObject;
-  initialContextId: object;
   createNewOlCheck: createNewOlCheckFunction,
+  initialContextId: object;
+  openCheckingFile: openCheckingFileFunction;
   projectKey: string;
+  promptUserForOptionCallback: promptUserForOptionCallbackFunction;
   saveCheckingData: saveCheckingDataFunction;
   uploadToDCS: uploadToDCSFunction;
-  promptUserForOptionCallback: promptUserForOptionCallbackFunction;
 };
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
-  checkingObj,
-  initialContextId,
-  createNewOlCheck: _createNewOlCheck,
-  projectKey,
-  promptUserForOptionCallback,
-  saveCheckingData,
-  uploadToDCS: _uploadToDCS,
+   checkingObj,
+   createNewOlCheck: _createNewOlCheck,
+   initialContextId,
+   openCheckingFile,
+   projectKey,
+   promptUserForOptionCallback,
+   saveCheckingData,
+   uploadToDCS: _uploadToDCS,
  }) => {
     const classes = useStyles()
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
@@ -525,6 +528,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           uploadToDCS={uploadToDCS}
           createNewOlCheck={createNewOlCheck}
           isEmptyProject={isEmptyProject}
+          openCheckingFile={openCheckingFile}
         />
         {!isEmptyProject ? <div id="checkerWrapper" style={{ marginTop: "10px" }}>
           <Checker
