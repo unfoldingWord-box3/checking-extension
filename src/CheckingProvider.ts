@@ -1982,7 +1982,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
         if (repoFolderExists && projectPath) {
             const absoluteCheckPath = await this.getCheckingFilename(projectPath, openTNotes);
             if (absoluteCheckPath) {
-                await this.openFile(absoluteCheckPath);
+                // Open the file with the custom editor instead of as a text file
+                await vscode.commands.executeCommand(
+                  'vscode.openWith',
+                  vscode.Uri.file(absoluteCheckPath),
+                  CheckingProvider.viewType
+                );
             }
         }
     }
