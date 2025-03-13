@@ -29,6 +29,14 @@
       {
         "title": "Translation Checking: Download Project",
         "command": "checking-extension.downloadProject"
+      },
+      {
+        "title": "Translation Checking: Check translationNotes",
+        "command": "checking-extension.checkTNotes"
+      },
+      {
+        "title": "Translation Checking: Check translationWords",
+        "command": "checking-extension.checkTWords"
       }
     ],
     "customEditors": [

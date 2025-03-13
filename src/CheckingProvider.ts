@@ -379,7 +379,25 @@ export class CheckingProvider implements CustomTextEditorProvider {
           })
         );
         subscriptions.push(commandRegistration)
-        
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.checkTNotes",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.checkTNotes"`)
+              await this.openCheckingFile_(true)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.checkTWords",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.checkTWords"`)
+              await this.openCheckingFile_(false)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
         return subscriptions;
     }
 
@@ -1929,7 +1947,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
      * @param {boolean} openTNotes - A flag indicating whether to use translation notes (true) or translation word list (false).
      * @return {Promise<any>} A promise that resolves to the absolute path of the checking file if metadata is available, or null if not.
      */
-    protected async getCheckingFilename(projectPath: string, openTNotes: boolean): Promise<any> {
+    protected static async getCheckingFilename(projectPath: string, openTNotes: boolean): Promise<any> {
         try {
             const metaData = getMetaData(projectPath)
 
@@ -1960,7 +1978,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
      * @param {boolean} openTNotes - Specifies whether to include additional file-opening behavior for TNotes.
      * @return {Promise<any>} A promise that resolves when the file opening operation completes, or rejects if an error occurs.
      */
-    protected async openCheckingFile_(openTNotes: boolean): Promise<any> {
+    public static async openCheckingFile_(openTNotes: boolean): Promise<any> {
         const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
         if (repoFolderExists && projectPath) {
             const absoluteCheckPath = await this.getCheckingFilename(projectPath, openTNotes);
