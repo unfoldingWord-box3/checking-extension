@@ -148,6 +148,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
     constructor(private readonly context: ExtensionContext) {}
 
+    /**
+     * Registers various commands and providers necessary for the Checking Extension workflow.
+     *
+     * @param {ExtensionContext} context - The extension context provided by VSCode, which contains global and workspace-specific settings and subscriptions.
+     * @return {Disposable[]} An array of Disposable objects representing the subscriptions and registrations created by the method.
+     */
     public static register(context: ExtensionContext):Disposable[]
     {
         let redirecting = false;
@@ -295,7 +301,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
                     }
                     : null
                   if (glOptions) {
-                      const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
+                      const results = await this.downloadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
                       
                       // @ts-ignore
                       if (results.error) {
@@ -373,10 +379,35 @@ export class CheckingProvider implements CustomTextEditorProvider {
           })
         );
         subscriptions.push(commandRegistration)
-        
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.checkTNotes",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.checkTNotes"`)
+              await this.openCheckingFile_(true)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.checkTWords",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.checkTWords"`)
+              await this.openCheckingFile_(false)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
         return subscriptions;
     }
 
+    /**
+     * Initializes the workflow by resetting progress, configuring contexts, and loading initial states
+     * for the extension based on the specified pre-release mode.
+     *
+     * @param {boolean} preRelease - Indicates whether to enable pre-release settings. Default is false.
+     * @return {Promise<void>} A promise that resolves when the workflow initialization is complete.
+     */
     private static async initializeWorkflow(preRelease = false) {
         await delay(100);
         await vscode.commands.executeCommand("resetGettingStartedProgress");
@@ -398,10 +429,24 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await delay(100);
     }
 
+    /**
+     * Displays user information in the provided webview panel.
+     *
+     * @param {WebviewPanel} webviewPanel - The webview panel where the user information will be shown.
+     * @param {object} options - Configuration options for displaying the user information.
+     * @return {Promise<void>} A promise that resolves when the user information is successfully displayed.
+     */
     private static async  showUserInformation (webviewPanel: WebviewPanel, options: object) {
         this.promptUserForOption(webviewPanel, options)
     }
-    
+
+    /**
+     * Prompts the user to select an option using the provided webview panel and options.
+     *
+     * @param {WebviewPanel} webviewPanel - The webview panel used to communicate messages to the user.
+     * @param {object} options - The options to be presented to the user for selection.
+     * @return {Promise<GeneralObject>} A promise that resolves with the selected option or data provided by the user.
+     */
     private static async  promptUserForOption (webviewPanel: WebviewPanel, options: object) {
         const _promptUserForOption = (options: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
@@ -419,11 +464,27 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return results
     }
 
+    /**
+     * Translates the given key into the corresponding localized string,
+     * optionally including dynamic data and a default string if no translation is found.
+     *
+     * @param {string} key - The translation key used to look up the localized text.
+     * @param {object|null} [data=null] - An object containing dynamic values to replace placeholders in the translation.
+     * @param {string|null} [defaultStr=null] - A default string to return if the key is not found in the translations.
+     * @return {string} The translated and formatted string, or the default string if the key is not found.
+     */
     private static translate(key:string, data:object|null = null, defaultStr: string|null = null){
         const translation = lookupTranslationForKey(CheckingProvider.translations, key, data, defaultStr)
         return translation
     };
 
+    /**
+     * Displays an error message based on the provided key and optional data.
+     *
+     * @param {string} key - The key used to retrieve the error message.
+     * @param {object|null} [data=null] - Optional data used for message translation.
+     * @return {object} An object containing the error message and a success flag set to false.
+     */
     private static showError(key:string, data: object|null = null){
         const message = this.translate(key, data)
         showErrorMessage(`${key} - ${message}`, true);
@@ -432,11 +493,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
             success: false
         }
     };
-
+    
     /**
-     * create a new checking project to check translation against a gateway language.
-     * @param webviewPanel
-     * @private
+     * Creates a new checking project by prompting the user for various options
+     * such as target language, organization, Bible resource, book, GL language, and GL owner.
+     * Downloads and initializes the necessary resources and repositories for the project.
+     *
+     * @param {WebviewPanel} webviewPanel - The webview panel instance where prompts and status messages will be displayed.
+     * @return {Promise<{ success: boolean }>} A promise resolving to an object indicating the success status of the operation.
      */
     private static async createGlCheck(webviewPanel: WebviewPanel) {
         let success = false;
@@ -574,7 +638,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             owner: gwOwnerPick
         }
 
-        const results = await this.loadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
+        const results = await this.downloadResourcesWithProgress(glOptions.languageId, glOptions.owner || '', resourcesPath, preRelease, bookId)
 
         // @ts-ignore
         if (results.error) {
@@ -628,6 +692,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return this.currentState[key]
     }
 
+    /**
+     * Navigates to a specific workflow step within the extension walkthrough.
+     *
+     * @param {string} step - The identifier for the specific workflow step to navigate to.
+     * @return {Promise<void>} Resolves when the workflow step navigation process is complete.
+     */
     private static async gotoWorkFlowStep(step:string) {
         await delay(100)
         // const _step = `unfoldingWord.checking-extension#${step}`;
@@ -641,6 +711,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await delay(100)
     }
 
+    /**
+     * Opens a workspace folder using the Visual Studio Code open folder dialog.
+     *
+     * This method prompts the user to select a folder, opens the selected folder
+     * in the workspace, and returns the workspace folder object if successful.
+     *
+     * @return {vscode.WorkspaceFolder | undefined} The opened workspace folder, or undefined if no folder was selected or operation failed.
+     */
     private static async openWorkspace() {
         let workspaceFolder;
         const openFolder = await vscode.window.showOpenDialog({
@@ -662,6 +740,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return workspaceFolder
     }
 
+    /**
+     * Initializes the project by validating and setting up the repository as necessary.
+     *
+     * @param {boolean} [navigateToFolder=false] - Determines whether navigation to a folder is required during initialization.
+     * @return {Promise<void>} Resolves when the Checker initialization process completes or rejects in case of an error.
+     */
     private static async initializeChecker(navigateToFolder = false) {
         await showInformationMessage("initializing Checker");
         const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
@@ -690,6 +774,17 @@ export class CheckingProvider implements CustomTextEditorProvider {
         await showErrorMessage(`repo already exists - but not valid!`, true);
     }
 
+    /**
+     * Initializes the Bible folder for a given project by setting up necessary configurations
+     * and repositories based on the provided input parameters.
+     *
+     * @param {object} results - The object containing necessary data from the project's manifest and optional gateway language options.
+     * @param {string} projectPath - The path to the project where the Bible folder will be initialized.
+     * @param {boolean} [preRelease=false] - A flag indicating whether to use pre-release resources during initialization.
+     *
+     * @return {Promise<boolean|null>} A promise that resolves to `true` if repository initialization succeeds,
+     * `null` if an error occurs during gateway language selection, or `false` if repository initialization fails.
+     */
     private static async initializeBibleFolder(results:object, projectPath:string, preRelease = false) {
         // @ts-ignore
         const dublin_core = results.manifest?.dublin_core;
@@ -728,6 +823,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess
     }
 
+    /**
+     * Initializes an empty folder and sets up repository configurations based on specified options.
+     * This includes fetching necessary options, initializing a repository, and navigating
+     * to the folder if successful. If initialization fails, appropriate error messages are displayed.
+     *
+     * @param {boolean} [preRelease=false] - Determines whether to initialize in pre-release mode.
+     * @return {Promise<void>} A promise that resolves when the folder initialization is complete or an error is handled.
+     */
     private static async initializeEmptyFolder(preRelease = false) {
         const options = await this.getCheckingOptions();
         if (options && options.gwLanguagePick && options.gwOwnerPick) {
@@ -794,6 +897,21 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { repoInitSuccess, repoPath };
     }
 
+    /**
+     * Initializes the repository for a given project, checking necessary resources,
+     * and handling errors or missing resources appropriately.
+     *
+     * @param {string} repoPath - Path to the repository to initialize.
+     * @param {string} targetLanguageId - ID of the target language.
+     * @param {string | undefined} targetBibleId - ID of the target Bible, or undefined if not applicable.
+     * @param {string} glLanguageId - ID of the gateway language.
+     * @param {string | undefined} targetOwner - Owner of the target repository, or undefined if not applicable.
+     * @param {string | undefined} glOwner - Owner of the gateway language resources, or undefined if not applicable.
+     * @param {object[] | null} catalog - Catalog of resources or null if no catalog is available.
+     * @param {string | null} bookId - ID of the book to initialize, or null if not specific to a book.
+     * @param {boolean} [preRelease=false] - Optional flag indicating if pre-release resources should be used.
+     * @return {Promise<boolean>} A promise that resolves to true if the repository initialization was successful, false otherwise.
+     */
     private static async doRepoInit(repoPath: string, targetLanguageId: string, targetBibleId: string | undefined, glLanguageId: string, targetOwner: string | undefined, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false) {
         let repoInitSuccess = false;
 
@@ -851,7 +969,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return repoInitSuccess;
     }
 
-    private static async loadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string, preRelease = false, bookId = ''):Promise<object> {
+    /**
+     * Downloads GL resources with a progress notification in the VSCode UI.
+     *
+     * This method downloads the latest language Helpson resources asynchronously while providing real-time progress updates
+     * using VSCode's progress notification system.
+     *
+     * @param {string} languageId - The language identifier for the resources to be downloaded.
+     * @param {string} owner - The owner of the resources repository (e.g., organization or username in source control).
+     * @param {string} resourcesPath - The local file path where the resources will be downloaded.
+     * @param {boolean} [preRelease=false] - Optional. Specifies whether to use pre-release resources. Defaults to false.
+     * @param {string} [bookId=''] - Optional. The identifier for a specific book to narrow down resources. Defaults to an empty string.
+     * @return {Promise<object>} A promise that resolves to an object representing the downloaded resource details.
+     */
+    private static async downloadResourcesWithProgress(languageId:string, owner:string, resourcesPath:string, preRelease = false, bookId = ''):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
             vscode.window.withProgress({
@@ -884,6 +1015,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return promise
     }
 
+    /**
+     * Initializes a project with progress tracking and resource downloading indication.
+     *
+     * @param {string} repoPath - The path to the repository where the project will be initialized.
+     * @param {string} targetLanguageId - The identifier for the target language.
+     * @param {string | undefined} targetOwner - The owner or organization of the target project.
+     * @param {string | undefined} targetBibleId - The identifier for the target Bible if applicable.
+     * @param {string} glLanguageId - The identifier for the Gateway Language (GL).
+     * @param {string | undefined} glOwner - The owner or organization of the Gateway Language project.
+     * @param {object[] | null} catalog - The catalog of resources to be used in the project initialization.
+     * @param {string | null} bookId - The identifier of the book to be initialized in the project.
+     * @param {boolean} [preRelease=false] - A flag indicating if pre-release resources should be used.
+     * @return {Promise<object>} A promise that resolves with the initialization results as an object.
+     */
     private static async initProjectWithProgress(repoPath: string, targetLanguageId: string, targetOwner: string | undefined, targetBibleId: string | undefined, glLanguageId: string, glOwner: string | undefined, catalog: object[] | null, bookId:string | null, preRelease = false):Promise<object> {
         const increment = 5;
         const promise = new Promise<object>((resolve) => {
@@ -1127,6 +1272,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.log(`firstLoad: ${text}`)
             updateWebview(true)
         }
+        
+        const openCheckingFile = async (text: string, data: object) => {
+            // @ts-ignore
+            const openTNotes = data?.openTNotes;
+            console.log(`openCheckingFile: ${text} - ${openTNotes}`)
+            await CheckingProvider.openCheckingFile_(openTNotes)
+        }
 
         const setLocale_ = (text:string, data:object) => {
             // @ts-ignore
@@ -1203,15 +1355,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
             const commandToFunctionMapping: CommandToFunctionMap = {
                 ["changeTargetVerse"]: changeTargetVerse_,
-                ["getSecret"]: getSecret,
                 ["createNewOlCheck"]: createNewOlCheck,
+                ["getSecret"]: getSecret,
                 ["loaded"]: firstLoad,
+                ["openCheckingFile"]: openCheckingFile,
+                ["promptUserForOptionResponse"]: promptUserForOptionResponse,
                 ["saveAppSettings"]: saveAppSettings,
                 ["saveCheckingData"]: saveCheckingData,
                 ["saveSecret"]: saveSecret,
                 ["setLocale"]: setLocale_,
                 ["uploadToDCS"]: uploadToDCS,
-                ["promptUserForOptionResponse"]: promptUserForOptionResponse,
             };
 
             const commandFunction = commandToFunctionMapping[command];
@@ -1250,11 +1403,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
 
         // TODO: Put Global BCV function here
     }
-
+    
     /**
-     * open.css file and fix paths to assets.
-     * @param assetsPath
-     * @private
+     * Fixes CSS file by updating URLs to point to correct runtime paths.
+     *
+     * @param {vscode.Uri} assetsPath - The URI of the assets folder where the CSS file is located.
+     * @return {void} This method does not return a value.
      */
     private fixCSS(assetsPath: vscode.Uri) {
         console.log(`fixCSS - assetsPath`, assetsPath.fsPath);
@@ -1274,11 +1428,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
             console.error(`fixCSS - cannot fix index.css at ${cssPath}`, e)
         }
     }
-
+    
     /**
-     * search checkingData for check that matches currentContextId and return location within checkingData
-     * @param currentContextId
-     * @param checkingData
+     * Finds a specific check object within the provided checkingData structure that matches the criteria in currentContextId.
+     *
+     * @param {object} currentContextId - The context identifying the check to be found. Contains attributes like checkId, groupId, quote, occurrence, and reference.
+     * @param {object} checkingData - The data structure where the checks are stored, organized by category and groups.
+     * @return {null|object} - Returns the found check object if it matches the provided criteria; otherwise, returns null.
      */
     private findCheckToUpdate(currentContextId:{}, checkingData:{}) {
         let foundCheck:null|object = null;
@@ -1368,6 +1524,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { }
     }
 
+    /**
+     * Updates the provided document with the specified checking data.
+     * Replaces the entire content of the document with a new JSON representation
+     * of the checking data.
+     *
+     * @param {TextDocument} document - The document to update. Represents the file being edited.
+     * @param {object} checkingData - The data used to update the document. Converted into JSON format.
+     * @return {Thenable<boolean>} A promise that resolves to a boolean indicating whether the edit was successful.
+     */
     private updateChecks(document: TextDocument, checkingData:object) {
         const newDocumentText = JSON.stringify(checkingData, null, 2)
 
@@ -1383,6 +1548,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return vscode.workspace.applyEdit(edit);
     }
 
+    /**
+     * Retrieves and returns checking options by fetching gateway language selection
+     * and target language selection details.
+     *
+     * @return {Promise<{
+     *     catalog: object,
+     *     gwLanguagePick: object,
+     *     gwOwnerPick: object,
+     *     targetLanguagePick: object,
+     *     targetOwnerPick: object,
+     *     targetBibleIdPick: object
+     * } | null>} A promise that resolves to an object containing the checking options
+     * or null if no options are available.
+     */
     private static async getCheckingOptions() {
         const options = await this.getGatewayLangSelection();
         if (!options) {
@@ -1406,6 +1585,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * Retrieves the target language selection along with associated target owner and Bible ID
+     * through a series of user prompts.
+     *
+     * @param {object[] | null} catalog - The catalog of available languages, owners, and resources.
+     * @return {Promise<object>} A promise that resolves to an object containing the following:
+     *                            - targetLanguagePick: The id of the selected target language.
+     *                            - targetOwnerPick: The selected target organization/owner.
+     *                            - targetBibleIdPick: The ID of the selected Bible resource.
+     */
     private static async getTargetLanguageSelection(catalog: object[] | null) {
         //////////////////////////////////
         // Target language
@@ -1444,6 +1633,15 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { targetLanguagePick, targetOwnerPick, targetBibleIdPick };
     }
 
+    /**
+     * Prompts user for information to determine DCS (Digital Content Service) repo and then downloads it.
+     * 
+     * The method fetches available owners and repositories from the server,
+     * prompts the user to select an owner and a repository, and then proceeds to download the selected repository.
+     * Handles potential conflicts by offering options to backup existing projects before downloading.
+     *
+     * @return {Promise<string>} A promise that resolves to the local path of the downloaded project if successful, or an empty string if the download fails or is canceled.
+     */
     private static async downloadCheckingProjectFromDCS(): Promise<string> {
         await showInformationMessage(`Searching for Checking Projects on server`);
         
@@ -1539,6 +1737,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return '';
     }
 
+    /**
+     * Fetches the Door43 resources catalog from the specified resources path with progress notification.
+     *
+     * @param {string} resourcesPath - The file path or URL to the Door43 resources.
+     * @param {boolean} [preRelease=false] - An optional flag indicating whether to fetch pre-release resources.
+     * @return {Promise<Object>} A promise that resolves to the catalog object retrieved from the resources path.
+     */
     private static getDoor43ResourcesCatalogWithProgress(resourcesPath:string, preRelease = false) {
         return new Promise((resolve) => {
             window.showInformationMessage("Checking DCS for GLs - can take minutes");
@@ -1565,6 +1770,21 @@ export class CheckingProvider implements CustomTextEditorProvider {
        });
     }
 
+    /**
+     * Checks the current workspace for validity and initialization status of a Bible repository.
+     *
+     * This method performs checks to determine if the workspace contains a valid Bible repository,
+     * whether the repository folder exists, if it's initialized properly, and whether metadata and checks
+     * are properly set up. It returns an object encapsulating the results of these checks.
+     *
+     * @return {Promise<{repoExists: boolean, isValidBible: boolean, isCheckingInitialized: boolean, repoFolderExists: boolean, projectPath: string | undefined}>}
+     * An object containing:
+     * - `repoExists`: A boolean indicating if a repository exists.
+     * - `isValidBible`: A boolean indicating if the repository is a valid Bible project.
+     * - `isCheckingInitialized`: A boolean indicating if checks and metadata have been properly initialized.
+     * - `repoFolderExists`: A boolean indicating if the required workspace folder exists.
+     * - `projectPath`: The path to the workspace or repository, if available.
+     */
     private static async checkWorkspace( ) {
         let repoExists = false
         let isValidBible = false
@@ -1586,6 +1806,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * Prompts the user to update a specific folder by providing options to create a new checking project
+     * or select an existing Bible project to check.
+     *
+     * @return {Promise<boolean>} A promise that resolves to `false` if the user chooses to create a new
+     * checking project, or `true` if an existing project is selected and the workspace is opened.
+     */
     private static async promptUpdateSpecificFolder( ) {
         const choices = {
             'new': `Create New Checking Project`,
@@ -1603,6 +1830,13 @@ export class CheckingProvider implements CustomTextEditorProvider {
         }
     }
 
+    /**
+     * Asynchronously presents a prompt to the user with a list of choices and accepts their selection.
+     *
+     * @param {string} title - The placeholder title displayed in the selection prompt.
+     * @param {{}} choices - An object containing keys and their corresponding selectable prompt values.
+     * @return {Promise<{ pickedKey: string, pickedText: string }>} A promise resolving to an object containing the key and text of the selected choice.
+     */
     private static async doPrompting( title: string, choices: {}) {
         const keys = Object.keys(choices);
         // @ts-ignore
@@ -1621,6 +1855,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return { pickedKey, pickedText }
     }
 
+    /**
+     * Retrieves Gateway Language (GL) selections, allowing users to select a language and its organization
+     * either from a cached catalog or by fetching from the server if the catalog is not available.
+     *
+     * @param {boolean} [preRelease=false] - Specifies whether to fetch from the pre-release resources.
+     * @return {Promise<{catalog: Array, gwLanguagePick: string, gwOwnerPick: string}>} -
+     *     Returns an object containing the catalog, selected gateway language, and gateway owner.
+     */
     private static async getGatewayLangSelection(preRelease = false) {
         let catalog = getSavedCatalog(preRelease);
         try {
@@ -1668,6 +1910,12 @@ export class CheckingProvider implements CustomTextEditorProvider {
         };
     }
 
+    /**
+     * Retrieves the selected book from the list of available Bible books.
+     *
+     * @param {Object} targetBibleOptions - The target options for fetching the Bible manifest, which includes the owner, languageId, and bibleId.
+     * @return {Promise<Object>} A promise that resolves with an object containing the selected book identifier (`bookPick`) or undefined if no book is selected.
+     */
     private static async getBookSelection(targetBibleOptions:{}) {
         // @ts-ignore
         const { manifest } = await fetchBibleManifest('', targetBibleOptions.owner, targetBibleOptions.languageId, targetBibleOptions.bibleId, resourcesPath, 'none', 'master');
@@ -1690,5 +1938,66 @@ export class CheckingProvider implements CustomTextEditorProvider {
         return {
             bookPick
         };
+    }
+
+    /**
+     * Retrieves the checking filename based on the specified project path and translation notes option.
+     *
+     * @param {string} projectPath - The path to the project directory.
+     * @param {boolean} openTNotes - A flag indicating whether to use translation notes (true) or translation word list (false).
+     * @return {Promise<any>} A promise that resolves to the absolute path of the checking file if metadata is available, or null if not.
+     */
+    protected static async getCheckingFilename(projectPath: string, openTNotes: boolean): Promise<any> {
+        try {
+            const metaData = getMetaData(projectPath)
+
+            if (metaData) {
+                const checkerData = metaData?.['translation.checker'];
+                if (checkerData) {
+                    console.log(`selectExistingProject() metaData: `, metaData)
+                    const extension = openTNotes ? `tn_check` : `twl_check`
+                    const checksPath = openTNotes ? checkerData?.tn_checksPath : checkerData?.twl_checksPath;
+                    const relativeCheckPath = path.join(checksPath, `${checkerData?.bookId}.${extension}`);
+                    const absoluteCheckPath = path.join(projectPath, relativeCheckPath);
+                    return absoluteCheckPath;
+                }
+            } else {
+                console.log('No metadata.json found.');
+            }
+        } catch (e) {
+            console.log(`Not a project folder: ${projectPath}`);
+        }
+        return null;
+    }
+
+    /**
+     * Opens a checking file (either tWords or tNotes) in the project's workspace folder.
+     * The method retrieves the workspace folder, checks for the existence of a repository folder,
+     * and constructs the absolute path to the checking file. If the file path is valid, it opens the file.
+     *
+     * @param {boolean} openTNotes - Specifies whether to include additional file-opening behavior for TNotes.
+     * @return {Promise<any>} A promise that resolves when the file opening operation completes, or rejects if an error occurs.
+     */
+    public static async openCheckingFile_(openTNotes: boolean): Promise<any> {
+        const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+        if (repoFolderExists && projectPath) {
+            const absoluteCheckPath = await this.getCheckingFilename(projectPath, openTNotes);
+            if (absoluteCheckPath) {
+                // Open the file with the custom editor instead of as a text file
+                await vscode.commands.executeCommand(
+                  'vscode.openWith',
+                  vscode.Uri.file(absoluteCheckPath),
+                  CheckingProvider.viewType
+                );
+            } else {
+                showErrorMessage(`Error Invalid repo ${projectPath}`, true);
+            }
+        } else {
+            if (projectPath) {
+                showErrorMessage(`Error Invalid repo ${projectPath}`, true);
+            } else {
+                showErrorMessage(`Error No project selected`, true);
+            }
+        }
     }
 }

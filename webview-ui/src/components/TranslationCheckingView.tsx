@@ -351,6 +351,16 @@ function TranslationCheckingView() {
         });
     }
 
+    async function openCheckingFile(openTNotes: boolean){
+        vscode.postMessage({
+            command: "openCheckingFile",
+            text: "openCheckingFile",
+            data: {
+                openTNotes
+            }
+        });
+    }
+    
     function sendFirstLoadMessage() {
         vscode.postMessage({
             command: "loaded",
@@ -519,6 +529,7 @@ function TranslationCheckingView() {
                 uploadToDCS={uploadToDCS}
                 createNewOlCheck={createNewOlCheck}
                 promptUserForOptionCallback={promptUserForOptionCallback}
+                openCheckingFile={openCheckingFile}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>

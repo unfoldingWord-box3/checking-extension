@@ -9,7 +9,9 @@
     "comments": "ટિપ્પણી",
     "menu": "મેનુ",
     "grouping": "Organize by Reference",
-    "select_locale": "લોકેલ પસંદ કરો"
+    "select_locale": "લોકેલ પસંદ કરો",
+    "open_translation_words": "Open Translation Words Checking",
+    "open_translation_notes": "Open Translation Notes Checking"
   },
   "buttons": {
     "ok_button": "બરાબર",

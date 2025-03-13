@@ -25,6 +25,7 @@ import LockIcon from '@material-ui/icons/Lock';
 // import Divider from '@material-ui/core/Divider'
 // import Button from '@material-ui/core/Button'
 import TranslateIcon from '@material-ui/icons/Translate'
+import LaunchIcon from '@material-ui/icons/Launch';
 import { FormControl, InputLabel, MenuItem, Select } from "@material-ui/core";
 import { vscode } from "../../utilities/vscode";
 
@@ -41,6 +42,7 @@ export default function CommandDrawer({
   translate,
   uploadToDCS,
   createNewOlCheck,
+  openCheckingFile,
 }) {
   const {
     state: {
@@ -225,6 +227,29 @@ export default function CommandDrawer({
           </ListItemIcon>
           <ListItemText primary={translate('menu.select_locale')} />
         </ListItem>
+
+        <ListItem
+          button
+          key={translate('menu.open_translation_notes')}
+          onClick={() => openCheckingFile(true)}
+        >
+          <ListItemIcon>
+            <LaunchIcon />
+          </ListItemIcon>
+          <ListItemText primary={translate('menu.open_translation_notes')} />
+        </ListItem>
+
+        <ListItem
+          button
+          key={translate('menu.open_translation_words')}
+          onClick={() => openCheckingFile(false)}
+        >
+          <ListItemIcon>
+            <LaunchIcon />
+          </ListItemIcon>
+          <ListItemText primary={translate('menu.open_translation_words')} />
+        </ListItem>
+        
         {/*{user ? ( // if logged in give logout option*/}
         {/*  <ListItem button key={'Logout'} onClick={onLogout}>*/}
         {/*    <ListItemIcon>*/}

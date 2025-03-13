@@ -11,7 +11,9 @@ const locales_ =
       "comments": "Comments",
       "menu": "Menu",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "OK",
@@ -308,7 +310,9 @@ const locales_ =
       "comments": "মন্তব্য সমূহ ",
       "menu": "মেনু ",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ওকে করুন ",
@@ -605,7 +609,9 @@ const locales_ =
       "comments": "Comments",
       "menu": "Menu",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "OK",
@@ -902,7 +908,9 @@ const locales_ =
       "comments": "Commentaires",
       "menu": "Menu",
       "grouping": "Organiser par référence",
-      "select_locale": "Sélectionner la localisation"
+      "select_locale": "Sélectionner la localisation",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Ok",
@@ -1199,7 +1207,9 @@ const locales_ =
       "comments": "ટિપ્પણી",
       "menu": "મેનુ",
       "grouping": "Organize by Reference",
-      "select_locale": "લોકેલ પસંદ કરો"
+      "select_locale": "લોકેલ પસંદ કરો",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "બરાબર",
@@ -1496,7 +1506,9 @@ const locales_ =
       "comments": "टिप्पणियाँ",
       "menu": "मेन्यू",
       "grouping": "Organize by Reference",
-      "select_locale": "नया देश सफलतापूर्वक जोड़ा गया है।"
+      "select_locale": "नया देश सफलतापूर्वक जोड़ा गया है।",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ठीक",
@@ -1793,7 +1805,9 @@ const locales_ =
       "comments": "Komentar",
       "menu": "Menu",
       "grouping": "Atur Berdasarkan Referensi",
-      "select_locale": "Pilih lokal"
+      "select_locale": "Pilih lokal",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Oke",
@@ -2090,7 +2104,9 @@ const locales_ =
       "comments": "ವ್ಯಾಖ್ಯೆಗಳು",
       "menu": "ಪರಿವಿಡಿ",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ಸರಿ",
@@ -2387,7 +2403,9 @@ const locales_ =
       "comments": "അഭിപ്രായങ്ങൾ",
       "menu": "പട്ടിക",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ഓക്കേ",
@@ -2684,7 +2702,9 @@ const locales_ =
       "comments": "टिप्पण्या",
       "menu": "सूची",
       "grouping": "Organize by Reference",
-      "select_locale": "स्थानिक निवडा"
+      "select_locale": "स्थानिक निवडा",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ठीक",
@@ -2981,7 +3001,9 @@ const locales_ =
       "comments": "Mantabya",
       "menu": "Menu",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Ok",
@@ -3278,7 +3300,9 @@ const locales_ =
       "comments": "Comments",
       "menu": "सुची",
       "grouping": "Organize by Reference",
-      "select_locale": "लोकेली चयन गर्नुहोस्"
+      "select_locale": "लोकेली चयन गर्नुहोस्",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ठीक",
@@ -3575,7 +3599,9 @@ const locales_ =
       "comments": "ମନ୍ତବ୍ୟଗୁଡିକ",
       "menu": "ମେନ୍ୟୁ",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ଠିକ୍ ଅଛି",
@@ -4115,7 +4141,9 @@ const locales_ =
       "comments": "Comentários",
       "menu": "Menu",
       "grouping": "Organizar por Referência",
-      "select_locale": "Selecionar localização"
+      "select_locale": "Selecionar localização",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Ok",
@@ -4412,7 +4440,9 @@ const locales_ =
       "comments": "ਟਿੱਪਣੀਆਂ",
       "menu": "ਮੀਨੂ",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "ਠੀਕ ਹੈ",
@@ -4709,7 +4739,9 @@ const locales_ =
       "comments": "Комментарии",
       "menu": "Меню",
       "grouping": "Организовать по ссылке",
-      "select_locale": "Выберите язык"
+      "select_locale": "Выберите язык",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "OK",
@@ -5006,7 +5038,9 @@ const locales_ =
       "comments": "Comentarios",
       "menu": "Menú",
       "grouping": "Organizar por referencia",
-      "select_locale": "Seleccionar localización"
+      "select_locale": "Seleccionar localización",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Aceptar",
@@ -5303,7 +5337,9 @@ const locales_ =
       "comments": "கருத்துரைகள்",
       "menu": "பட்டி",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "சரி",
@@ -5600,7 +5636,9 @@ const locales_ =
       "comments": "వ్యాఖ్యలు",
       "menu": "సమాచారం",
       "grouping": "Organize by Reference",
-      "select_locale": "లొకేల్ ఎంచుకోండి"
+      "select_locale": "లొకేల్ ఎంచుకోండి",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "సరే",
@@ -5897,7 +5935,9 @@ const locales_ =
       "comments": "Коментарі",
       "menu": "Меню",
       "grouping": "Упорядкувати за посиланням",
-      "select_locale": "Оберіть мову"
+      "select_locale": "Оберіть мову",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "Добре",
@@ -6436,7 +6476,9 @@ const locales_ =
       "comments": "Comments",
       "menu": "Menu",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "OK",
@@ -6733,7 +6775,9 @@ const locales_ =
       "comments": "Comments",
       "menu": "Menu",
       "grouping": "Organize by Reference",
-      "select_locale": "Select Locale"
+      "select_locale": "Select Locale",
+      "open_translation_words": "Open Translation Words Checking",
+      "open_translation_notes": "Open Translation Notes Checking"
     },
     "buttons": {
       "ok_button": "OK",
