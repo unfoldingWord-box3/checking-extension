@@ -1277,7 +1277,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             // @ts-ignore
             const openTNotes = data?.openTNotes;
             console.log(`openCheckingFile: ${text} - ${openTNotes}`)
-            await this.openCheckingFile_(openTNotes)
+            await CheckingProvider.openCheckingFile_(openTNotes)
         }
 
         const setLocale_ = (text:string, data:object) => {
