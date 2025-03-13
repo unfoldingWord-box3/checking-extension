@@ -92,3 +92,4 @@ yarn run package:extension
 
 - src/utilities/resourceUtils.ts - business logic for checking tool
   - loadResources - loads all the resources for checking tool
+- 
