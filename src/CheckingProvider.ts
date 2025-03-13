@@ -1259,7 +1259,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
             // @ts-ignore
             const openTNotes = data?.openTNotes;
             console.log(`openCheckingFile: ${text} - ${openTNotes}`)
-            await this.openCheckingFile(openTNotes)
+            await this.openCheckingFile_(openTNotes)
         }
 
         const setLocale_ = (text:string, data:object) => {
@@ -1953,23 +1953,6 @@ export class CheckingProvider implements CustomTextEditorProvider {
     }
 
     /**
-     * Opens a file specified by the provided file path in the editor.
-     *
-     * @param {string} filePath - The path of the file to be opened.
-     * @return {Promise<any>} A promise that resolves when the file is successfully opened, or rejects if an error occurs.
-     */
-    protected async openFile(filePath: string): Promise<any> {
-        try {
-            const fileUri = vscode.Uri.file(filePath);
-            const document = await vscode.workspace.openTextDocument(fileUri); // open the file
-            await vscode.window.showTextDocument(document); // show the file in the editor
-            console.log(`Opened file: ${filePath}`);
-        } catch (error) {
-            console.error(`Failed to open file: ${filePath}`, error);
-        }
-    }
-
-    /**
      * Opens a checking file (either tWords or tNotes) in the project's workspace folder.
      * The method retrieves the workspace folder, checks for the existence of a repository folder,
      * and constructs the absolute path to the checking file. If the file path is valid, it opens the file.
@@ -1977,7 +1960,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
      * @param {boolean} openTNotes - Specifies whether to include additional file-opening behavior for TNotes.
      * @return {Promise<any>} A promise that resolves when the file opening operation completes, or rejects if an error occurs.
      */
-    protected async openCheckingFile(openTNotes: boolean): Promise<any> {
+    protected async openCheckingFile_(openTNotes: boolean): Promise<any> {
         const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
         if (repoFolderExists && projectPath) {
             const absoluteCheckPath = await this.getCheckingFilename(projectPath, openTNotes);
@@ -1988,6 +1971,14 @@ export class CheckingProvider implements CustomTextEditorProvider {
                   vscode.Uri.file(absoluteCheckPath),
                   CheckingProvider.viewType
                 );
+            } else {
+                showErrorMessage(`Error Invalid repo ${projectPath}`, true);
+            }
+        } else {
+            if (projectPath) {
+                showErrorMessage(`Error Invalid repo ${projectPath}`, true);
+            } else {
+                showErrorMessage(`Error No project selected`, true);
             }
         }
     }
