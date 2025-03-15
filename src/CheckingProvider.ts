@@ -70,6 +70,7 @@ import {
 import { getCheckingRepos } from "./utilities/gitUtils";
 import path from "path";
 import { lookupTranslationForKey } from "./utilities/translations";
+import { EditorTabInfo } from "./common/types";
 
 let _callbacks:object = { } // stores callback by key
 
@@ -132,6 +133,33 @@ async function getWorkSpaceFolder() {
     return { projectPath, repoFolderExists };
 }
 
+/**
+ * Gets a list of all currently open editor tabs and their URIs
+ * @returns An array of objects containing tab information and URIs
+ */
+
+function getOpenEditorTabs(): Array<EditorTabInfo> {
+    const tabInfo: Array<EditorTabInfo> = [];
+
+    // Iterate through all tab groups
+    vscode.window.tabGroups.all.forEach((tabGroup, groupIndex) => {
+        // Iterate through all tabs in each group
+        tabGroup.tabs.forEach((tab, tabIndex) => {
+            // Get the tab's URI if available (input can have different types)
+            const uri = tab.input instanceof vscode.TabInputText ? tab.input.uri.toString() : undefined;
+
+            tabInfo.push({
+                label: tab.label,
+                uri: uri,
+                isActive: tab.isActive,
+                index: tabIndex,
+                groupIndex: groupIndex
+            });
+        });
+    });
+
+    return tabInfo;
+}
 
 /**
  * Provider for tsv editors.
@@ -394,6 +422,20 @@ export class CheckingProvider implements CustomTextEditorProvider {
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.checkTWords"`)
               await this.openCheckingFile_(false)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.listEditorTabs",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.listEditorTabs"`)
+              const openTabs = getOpenEditorTabs();
+              console.log("Open editor tabs:", openTabs);
+
+              // Post a message with the list of editor tabs
+              // Assuming the active webview panel is accessible via TranslationCheckingPanel.currentPanel
+              TranslationCheckingPanel.currentPanel?.postMessage(openTabs);
           })
         );
         subscriptions.push(commandRegistration)

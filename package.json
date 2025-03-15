@@ -37,6 +37,10 @@
       {
         "title": "Translation Checking: Check translationWords",
         "command": "checking-extension.checkTWords"
+      },
+      {
+        "title": "Translation Checking: Get List of Editor Tabs",
+        "command": "checking-extension.listEditorTabs"
       }
     ],
     "customEditors": [

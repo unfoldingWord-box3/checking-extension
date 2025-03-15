@@ -1,6 +1,8 @@
 import { Disposable, Webview, WebviewPanel, Uri } from "vscode";
 import { getUri } from "../utilities/getUri";
 import { getNonce } from "../utilities/getNonce";
+import { TranslationCheckingPostMessages } from "../../types";
+import { EditorTabInfo } from "../common/types";
 
 /**
  * This class manages the state and behavior of TranslationNotes webview panels.
@@ -41,6 +43,18 @@ export class TranslationCheckingPanel {
             this._panel.webview,
             messageEventHandlers,
         );
+    }
+
+    /**
+     * Initializes or updates the HTML content of the webview.
+     * This is called from within a custom text editor.
+     */
+    public postMessage(openTabs: Array<EditorTabInfo>) {
+        const webview = this._panel.webview;
+        webview.postMessage({
+            command: "checking-extension.listEditorTabs",
+            openTabs: openTabs
+        });
     }
 
     /**
