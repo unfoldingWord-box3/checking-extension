@@ -146,7 +146,8 @@ function getOpenEditorTabs(): Array<EditorTabInfo> {
         // Iterate through all tabs in each group
         tabGroup.tabs.forEach((tab, tabIndex) => {
             // Get the tab's URI if available (input can have different types)
-            const uri = tab.input instanceof vscode.TabInputText ? tab.input.uri.toString() : undefined;
+            // @ts-ignore
+          const uri = tab?.input?.uri?.toString() || undefined;
 
             tabInfo.push({
                 label: tab.label,
@@ -432,10 +433,16 @@ export class CheckingProvider implements CustomTextEditorProvider {
               console.log(`starting "checking-extension.listEditorTabs"`)
               const openTabs = getOpenEditorTabs();
               console.log("Open editor tabs:", openTabs);
+              const commandData = JSON.stringify(openTabs);
 
-              // Post a message with the list of editor tabs
-              // Assuming the active webview panel is accessible via TranslationCheckingPanel.currentPanel
-              TranslationCheckingPanel.currentPanel?.postMessage(openTabs);
+              showInformationMessage(`Responding to checking-extension.listEditorTabs - see: ${commandData}`, true);
+              delay(1000).then(async () => {
+                try {
+                    await vscode.commands.executeCommand(`checking-extension.currentEditorTabs`, commandData);
+                } catch (error) {
+                    console.error(`checking-extension.currentEditorTabs Command failed:`, error);
+                }
+              })
           })
         );
         subscriptions.push(commandRegistration)
