@@ -1,6 +1,7 @@
 import { Disposable, Webview, WebviewPanel, Uri } from "vscode";
 import { getUri } from "../utilities/getUri";
 import { getNonce } from "../utilities/getNonce";
+import vscode from "vscode";
 
 /**
  * This class manages the state and behavior of TranslationNotes webview panels.
@@ -50,6 +51,8 @@ export class TranslationCheckingPanel {
     public initializeWebviewContent() {
         const webview = this._panel.webview;
         webview.html = this._getWebviewContent(webview, this._extensionUri);
+
+        this.updateEditorTabCount('initializeWebviewContent');
     }
 
     /**
@@ -68,6 +71,18 @@ export class TranslationCheckingPanel {
                 disposable.dispose();
             }
         }
+
+        this.updateEditorTabCount('dispose');
+    }
+
+    /**
+     * trigger sending count of open tabs
+     * @param msg
+     * @private
+     */
+    private updateEditorTabCount(msg: string) {
+        console.log(`updateEditorTabCount called from ${msg}`);
+        vscode.commands.executeCommand("checking-extension.listEditorTabs");
     }
 
     /**

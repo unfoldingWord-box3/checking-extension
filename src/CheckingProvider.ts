@@ -70,6 +70,7 @@ import {
 import { getCheckingRepos } from "./utilities/gitUtils";
 import path from "path";
 import { lookupTranslationForKey } from "./utilities/translations";
+import { EditorTabInfo } from "./common/types";
 
 let _callbacks:object = { } // stores callback by key
 
@@ -132,6 +133,34 @@ async function getWorkSpaceFolder() {
     return { projectPath, repoFolderExists };
 }
 
+/**
+ * Gets a list of all currently open editor tabs and their URIs
+ * @returns An array of objects containing tab information and URIs
+ */
+
+function getOpenEditorTabs(): Array<EditorTabInfo> {
+    const tabInfo: Array<EditorTabInfo> = [];
+
+    // Iterate through all tab groups
+    vscode.window.tabGroups.all.forEach((tabGroup, groupIndex) => {
+        // Iterate through all tabs in each group
+        tabGroup.tabs.forEach((tab, tabIndex) => {
+          // Get the tab's URI if available
+          // @ts-ignore
+          const uri = tab?.input?.uri?.toString() || undefined; // TODO: not sure why URI is undefined when running in Theia
+          
+          tabInfo.push({
+              label: tab.label,
+              uri: uri,
+              isActive: tab.isActive,
+              index: tabIndex,
+              groupIndex: groupIndex
+          });
+        });
+    });
+
+    return tabInfo;
+}
 
 /**
  * Provider for tsv editors.
@@ -394,6 +423,26 @@ export class CheckingProvider implements CustomTextEditorProvider {
           executeWithRedirecting(async () => {
               console.log(`starting "checking-extension.checkTWords"`)
               await this.openCheckingFile_(false)
+          })
+        );
+        subscriptions.push(commandRegistration)
+
+        commandRegistration = commands.registerCommand(
+          "checking-extension.listEditorTabs",
+          executeWithRedirecting(async () => {
+              console.log(`starting "checking-extension.listEditorTabs"`)
+              const openTabs = getOpenEditorTabs();
+              console.log("Open editor tabs:", openTabs);
+              const commandData = JSON.stringify(openTabs);
+
+              showInformationMessage(`Responding to checking-extension.listEditorTabs - see: ${commandData}`, true);
+              delay(1000).then(async () => {
+                try {
+                    await vscode.commands.executeCommand(`checking-extension.currentEditorTabs`, commandData);
+                } catch (error) {
+                    console.error(`checking-extension.currentEditorTabs Command failed:`, error);
+                }
+              })
           })
         );
         subscriptions.push(commandRegistration)
