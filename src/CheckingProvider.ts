@@ -435,7 +435,7 @@ export class CheckingProvider implements CustomTextEditorProvider {
               console.log("Open editor tabs:", openTabs);
               const commandData = JSON.stringify(openTabs);
 
-              showInformationMessage(`Responding to checking-extension.listEditorTabs - see: ${commandData}`, true);
+              // showInformationMessage(`Responding to checking-extension.listEditorTabs - see: ${commandData}`, true);
               delay(1000).then(async () => {
                 try {
                     await vscode.commands.executeCommand(`checking-extension.currentEditorTabs`, commandData);
