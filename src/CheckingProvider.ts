@@ -145,17 +145,17 @@ function getOpenEditorTabs(): Array<EditorTabInfo> {
     vscode.window.tabGroups.all.forEach((tabGroup, groupIndex) => {
         // Iterate through all tabs in each group
         tabGroup.tabs.forEach((tab, tabIndex) => {
-            // Get the tab's URI if available (input can have different types)
-            // @ts-ignore
-          const uri = tab?.input?.uri?.toString() || undefined;
-
-            tabInfo.push({
-                label: tab.label,
-                uri: uri,
-                isActive: tab.isActive,
-                index: tabIndex,
-                groupIndex: groupIndex
-            });
+          // Get the tab's URI if available
+          // @ts-ignore
+          const uri = tab?.input?.uri?.toString() || undefined; // TODO: not sure why URI is undefined when running in Theia
+          
+          tabInfo.push({
+              label: tab.label,
+              uri: uri,
+              isActive: tab.isActive,
+              index: tabIndex,
+              groupIndex: groupIndex
+          });
         });
     });
 
