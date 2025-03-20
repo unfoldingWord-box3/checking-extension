@@ -43,6 +43,7 @@ export default function CommandDrawer({
   uploadToDCS,
   createNewOlCheck,
   openCheckingFile,
+  showDialogContent,
 }) {
   const {
     state: {
@@ -51,13 +52,11 @@ export default function CommandDrawer({
     actions: {
       logout,
       getAuth,
-      showDialogContent,
       setServer,
     }
   } = useContext(AuthContext)
   const {
     state: authentication,
-    component: authenticationComponent,
   } = useContext(AuthenticationContext)
   const user = authentication?.user
   const token = authentication?.token
@@ -101,6 +100,7 @@ export default function CommandDrawer({
   }
 
   function onSelectLocal() {
+    onClose()
     showDialogContent({
       message:
         <FormControl fullWidth>
@@ -124,13 +124,15 @@ export default function CommandDrawer({
   }
   
   function onLogIn() {
+    onClose()
     showDialogContent({
-      message: authenticationComponent
+      doLogin: true
     })
   }
 
   function handleUpload() {
     console.log(`handleUpload`)
+    onClose()
     showDialogContent({ message: 'Validating Login' })
     getAuth().then(auth => {
       if (auth) {
