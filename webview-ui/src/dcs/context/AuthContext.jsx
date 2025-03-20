@@ -54,7 +54,6 @@ export default function AuthContextProvider(props) {
   const [dialogContent, _setDialogContent] = useState(null)
   const [networkError, _setNetworkError] = useState(null)
   const [initialized, setInitialized] = useState(false)
-  const [message, setMessage] = useState()
   // const defaultServer = (process.env.NEXT_PUBLIC_BUILD_CONTEXT === 'production') ? BASE_URL : QA_BASE_URL
   const defaultServer = BASE_URL
   const [server, setServer] = useState(defaultServer)
@@ -95,7 +94,6 @@ export default function AuthContextProvider(props) {
   }
   
   function showDialogContent(options) {
-    setMessage()
     if (options?.message || options?.doLogin) {
       _setDialogContent(options);
     } else {
@@ -177,14 +175,11 @@ export default function AuthContextProvider(props) {
   }
 
   const onError = (e) => {
-    console.warn('AuthContextProvider - error', e)
-    
     if (authenticationErrors.includes(e)) {
-      console.log('AuthContextProvider - skipping auth error')
-      setMessage( e );
+      console.log('AuthContextProvider - skipping auth error', e)
       return;
     }
-
+    console.warn('AuthContextProvider - error', e)
     processError(e?.errorMessage || e )
   }
 
@@ -234,7 +229,6 @@ export default function AuthContextProvider(props) {
         {props.children}
         <DialogDisplay
           open={showDialog}
-          message={message}
           dialogContent={dialogContent}
           clearContent={clearContent}
         />
