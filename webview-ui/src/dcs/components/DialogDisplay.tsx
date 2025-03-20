@@ -10,6 +10,7 @@ import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authe
  * Props:
  *  An object containing the configuration for the dialog, including:
  *    - doLogin: A boolean indicating if the dialog is tied to a login process.
+ *    - message: A string representing the content message for the dialog.
  *    - closeButtonStr: A string to customize the text for the close button.
  *    - otherButtonStr: A string to customize the text for another optional button.
  *    - closeCallback: A function executed when the close button is clicked.
@@ -18,6 +19,7 @@ import { AuthenticationContext } from "gitea-react-toolkit/dist/components/authe
  * - clearContent: A function callback to clear the content or close the dialog.
  */
 interface DialogContentProps {
+  message: string;
   closeButtonStr?: string;
   otherButtonStr?: string | null;
   closeCallback?: () => void;
@@ -30,7 +32,6 @@ interface DialogContentProps {
  * Props:
  * - dialogContent: An object containing the configuration for the dialog, including:
  *    - doLogin: A boolean indicating if the dialog is tied to a login process.
- *    - message: A string representing the content message for the dialog.
  *    - closeButtonStr: A string to customize the text for the close button.
  *    - otherButtonStr: A string to customize the text for another optional button.
  *    - closeCallback: A function executed when the close button is clicked.
@@ -38,8 +39,6 @@ interface DialogContentProps {
  *    - showBusy: A boolean indicating if a loading state should be displayed within the dialog.
  */
 interface DialogDisplayProps {
-  /** Message to display above the dialog */
-  message?: string;
   open: boolean
   /** Dialog content configuration */
   dialogContent?: DialogContentProps;
