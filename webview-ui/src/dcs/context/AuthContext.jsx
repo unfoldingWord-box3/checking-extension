@@ -17,8 +17,24 @@ import {
 import CustomDialog from "../components/CustomDialog";
 // @ts-ignore
 import isEqual from 'deep-equal'
+import DialogDisplay from "../components/DialogDisplay";
 export const AuthContext = createContext({})
 export const AUTH_KEY = 'authentication';
+export const defaultErrorMessages = {
+  actionText: 'Login',
+  genericError: 'Something went wrong, please try again.',
+  usernameError: 'Username does not exist.',
+  passwordError: 'Password is invalid.',
+  authenticationError: 'Authentication failed.',
+  networkError: 'There is an issue with your network connection. Please try again.',
+  serverError: 'There is an issue with the server please try again.',
+};
+
+const authenticationErrors = [
+  defaultErrorMessages.usernameError,
+  defaultErrorMessages.passwordError,
+  defaultErrorMessages.authenticationError,
+]
 
 function processAuthResponse(data) {
   const results = processResponse(data) ? data : null
@@ -78,7 +94,7 @@ export default function AuthContextProvider(props) {
   }
   
   function showDialogContent(options) {
-    if (options?.message) {
+    if (options?.message || options?.doLogin) {
       _setDialogContent(options);
     } else {
       _setDialogContent(null)
@@ -144,6 +160,7 @@ export default function AuthContextProvider(props) {
   const saveAuth = async authentication => {
     if (authentication === undefined || authentication === null) {
       console.info(`saveAuth() - authenticated, but don't save`)
+      _setDialogContent(null);
       await myStorageProvider.removeItem(AUTH_KEY)
     } else {
       if (authentication.remember) {
@@ -158,8 +175,12 @@ export default function AuthContextProvider(props) {
   }
 
   const onError = (e) => {
-    console.warn('AuthContextProvider - auth error', e)
-    processError(e?.errorMessage)
+    if (authenticationErrors.includes(e)) {
+      console.log('AuthContextProvider - skipping auth error', e)
+      return;
+    }
+    console.warn('AuthContextProvider - error', e)
+    processError(e?.errorMessage || e )
   }
 
   async function logout() {
@@ -188,6 +209,8 @@ export default function AuthContextProvider(props) {
     },
   }
 
+  const showDialog = dialogContent?.message || dialogContent?.doLogin;
+
   return (
     <AuthContext.Provider value={value}>
       <AuthenticationContextProvider
@@ -200,19 +223,16 @@ export default function AuthContextProvider(props) {
         onAuthentication={setAuthentication}
         loadAuthentication={getAuth}
         saveAuthentication={saveAuth}
-        onError={onError}
+        onError={e => onError(e)}
+        messages={defaultErrorMessages}
       >
         {props.children}
+        <DialogDisplay
+          open={showDialog}
+          dialogContent={dialogContent}
+          clearContent={clearContent}
+        />
       </AuthenticationContextProvider>
-      <CustomDialog
-        open={!!dialogContent?.message}
-        content={dialogContent?.message}
-        onClose={() => clearContent()}
-        closeButtonStr={dialogContent?.closeButtonStr || CLOSE}
-        otherButtonStr={dialogContent?.otherButtonStr || null}
-        closeCallback={dialogContent?.closeCallback}
-        choices={dialogContent?.choices}
-      />
     </AuthContext.Provider>
   )
 }

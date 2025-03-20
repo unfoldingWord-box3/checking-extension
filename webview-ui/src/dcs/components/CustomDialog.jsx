@@ -5,7 +5,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import { MenuItem, Select } from "@material-ui/core";
+import { CircularProgress, MenuItem, Select } from "@material-ui/core";
 
 export default function CustomDialog({ 
    onClose, title, open,
@@ -15,6 +15,7 @@ export default function CustomDialog({
    otherButtonStr = null,
    closeCallback = null,
    choices = null,
+   showBusy = false,
  }) {
   const ok_button = closeButtonStr || 'Accept';
   const [currentSelection, setCurrentSelection] = React.useState('');
@@ -60,6 +61,7 @@ export default function CustomDialog({
             : null  
           }
         </DialogContentText>
+        { showBusy && <CircularProgress /> }
       </DialogContent>
       <DialogActions>
         <Button onClick={() => _onClose(closeButtonStr)} color="primary" disabled={isLoading}>

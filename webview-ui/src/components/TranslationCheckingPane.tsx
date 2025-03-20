@@ -106,10 +106,10 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    promptUserForOptionCallback,
    saveCheckingData,
    uploadToDCS: _uploadToDCS,
- }) => {
+}) => {
     const classes = useStyles()
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
-    const [drawerOpen, setOpen] = useState(false)
+    const [drawerOpen, setDrawerOpen] = useState(false)
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -131,7 +131,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     // @ts-ignore
     const _authContext = useContext(AuthContext);
     // @ts-ignore
-    const showDialogContent = _authContext?.actions?.showDialogContent
+    const { showDialogContent } = _authContext?.actions || {}
 
     useEffect(() => {
       setCurrentContextId(initialContextId)
@@ -211,6 +211,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             name: bookName
         }
     }
+
     function _showDialogContent(options: object) {
       showDialogContent && showDialogContent(options)
     }
@@ -412,15 +413,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   }, [isEmptyProject]);
 
   const handleDrawerOpen = () => {
-        if (!drawerOpen) {
-            setOpen(true)
-        }
+        setDrawerOpen(true)
     }
 
     const handleDrawerClose = () => {
-        if (drawerOpen) {
-            setOpen(false)
-        }
+        setDrawerOpen(false)
     }
 
     const changeTargetVerse = (chapter:string, verse:string, newVerseText:string, newVerseObjects: object) => {
@@ -529,6 +526,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           createNewOlCheck={createNewOlCheck}
           isEmptyProject={isEmptyProject}
           openCheckingFile={openCheckingFile}
+          showDialogContent={_showDialogContent}
         />
         {!isEmptyProject ? <div id="checkerWrapper" style={{ marginTop: "10px" }}>
           <Checker
