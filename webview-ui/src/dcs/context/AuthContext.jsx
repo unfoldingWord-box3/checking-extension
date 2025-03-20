@@ -96,7 +96,7 @@ export default function AuthContextProvider(props) {
   
   function showDialogContent(options) {
     setMessage()
-    if (options?.message) {
+    if (options?.message || options?.doLogin) {
       _setDialogContent(options);
     } else {
       _setDialogContent(null)
@@ -232,14 +232,13 @@ export default function AuthContextProvider(props) {
         messages={defaultErrorMessages}
       >
         {props.children}
-      </AuthenticationContextProvider>
-      { showDialog &&
         <DialogDisplay
+          open={showDialog}
           message={message}
           dialogContent={dialogContent}
           clearContent={clearContent}
         />
-      }
+      </AuthenticationContextProvider>
     </AuthContext.Provider>
   )
 }
