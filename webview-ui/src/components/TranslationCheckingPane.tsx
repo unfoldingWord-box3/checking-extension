@@ -3,9 +3,10 @@ import React, { useContext, useEffect, useState } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
-    Checker,
-    TranslationUtils,
-    twArticleHelpers,
+  alignmentHelpers,
+  Checker,
+  TranslationUtils,
+  twArticleHelpers,
 }
 // @ts-ignore
 from 'checking-tool-rcl'
@@ -29,6 +30,8 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
+import * as fuzz from "fuzzball";
+
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -97,6 +100,19 @@ type TranslationCheckingProps = {
   uploadToDCS: uploadToDCSFunction;
 };
 
+function addOriginalAlignment(origLang: any[], alignment: any, targetLang: any[]) {
+  origLang.push(alignment.content);
+  for (const child of alignment.children || []) {
+    const tag = child.tag;
+    if (tag === "w") {
+      targetLang.push(child.text);
+    } else 
+    if (tag === 'zaln') {
+      addOriginalAlignment(origLang, child, targetLang);
+    }
+  }
+}
+
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    checkingObj,
    createNewOlCheck: _createNewOlCheck,
@@ -109,7 +125,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 }) => {
     const classes = useStyles()
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
-    const [drawerOpen, setDrawerOpen] = useState(false)
+    const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
+    const [alignmentMap, setAlignmentMap] = useState<object|null>(null)
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -128,26 +145,135 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const targetBible = checkingObj.targetBible
     const isEmptyProject = checkingObj.EMPTY
 
+    const contextId = initialContextId || {}
+    const project = checkingObj.project;
+    // @ts-ignore
+    const bookId = project?.bookId
+    // @ts-ignore
+    const resourceId = project?.resourceId
+    // @ts-ignore
+    const languageId = project?.languageId || 'en'
+    // @ts-ignore
+    const targetLanguageName = checkingObj.targetBible?.manifest?.language_name
+    // @ts-ignore
+    const targetLanguageDirection = checkingObj.targetBible?.manifest?.direction
+    // @ts-ignore
+    const bookName = ALL_BIBLE_BOOKS[bookId]
+
+
     // @ts-ignore
     const _authContext = useContext(AuthContext);
     // @ts-ignore
     const { showDialogContent } = _authContext?.actions || {}
 
-    useEffect(() => {
-      setCurrentContextId(initialContextId)
-    }, [initialContextId]);
+  useEffect(() => {
+    setCurrentContextId(initialContextId)
+  }, [initialContextId]);
 
+  useEffect(() => {
+    if (currentContextId && Object.keys(currentContextId).length) {
+      console.log(`currentContextId changed to ${JSON.stringify(currentContextId)}`)
+    }
+  }, [currentContextId]);
+
+  useEffect(() => {
+      const alignmentMap_:Record<string, any> = {};
+      const chapters = targetBible && Object.keys(targetBible);
+      if (chapters?.length) {
+        for (const chapter of chapters) {
+          if (chapter === 'manifest' || chapter === 'headers') {
+            continue; // skip over
+          };
+
+          // @ts-ignore
+          const verses = targetBible[chapter] || { } ;
+          const chapterRef = `${bookId} ${chapter}`
+          for (const verse of Object.keys(verses)) {
+            const verseRef = `${chapterRef}:${verse}`
+            const verseData = verses[verse]
+            const alignments = alignmentHelpers.getVerseAlignments(verseData?.verseObjects)
+            // console.log(`${chapter}:${verse} - alignments ${alignments}`)
+
+            for (const alignment of alignments || []) {
+              const origLang:string[] = []
+              const targetLang:string[] = []
+              if (alignment.tag === 'zaln') {
+                addOriginalAlignment(origLang, alignment, targetLang);
+              }
+              const origStr = origLang.join(' ').toLowerCase()
+              const targetStr = targetLang.join(' ').toLowerCase()
+              const mapEntry = alignmentMap_[origStr];
+              if (mapEntry) {
+                // @ts-ignore
+                const pos = mapEntry.findIndex(entry => entry?.text === targetStr)
+                if (pos >= 0) {
+                  mapEntry[pos].occurrences += 1
+                  mapEntry[pos].ref?.push(verseRef)
+                } else {
+                  alignmentMap_[origStr].push( { text: targetStr, occurrences: 1, ref: [verseRef] } );
+                }
+              } else {
+                alignmentMap_[origStr] = [ { text: targetStr, occurrences: 1, ref: [verseRef] } ]
+              }
+            }
+          }
+        }
+        // console.log(`alignmentMap`, alignmentMap)
+        setAlignmentMap(alignmentMap_);
+      }
+    }, [targetBible]);
+  
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
-        const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
-        return translation
-    };
-
+          const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
+          return translation
+      };
+  
     const getLexiconData_ = (lexiconId:string, entryId:string) => {
         console.log(`loadLexiconEntry(${lexiconId}, ${entryId})`)
         // @ts-ignore
         const entryData = (LexiconData && LexiconData[lexiconId]) ? LexiconData[lexiconId][entryId] : null;
         return { [lexiconId]: { [entryId]: entryData } };
     };
+
+    function findAllignmentSuggestions(newContextId:object) {
+      if (newContextId) {
+        const orderedMatches:any = {}
+        // @ts-ignore
+        let quoteStr = newContextId.quoteStr || newContextId.quote;
+        if (Array.isArray(quoteStr)) {
+          quoteStr = quoteStr.join(" ");
+        }
+        if (quoteStr) {
+          // TODO: find best matches
+          console.log(`changedCurrentCheck - quoteStr`, quoteStr);
+
+          const originalWords = alignmentMap && Object.keys(alignmentMap);
+          if (originalWords?.length) {
+            for (const originalStr of originalWords) {
+              const score = fuzz.ratio(originalStr, quoteStr);
+              console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
+              if (score) {
+                // @ts-ignore
+                orderedMatches[originalStr] = { score, match: alignmentMap[originalStr] };
+              }
+            }
+          }
+        }
+        const orderedList = Object.entries(orderedMatches)
+          // @ts-ignore
+          .sort(([, a], [, b]) => b.score - a.score)
+          // @ts-ignore
+          .map(([key, value]) => ({ original:key, ...value }));
+        console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
+      }
+    }
+  
+    const changedCurrentCheck = (context:object)=> {
+      console.log(`changedCurrentCheck - context`, context)
+      // @ts-ignore
+      const newContextId = context?.contextId
+      findAllignmentSuggestions(newContextId);
+    }
 
     const _saveCheckingData = (newState:object) => {
         // @ts-ignore
@@ -172,21 +298,6 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         data: { settings },
       });
     }
-
-    const contextId = initialContextId || {}
-    const project = checkingObj.project;
-    // @ts-ignore
-    const bookId = project?.bookId
-    // @ts-ignore
-    const resourceId = project?.resourceId
-    // @ts-ignore
-    const languageId = project?.languageId || 'en'
-    // @ts-ignore
-    const targetLanguageName = checkingObj.targetBible?.manifest?.language_name
-    // @ts-ignore
-    const targetLanguageDirection = checkingObj.targetBible?.manifest?.direction
-    // @ts-ignore
-    const bookName = ALL_BIBLE_BOOKS[bookId]
 
     let glWordsData, checkingData, checkType;
     if (resourceId === 'twl') {
@@ -533,6 +644,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             styles={{ width: "97vw", height: "65vw", overflowX: "auto", overflowY: "auto" }}
             alignedGlBible={alignedGlBible}
             bibles={bibles}
+            changedCurrentCheck={changedCurrentCheck}
             changeTargetVerse={changeTargetVerse}
             checkingData={checkingData}
             checkType={checkType}
