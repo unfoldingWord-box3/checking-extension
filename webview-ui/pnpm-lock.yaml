@@ -27,8 +27,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0(react@18.3.1)
       checking-tool-rcl:
-        specifier: 0.9.25-beta
-        version: 0.9.25-beta(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0)
+        specifier: 0.9.25-beta.2
+        version: 0.9.25-beta.2(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0)
       deep-equal:
         specifier: 1.0.1
         version: 1.0.1
@@ -1024,8 +1024,8 @@ packages:
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==, tarball: https://registry.npmjs.org/charenc/-/charenc-0.0.2.tgz}
 
-  checking-tool-rcl@0.9.25-beta:
-    resolution: {integrity: sha512-UW4YfP7GvvmU1+87kJvFSvVDla2MCtWXQlBBNA5LeA1DWz8zM0mynOfLYK7uhueMUagEzpciWbceSQIgbsrHRw==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.25-beta.tgz}
+  checking-tool-rcl@0.9.25-beta.2:
+    resolution: {integrity: sha512-FQHOkKZh7phC91m9K1lseeNpIMo8cB+619C9Na1+aFxbRlqGgv3NhRnSe3rZACz1Mj7AluM5VnLsKEcxG7u2Eg==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.25-beta.2.tgz}
     peerDependencies:
       prop-types: ^15.x
       react: 18.3.1
@@ -3266,7 +3266,7 @@ snapshots:
 
   charenc@0.0.2: {}
 
-  checking-tool-rcl@0.9.25-beta(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0):
+  checking-tool-rcl@0.9.25-beta.2(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0):
     dependencies:
       '@material-ui/core': 4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

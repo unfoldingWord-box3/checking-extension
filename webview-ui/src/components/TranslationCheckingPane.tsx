@@ -7,6 +7,7 @@ import {
   Checker,
   TranslationUtils,
   twArticleHelpers,
+  UsfmFileConversionHelpers,
 }
 // @ts-ignore
 from 'checking-tool-rcl'
@@ -31,6 +32,8 @@ import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
 import * as fuzz from "fuzzball";
+import { objectToCsv } from "../utilities/tsvUtils";
+import { AIPromptTemplate } from "../utilities/llmUtils";
 
 
 const showDocument = true // set this to false to disable showing ta or tw articles
@@ -220,6 +223,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         }
         // console.log(`alignmentMap`, alignmentMap)
         setAlignmentMap(alignmentMap_);
+        findAlignmentSuggestions(contextId, alignmentMap_)
       }
     }, [targetBible]);
   
@@ -235,11 +239,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         return { [lexiconId]: { [entryId]: entryData } };
     };
 
-    function findAllignmentSuggestions(newContextId:object) {
+    function findAlignmentSuggestions(newContextId:object, alignmentMap_:object|null) {
       if (newContextId) {
         const orderedMatches:any = {}
         // @ts-ignore
-        let quoteStr = newContextId.quoteStr || newContextId.quote;
+        let quoteStr = (newContextId.quoteStr || newContextId.quote)?.toLowerCase();
         if (Array.isArray(quoteStr)) {
           quoteStr = quoteStr.join(" ");
         }
@@ -247,24 +251,58 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
           // TODO: find best matches
           console.log(`changedCurrentCheck - quoteStr`, quoteStr);
 
-          const originalWords = alignmentMap && Object.keys(alignmentMap);
+          const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
           if (originalWords?.length) {
             for (const originalStr of originalWords) {
               const score = fuzz.ratio(originalStr, quoteStr);
               console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
               if (score) {
                 // @ts-ignore
-                orderedMatches[originalStr] = { score, match: alignmentMap[originalStr] };
+                orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
               }
             }
           }
         }
+
         const orderedList = Object.entries(orderedMatches)
           // @ts-ignore
           .sort(([, a], [, b]) => b.score - a.score)
           // @ts-ignore
           .map(([key, value]) => ({ original:key, ...value }));
+
         console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
+
+        const topMatches = []
+        for( const item of orderedList.slice(0, 20)) {
+          const targetMatches = item?.match
+          const sourceText = item?.original;
+          for( const match of targetMatches) {
+            const targetStr = match?.text
+            const occurrences = match?.occurrences
+            const score = item?.score + occurrences / 10
+            topMatches.push({ sourceText: sourceText, score, targetText:targetStr })
+          }
+        }
+        
+        const sortedTopMatches = topMatches.sort((a, b) => b.score - a.score)
+        
+        const headers = [
+          { key: 'score' },
+          { key: 'targetText' },
+          { key: 'sourceText' },
+        ]
+        const orderedTsv = objectToCsv(headers, sortedTopMatches)
+
+        // @ts-ignore
+        const reference = newContextId?.reference;
+        const verseText = UsfmFileConversionHelpers.getVerseTextFromBible(targetBible, reference)
+        
+        console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
+        const prompt = AIPromptTemplate.replaceAll('{translationCsv}', orderedTsv.join('\n'))
+          .replaceAll('{translatedText}', verseText)
+          .replaceAll('{sourceWord}', quoteStr)
+        console.log(`changedCurrentCheck - prompt`, prompt);
+        // console.log(orderedTsv.join('\n'))
       }
     }
   
@@ -272,7 +310,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
-      findAllignmentSuggestions(newContextId);
+      findAlignmentSuggestions(newContextId, alignmentMap);
     }
 
     const _saveCheckingData = (newState:object) => {
