@@ -116,6 +116,53 @@ function addOriginalAlignment(origLang: any[], alignment: any, targetLang: any[]
   }
 }
 
+/**
+ * Finds the best matching text strings between an input quote and a provided alignment map,
+ * based on a scoring mechanism. The function returns a list of the top matches with their
+ * corresponding source text, target text, and calculated score.
+ *
+ * @param {string} quoteStr - The input quote string to be compared against the alignment map.
+ * @param {object|null} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
+ * @param {number} matchCount - The maximum number of best matches to return.
+ *
+ * @return {object[]} - A list of top matches containing the source text, target text, and calculated score.
+ */
+function findBestMatches(quoteStr: string, alignmentMap_: object | null, matchCount: number) {
+  const orderedMatches:any = {}
+  const topMatches:object[] = []
+
+  const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
+  if (originalWords?.length) {
+    for (const originalStr of originalWords) {
+      const score = fuzz.ratio(originalStr, quoteStr);
+      console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
+      if (score) {
+        // @ts-ignore
+        orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
+      }
+    }
+    const orderedList = Object.entries(orderedMatches)
+      // @ts-ignore
+      .sort(([, a], [, b]) => b.score - a.score)
+      // @ts-ignore
+      .map(([key, value]) => ({ original: key, ...value }));
+
+    console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
+
+    for (const item of orderedList.slice(0, matchCount)) {
+      const targetMatches = item?.match;
+      const sourceText = item?.original;
+      for (const match of targetMatches) {
+        const targetStr = match?.text;
+        const occurrences = match?.occurrences;
+        const score = item?.score + occurrences / 10;
+        topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
+      }
+    }
+  }
+  return topMatches.slice(0, matchCount);
+}
+
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    checkingObj,
    createNewOlCheck: _createNewOlCheck,
@@ -247,62 +294,39 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         if (Array.isArray(quoteStr)) {
           quoteStr = quoteStr.join(" ");
         }
+
         if (quoteStr) {
-          // TODO: find best matches
-          console.log(`changedCurrentCheck - quoteStr`, quoteStr);
+          const topMatches: object[] = []
+          const quotes = quoteStr.split(" ");
+          const matchCount = (quotes.length > 1) ? 10 : 15
 
-          const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
-          if (originalWords?.length) {
-            for (const originalStr of originalWords) {
-              const score = fuzz.ratio(originalStr, quoteStr);
-              console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
-              if (score) {
-                // @ts-ignore
-                orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
-              }
-            }
+          for (const quote of quotes) { // for each word get best translations
+            const topMatches_: object[] = findBestMatches(quote, alignmentMap_, matchCount);
+
+            const sortedTopMatches = topMatches_.slice(0, matchCount)
+              // @ts-ignore
+              .sort((a, b) => b.score - a.score);
+            
+            topMatches.push(...sortedTopMatches);
           }
-        }
 
-        const orderedList = Object.entries(orderedMatches)
+          const headers = [
+            { key: 'score' },
+            { key: 'targetText' },
+            { key: 'sourceText' },
+          ]
+          const orderedTsv = objectToCsv(headers, topMatches)
+
           // @ts-ignore
-          .sort(([, a], [, b]) => b.score - a.score)
-          // @ts-ignore
-          .map(([key, value]) => ({ original:key, ...value }));
+          const reference = newContextId?.reference;
+          const verseText = UsfmFileConversionHelpers.getVerseTextFromBible(targetBible, reference)
 
-        console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
-
-        const topMatches = []
-        for( const item of orderedList.slice(0, 20)) {
-          const targetMatches = item?.match
-          const sourceText = item?.original;
-          for( const match of targetMatches) {
-            const targetStr = match?.text
-            const occurrences = match?.occurrences
-            const score = item?.score + occurrences / 10
-            topMatches.push({ sourceText: sourceText, score, targetText:targetStr })
-          }
+          console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
+          const prompt = AIPromptTemplate.replaceAll('{translationCsv}', orderedTsv.join('\n'))
+            .replaceAll('{translatedText}', verseText)
+            .replaceAll('{sourceWord}', quoteStr)
+          console.log(`changedCurrentCheck - prompt`, prompt);
         }
-        
-        const sortedTopMatches = topMatches.sort((a, b) => b.score - a.score)
-        
-        const headers = [
-          { key: 'score' },
-          { key: 'targetText' },
-          { key: 'sourceText' },
-        ]
-        const orderedTsv = objectToCsv(headers, sortedTopMatches)
-
-        // @ts-ignore
-        const reference = newContextId?.reference;
-        const verseText = UsfmFileConversionHelpers.getVerseTextFromBible(targetBible, reference)
-        
-        console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
-        const prompt = AIPromptTemplate.replaceAll('{translationCsv}', orderedTsv.join('\n'))
-          .replaceAll('{translatedText}', verseText)
-          .replaceAll('{sourceWord}', quoteStr)
-        console.log(`changedCurrentCheck - prompt`, prompt);
-        // console.log(orderedTsv.join('\n'))
       }
     }
   
