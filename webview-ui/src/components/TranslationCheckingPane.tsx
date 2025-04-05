@@ -163,6 +163,46 @@ function findBestMatches(quoteStr: string, alignmentMap_: object | null, matchCo
   return topMatches.slice(0, matchCount);
 }
 
+async function callLmStudioAPI(prompt: string) {
+  // Call the LM Studio API using the generated prompt
+  const apiUrl = "<LM_STUDIO_API_URL>"; // Replace with your LM Studio API endpoint
+  const apiKey = "<YOUR_API_KEY>"; // Replace with your LM Studio API key
+
+  const postData = {
+    prompt,
+    max_tokens: 150, // Adjust the max tokens based on your use case
+    temperature: 0.7, // Control randomness in generation
+    top_p: 1.0, // Token sampling parameter
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(postData),
+    });
+
+    if (response.ok) {
+      const jsonResponse = await response.json();
+      console.log("LM Studio API Response:", jsonResponse);
+      const generatedText = jsonResponse?.choices?.[0]?.text || "";
+      console.log("Generated Text:", generatedText);
+      // You can further utilize or display the `generatedText` as needed
+      return generatedText;
+    } else {
+      console.error(
+        `Error calling LM Studio API: ${response.status} ${response.statusText}`,
+      );
+    }
+  } catch (error) {
+    console.error("Error in LM Studio API call:", error);
+  }
+  return null
+}
+
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    checkingObj,
    createNewOlCheck: _createNewOlCheck,
@@ -326,6 +366,12 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             .replaceAll('{translatedText}', verseText)
             .replaceAll('{sourceWord}', quoteStr)
           console.log(`changedCurrentCheck - prompt`, prompt);
+          
+          callLmStudioAPI(prompt).then(response => {
+            if (response) {
+              console.log(`changedCurrentCheck - response`, response);
+            }
+          });
         }
       }
     }
