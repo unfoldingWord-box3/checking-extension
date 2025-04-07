@@ -48,6 +48,7 @@ export async function callLmStudioAPI(prompt: string) {
     if (response.ok) {
       const jsonResponse = await response.json();
       console.log("LM Studio API Response:", jsonResponse);
+      // @ts-ignore
       const generatedText = jsonResponse?.choices?.[0]?.text || "";
       console.log("Generated Text:", generatedText);
       // You can further utilize or display the `generatedText` as needed

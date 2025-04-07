@@ -3,7 +3,6 @@ import React, { useContext, useEffect, useState } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
-  alignmentHelpers,
   Checker,
   TranslationUtils,
   twArticleHelpers,
@@ -22,19 +21,19 @@ import {
   Toolbar,
   Typography,
 } from "@material-ui/core";
-import MenuIcon from '@material-ui/icons/Menu'
-import ErrorIcon from '@material-ui/icons/Error';
-import DoneOutlineIcon from '@material-ui/icons/DoneOutline';
+import MenuIcon from "@material-ui/icons/Menu";
+import ErrorIcon from "@material-ui/icons/Error";
+import DoneOutlineIcon from "@material-ui/icons/DoneOutline";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
-import * as fuzz from "fuzzball";
-import { objectToCsv } from "../utilities/tsvUtils";
-import { AIPromptTemplate } from "../utilities/llmUtils";
-
+import {
+  addAlignmentsForBibleBook,
+  findAlignmentSuggestions,
+} from "../utilities/translations";
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -103,105 +102,6 @@ type TranslationCheckingProps = {
   uploadToDCS: uploadToDCSFunction;
 };
 
-function addOriginalAlignment(origLang: any[], alignment: any, targetLang: any[]) {
-  origLang.push(alignment.content);
-  for (const child of alignment.children || []) {
-    const tag = child.tag;
-    if (tag === "w") {
-      targetLang.push(child.text);
-    } else 
-    if (tag === 'zaln') {
-      addOriginalAlignment(origLang, child, targetLang);
-    }
-  }
-}
-
-/**
- * Finds the best matching text strings between an input quote and a provided alignment map,
- * based on a scoring mechanism. The function returns a list of the top matches with their
- * corresponding source text, target text, and calculated score.
- *
- * @param {string} quoteStr - The input quote string to be compared against the alignment map.
- * @param {object|null} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
- * @param {number} matchCount - The maximum number of best matches to return.
- *
- * @return {object[]} - A list of top matches containing the source text, target text, and calculated score.
- */
-function findBestMatches(quoteStr: string, alignmentMap_: object | null, matchCount: number) {
-  const orderedMatches:any = {}
-  const topMatches:object[] = []
-
-  const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
-  if (originalWords?.length) {
-    for (const originalStr of originalWords) {
-      const score = fuzz.ratio(originalStr, quoteStr);
-      console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
-      if (score) {
-        // @ts-ignore
-        orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
-      }
-    }
-    const orderedList = Object.entries(orderedMatches)
-      // @ts-ignore
-      .sort(([, a], [, b]) => b.score - a.score)
-      // @ts-ignore
-      .map(([key, value]) => ({ original: key, ...value }));
-
-    console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
-
-    for (const item of orderedList.slice(0, matchCount)) {
-      const targetMatches = item?.match;
-      const sourceText = item?.original;
-      for (const match of targetMatches) {
-        const targetStr = match?.text;
-        const occurrences = match?.occurrences;
-        const score = item?.score + occurrences / 10;
-        topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
-      }
-    }
-  }
-  return topMatches.slice(0, matchCount);
-}
-
-async function callLmStudioAPI(prompt: string) {
-  // Call the LM Studio API using the generated prompt
-  const apiUrl = "<LM_STUDIO_API_URL>"; // Replace with your LM Studio API endpoint
-  const apiKey = "<YOUR_API_KEY>"; // Replace with your LM Studio API key
-
-  const postData = {
-    prompt,
-    max_tokens: 150, // Adjust the max tokens based on your use case
-    temperature: 0.7, // Control randomness in generation
-    top_p: 1.0, // Token sampling parameter
-  };
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(postData),
-    });
-
-    if (response.ok) {
-      const jsonResponse = await response.json();
-      console.log("LM Studio API Response:", jsonResponse);
-      const generatedText = jsonResponse?.choices?.[0]?.text || "";
-      console.log("Generated Text:", generatedText);
-      // You can further utilize or display the `generatedText` as needed
-      return generatedText;
-    } else {
-      console.error(
-        `Error calling LM Studio API: ${response.status} ${response.statusText}`,
-      );
-    }
-  } catch (error) {
-    console.error("Error in LM Studio API call:", error);
-  }
-  return null
-}
 
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    checkingObj,
@@ -268,51 +168,17 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 
   useEffect(() => {
       const alignmentMap_:Record<string, any> = {};
-      const chapters = targetBible && Object.keys(targetBible);
-      if (chapters?.length) {
-        for (const chapter of chapters) {
-          if (chapter === 'manifest' || chapter === 'headers') {
-            continue; // skip over
-          };
+      addAlignmentsForBibleBook(targetBible, bookId, alignmentMap_);
+      // console.log(`alignmentMap`, alignmentMap)
+      setAlignmentMap(alignmentMap_);
+      findAlignmentSuggestions(contextId, alignmentMap_);
 
-          // @ts-ignore
-          const verses = targetBible[chapter] || { } ;
-          const chapterRef = `${bookId} ${chapter}`
-          for (const verse of Object.keys(verses)) {
-            const verseRef = `${chapterRef}:${verse}`
-            const verseData = verses[verse]
-            const alignments = alignmentHelpers.getVerseAlignments(verseData?.verseObjects)
-            // console.log(`${chapter}:${verse} - alignments ${alignments}`)
-
-            for (const alignment of alignments || []) {
-              const origLang:string[] = []
-              const targetLang:string[] = []
-              if (alignment.tag === 'zaln') {
-                addOriginalAlignment(origLang, alignment, targetLang);
-              }
-              const origStr = origLang.join(' ').toLowerCase()
-              const targetStr = targetLang.join(' ').toLowerCase()
-              const mapEntry = alignmentMap_[origStr];
-              if (mapEntry) {
-                // @ts-ignore
-                const pos = mapEntry.findIndex(entry => entry?.text === targetStr)
-                if (pos >= 0) {
-                  mapEntry[pos].occurrences += 1
-                  mapEntry[pos].ref?.push(verseRef)
-                } else {
-                  alignmentMap_[origStr].push( { text: targetStr, occurrences: 1, ref: [verseRef] } );
-                }
-              } else {
-                alignmentMap_[origStr] = [ { text: targetStr, occurrences: 1, ref: [verseRef] } ]
-              }
-            }
-          }
-        }
-        // console.log(`alignmentMap`, alignmentMap)
-        setAlignmentMap(alignmentMap_);
-        findAlignmentSuggestions(contextId, alignmentMap_)
-      }
-    }, [targetBible]);
+      // callLmStudioAPI(prompt).then(response => {
+      //   if (response) {
+      //     console.log(`changedCurrentCheck - response`, response);
+      //   }
+      // });
+      }, [targetBible]);
   
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
           const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
@@ -325,62 +191,18 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
         const entryData = (LexiconData && LexiconData[lexiconId]) ? LexiconData[lexiconId][entryId] : null;
         return { [lexiconId]: { [entryId]: entryData } };
     };
-
-    function findAlignmentSuggestions(newContextId:object, alignmentMap_:object|null) {
-      if (newContextId) {
-        const orderedMatches:any = {}
-        // @ts-ignore
-        let quoteStr = (newContextId.quoteStr || newContextId.quote)?.toLowerCase();
-        if (Array.isArray(quoteStr)) {
-          quoteStr = quoteStr.join(" ");
-        }
-
-        if (quoteStr) {
-          const topMatches: object[] = []
-          const quotes = quoteStr.split(" ");
-          const matchCount = (quotes.length > 1) ? 10 : 15
-
-          for (const quote of quotes) { // for each word get best translations
-            const topMatches_: object[] = findBestMatches(quote, alignmentMap_, matchCount);
-
-            const sortedTopMatches = topMatches_.slice(0, matchCount)
-              // @ts-ignore
-              .sort((a, b) => b.score - a.score);
-            
-            topMatches.push(...sortedTopMatches);
-          }
-
-          const headers = [
-            { key: 'score' },
-            { key: 'targetText' },
-            { key: 'sourceText' },
-          ]
-          const orderedTsv = objectToCsv(headers, topMatches)
-
-          // @ts-ignore
-          const reference = newContextId?.reference;
-          const verseText = UsfmFileConversionHelpers.getVerseTextFromBible(targetBible, reference)
-
-          console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
-          const prompt = AIPromptTemplate.replaceAll('{translationCsv}', orderedTsv.join('\n'))
-            .replaceAll('{translatedText}', verseText)
-            .replaceAll('{sourceWord}', quoteStr)
-          console.log(`changedCurrentCheck - prompt`, prompt);
-          
-          callLmStudioAPI(prompt).then(response => {
-            if (response) {
-              console.log(`changedCurrentCheck - response`, response);
-            }
-          });
-        }
-      }
-    }
-  
+    
     const changedCurrentCheck = (context:object)=> {
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
       findAlignmentSuggestions(newContextId, alignmentMap);
+
+      // callLmStudioAPI(prompt).then(response => {
+      //   if (response) {
+      //     console.log(`changedCurrentCheck - response`, response);
+      //   }
+      // });
     }
 
     const _saveCheckingData = (newState:object) => {
