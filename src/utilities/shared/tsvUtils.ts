@@ -1,3 +1,6 @@
+// @ts-ignore
+import * as tsvparser from "uw-tsv-parser";
+
 /**
  * Converts an array of objects into a tab-separated values (TSV) format based on the provided format specification.
  *
@@ -88,3 +91,58 @@ export function objectToCsv(reposFormat:object[], reposLines:object[]) {
   return lines;
 }
 
+/**
+ * process the TSV data into index files
+ * @param {string} tsvLines
+ */
+export function tsvToObjects(tsvLines:string) {
+  let tsvItems;
+  let parseErrorMsg;
+  let error;
+  let expectedColumns = 0;
+  const tableObject = tsvparser.tsvStringToTable(tsvLines);
+
+  if ( tableObject.errors.length > 0 ) {
+    parseErrorMsg = '';
+    expectedColumns = tableObject.header.length;
+
+    for (let i=0; i<tableObject.errors.length; i++) {
+      let msg;
+      const rownum = tableObject.errors[i][0] - 1; // adjust for data table without header row
+      const colsfound = tableObject.errors[i][1];
+
+      if ( colsfound > expectedColumns ) {
+        msg = 'Row is too long';
+      } else {
+        msg = 'Row is too short';
+      }
+      parseErrorMsg += `\n\n${msg}:`;
+      parseErrorMsg += '\n' + tableObject.data[rownum].join(',');
+    }
+    console.warn(`twArticleHelpers.twlTsvToGroupData() - table parse errors found: ${parseErrorMsg}`);
+  }
+
+  try {
+    tsvItems = tableObject.data.map((line:string[]) => {
+      const tsvItem = {};
+      const l = tableObject.header.length;
+
+      for (let i = 0; i < l; i++) {
+        const key = tableObject.header[i];
+        const value = line[i] || '';
+        // @ts-ignore
+        tsvItem[key] = value.trim();
+      }
+      return tsvItem;
+    });
+  } catch (e) {
+    console.error(`tsvToObjects() - error processing data:`, e);
+    error = e;
+  }
+  return {
+    tsvItems,
+    parseErrorMsg,
+    error,
+    expectedColumns,
+  };
+}

@@ -70,6 +70,28 @@ export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapTyp
   return topMatches.slice(0, matchCount);
 }
 
+export function makeString(origLang: string | string[]) {
+  return (Array.isArray(origLang)) ? origLang.join(" ") : origLang;
+}
+
+export function addTranslationToMap(origLang: string|string[], targetLang: string|string[], alignmentMap_: AlignmentMapType, verseRef: string) {
+  const origStr = makeString(origLang).toLowerCase();
+  const targetStr = makeString(targetLang).toLowerCase();
+  const mapEntry = alignmentMap_[origStr];
+  if (mapEntry) {
+    // @ts-ignore
+    const pos = mapEntry.findIndex(entry => entry?.text === targetStr);
+    if (pos >= 0) {
+      mapEntry[pos].occurrences += 1;
+      mapEntry[pos].ref?.push(verseRef);
+    } else {
+      alignmentMap_[origStr].push({ text: targetStr, occurrences: 1, ref: [verseRef] });
+    }
+  } else {
+    alignmentMap_[origStr] = [{ text: targetStr, occurrences: 1, ref: [verseRef] }];
+  }
+}
+
 /**
  * Processes the target book and adds alignment mappings for a specific Bible book.
  *
@@ -103,21 +125,7 @@ export function addAlignmentsForBibleBook(targetBook: object, bookId:string, ali
           if (alignment.tag === "zaln") {
             addOriginalAlignment(origLang, alignment, targetLang);
           }
-          const origStr = origLang.join(" ").toLowerCase();
-          const targetStr = targetLang.join(" ").toLowerCase();
-          const mapEntry = alignmentMap_[origStr];
-          if (mapEntry) {
-            // @ts-ignore
-            const pos = mapEntry.findIndex(entry => entry?.text === targetStr);
-            if (pos >= 0) {
-              mapEntry[pos].occurrences += 1;
-              mapEntry[pos].ref?.push(verseRef);
-            } else {
-              alignmentMap_[origStr].push({ text: targetStr, occurrences: 1, ref: [verseRef] });
-            }
-          } else {
-            alignmentMap_[origStr] = [{ text: targetStr, occurrences: 1, ref: [verseRef] }];
-          }
+          addTranslationToMap(origLang, targetLang, alignmentMap_, verseRef);
         }
       }
     }
@@ -125,29 +133,42 @@ export function addAlignmentsForBibleBook(targetBook: object, bookId:string, ali
 }
 
 /**
- * Finds alignment suggestions by matching the quote in given context and searching 
- * alignment map, ranking possible matches, and then creating an AI prompt passing closest
+ * Processes and retrieves a quote string from the provided context object.
+ *
+ * @param {object} contextId - The object containing the quote string or related data.
+ * @return {string} The processed quote string, potentially converted to lowercase and concatenated if it is an array.
+ */
+export function getQuoteStr(contextId: object) {
+  // @ts-ignore
+  let quoteStr = (contextId?.quoteStr || contextId?.quoteString || contextId?.quote)?.toLowerCase();
+  if (Array.isArray(quoteStr)) {
+    quoteStr = quoteStr.join(" ");
+  }
+  return quoteStr;
+}
+
+/**
+ * Finds alignment suggestions by matching the quote in the given context, searching
+ * the alignment map, ranking possible matches, and creating an AI prompt with the closest
  * matches.
  *
- * @param {object} newContextId - The context details for the current alignment process,
- *                                including information such as quote string or reference.
- * @param {AlignmentMapType} alignmentMap_ - The alignment map containing source and target
- *                                           word mappings with scores for evaluation.
- * @return {string} AI prompt.
+ * @param {object} contextId - The context object containing details for the current alignment process,
+ *                             such as the quote string or reference information.
+ * @param {AlignmentMapType} alignmentMap_ - The alignment map containing mappings of source
+ *                                           language strings to target language translations,
+ *                                           along with metadata like scores and references.
+ * @param {object} targetBible - The object representing the Bible content, used to extract
+ *                               verse text for the AI prompt.
+ * @return {string} A prompt to pass to AI to get the best translation.
  */
-export function findAlignmentSuggestions(newContextId:object, alignmentMap_:AlignmentMapType, targetBible:object) {
-  if (newContextId) {
-    const orderedMatches:any = {}
-    // @ts-ignore
-    let quoteStr = (newContextId.quoteStr || newContextId.quote)?.toLowerCase();
-    if (Array.isArray(quoteStr)) {
-      quoteStr = quoteStr.join(" ");
-    }
+export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object) {
+  if (contextId) {
+    const quoteStr = getQuoteStr(contextId);
 
     if (quoteStr) {
-      const topMatches: object[] = []
+      const topMatches: object[] = [];
       const quotes = quoteStr.split(" ");
-      const matchCount = (quotes.length > 1) ? 10 : 15
+      const matchCount = (quotes.length > 1) ? 10 : 15;
 
       for (const quote of quotes) { // for each word get best translations
         const topMatches_: object[] = findBestMatches(quote, alignmentMap_, matchCount);
@@ -176,3 +197,4 @@ export function findAlignmentSuggestions(newContextId:object, alignmentMap_:Alig
     }
   }
 }
+

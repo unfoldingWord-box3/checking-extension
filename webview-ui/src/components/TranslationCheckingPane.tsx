@@ -6,7 +6,6 @@ import {
   Checker,
   TranslationUtils,
   twArticleHelpers,
-  UsfmFileConversionHelpers,
 }
 // @ts-ignore
 from 'checking-tool-rcl'
@@ -35,6 +34,8 @@ import {
   AlignmentMapType,
   findAlignmentSuggestions,
 } from "../../../src/utilities/shared/translationUtils";
+// @ts-ignore
+import { groupDataHelpers } from "word-aligner-lib"
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -168,18 +169,20 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   }, [currentContextId]);
 
   useEffect(() => {
-      const alignmentMap_:AlignmentMapType = {};
+    if (targetBible) {
+      const alignmentMap_: AlignmentMapType = {};
       addAlignmentsForBibleBook(targetBible, bookId, alignmentMap_);
       // console.log(`alignmentMap`, alignmentMap)
       setAlignmentMap(alignmentMap_);
-      findAlignmentSuggestions(contextId, alignmentMap_,targetBible);
+      findAlignmentSuggestions(contextId, alignmentMap_, targetBible);
 
       // callLmStudioAPI(prompt).then(response => {
       //   if (response) {
       //     console.log(`changedCurrentCheck - response`, response);
       //   }
       // });
-      }, [targetBible]);
+    }
+  }, [targetBible]);
   
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
           const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
@@ -234,12 +237,12 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     if (resourceId === 'twl') {
         const glTwData: object = checkingObj.tw;
         glWordsData = glTwData
-        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && groupDataHelpers.extractGroupData(checks)
         checkType = 'translationWords'
     } else if (resourceId === 'tn') {
         const glTaData: object = checkingObj.ta;
         glWordsData = glTaData
-        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && groupDataHelpers.extractGroupData(checks)
         checkType = 'translationNotes'
     }
 

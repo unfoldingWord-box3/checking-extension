@@ -8,9 +8,16 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getParsedUSFM } from "../utilities/resourceUtils";
 // @ts-ignore
-import { addAlignmentsForBibleBook, AlignmentMapType } from "../utilities/shared/translationUtils";
+import {
+  addAlignmentsForBibleBook,
+  addTranslationToMap,
+  AlignmentMapType,
+  getQuoteStr,
+} from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
-// import * as myExtension from '../extension';
+import { tsvToObjects } from "../utilities/shared/tsvUtils";
+// @ts-ignore
+import { groupDataHelpers } from 'word-aligner-lib';
 
 suite('Parse Data', () => {
   suiteTeardown(() => {
@@ -36,10 +43,49 @@ suite('Parse Data', () => {
 
         assert.ok(bookJson);
         addAlignmentsForBibleBook(bookJson, bookId, alignmentMap_);
-        console.log(`alignmentMap_ = ${JSON.stringify(alignmentMap_, null, 2)}`)
-      } else
-      if (file.endsWith(".tsv")) {
-        // TODO parse TSV alignments
+        assert.ok(Object.keys(alignmentMap_).length > 100);
+        // console.log(`alignmentMap_ = ${JSON.stringify(alignmentMap_, null, 2)}`)
+      }
+    }
+  });
+
+  test('Process previous twl checks', () => {
+    const projectFolder = '/Users/blm0/translationCore/otherProjects/bn_glt_en_eph/checking/twl'
+    const alignmentMap_:AlignmentMapType = {};
+    const files = fs.readdirSync(projectFolder);
+    const doNT = true;
+    for (const file of files) {
+      if (file.endsWith("_check")) {
+        const baseFileName = path.parse(file).name;
+
+        const bookId = baseFileName.split('.')[0]?.toLowerCase();
+
+        if (isNT(bookId) != doNT) {
+          continue;
+        }
+        const checkingData = fs.readJsonSync(path.join(projectFolder, file));
+        
+        assert.ok(Object.keys(checkingData)?.length === 3);
+
+        const groupsData = groupDataHelpers.extractGroupData(checkingData)
+        const flattenedGroupsData = groupDataHelpers.flattenGroupData(groupsData)
+        for (const groupId of Object.keys(flattenedGroupsData)) {
+          const checkList = flattenedGroupsData[groupId];
+          for (const check of checkList) {
+            const contextId = check?.contextId;
+            const origLang = getQuoteStr(contextId);
+            const reference = contextId?.reference;
+            const chapterRef = `${bookId} ${reference?.chapter}`;
+            const verseRef = `${chapterRef}:${reference?.verse}`;
+            // @ts-ignore
+            const targetStr = check?.selections && check?.selections?.map(s => s.text);
+            if (origLang && targetStr) {
+              addTranslationToMap(origLang, targetStr, alignmentMap_, verseRef);
+            }
+          }
+        }
+        assert.ok(Object.keys(alignmentMap_).length > 1);
+        // console.log(`alignmentMap_ = ${JSON.stringify(alignmentMap_, null, 2)}`)
       }
     }
   });
