@@ -8,7 +8,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getParsedUSFM } from "../utilities/resourceUtils";
 // @ts-ignore
-import { addAlignmentsForBibleBook } from "../utilities/shared/translations";
+import { addAlignmentsForBibleBook, AlignmentMapType } from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
 // import * as myExtension from '../extension';
 
@@ -19,26 +19,28 @@ suite('Parse Data', () => {
 
   test('Process all NT usfms and extract alignments', () => {
     const projectFolder = '/Users/blm0/translationCore/otherProjects/bn_glt_en_eph/alignments/bn_irv'
-    const alignmentMap_:Record<string, any> = {};
+    const alignmentMap_:AlignmentMapType = {};
     const files = fs.readdirSync(projectFolder);
     const doNT = true;
     for (const file of files) {
-      if (!file.endsWith(".usfm")) {
-        continue;
+      if (file.endsWith(".usfm")) {
+        const baseFileName = path.parse(file).name;
+
+        const bookId = baseFileName.split('-')[1]?.toLowerCase();
+
+        if (isNT(bookId) != doNT) {
+          continue;
+        }
+        const usfm = fs.readFileSync(path.join(projectFolder, file), "UTF-8")?.toString() || '';
+        const bookJson = getParsedUSFM(usfm);
+
+        assert.ok(bookJson);
+        addAlignmentsForBibleBook(bookJson, bookId, alignmentMap_);
+        console.log(`alignmentMap_ = ${JSON.stringify(alignmentMap_, null, 2)}`)
+      } else
+      if (file.endsWith(".tsv")) {
+        // TODO parse TSV alignments
       }
-      const baseFileName = path.parse(file).name;
-
-      const bookId = baseFileName.split('-')[1]?.toLowerCase();
-
-      if (isNT(bookId) != doNT) {
-        continue;
-      }
-      const usfm = fs.readFileSync(path.join(projectFolder, file), "UTF-8")?.toString() || '';
-      const bookJson = getParsedUSFM(usfm);
-
-      assert.ok(bookJson);
-      addAlignmentsForBibleBook(bookJson, bookId, alignmentMap_);
-      console.log(`alignmentMap_ = ${JSON.stringify(alignmentMap_, null, 2)}`)
     }
   });
 });

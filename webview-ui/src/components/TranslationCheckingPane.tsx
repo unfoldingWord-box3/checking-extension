@@ -32,8 +32,9 @@ import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 import { AuthContext } from "../dcs/context/AuthContext";
 import {
   addAlignmentsForBibleBook,
+  AlignmentMapType,
   findAlignmentSuggestions,
-} from "../utilities/translations";
+} from "../../../src/utilities/shared/translationUtils";
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -116,7 +117,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const classes = useStyles()
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
     const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
-    const [alignmentMap, setAlignmentMap] = useState<object|null>(null)
+    const [alignmentMap, setAlignmentMap] = useState<AlignmentMapType|null>(null)
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -167,11 +168,11 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
   }, [currentContextId]);
 
   useEffect(() => {
-      const alignmentMap_:Record<string, any> = {};
+      const alignmentMap_:AlignmentMapType = {};
       addAlignmentsForBibleBook(targetBible, bookId, alignmentMap_);
       // console.log(`alignmentMap`, alignmentMap)
       setAlignmentMap(alignmentMap_);
-      findAlignmentSuggestions(contextId, alignmentMap_);
+      findAlignmentSuggestions(contextId, alignmentMap_,targetBible);
 
       // callLmStudioAPI(prompt).then(response => {
       //   if (response) {
@@ -196,7 +197,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
-      findAlignmentSuggestions(newContextId, alignmentMap);
+      findAlignmentSuggestions(newContextId, alignmentMap || {}, targetBible);
 
       // callLmStudioAPI(prompt).then(response => {
       //   if (response) {

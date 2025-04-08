@@ -1,8 +1,16 @@
 import * as fuzz from "fuzzball";
 // @ts-ignore
-import { AlignmentHelpers } from 'word-aligner-lib'
+import { AlignmentHelpers, UsfmFileConversionHelpers } from 'word-aligner-lib';
 import { AIPromptTemplate, sortByScore } from "./llmUtils";
 import { objectToCsv } from "./tsvUtils";
+
+export type AlignmentMapType = Record<string, Array<{
+  text: string;
+  occurrences: number;
+  ref: string[];
+}>>;
+
+export type ScoredTranslationType = { sourceText: string; targetText: string; score: number };
 
 export function addOriginalAlignment(origLang: any[], alignment: any, targetLang: any[]) {
   origLang.push(alignment.content);
@@ -23,14 +31,15 @@ export function addOriginalAlignment(origLang: any[], alignment: any, targetLang
  * corresponding source text, target text, and calculated score.
  *
  * @param {string} quoteStr - The input quote string to be compared against the alignment map.
- * @param {object|null} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
+ * @param {AlignmentMapType} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
  * @param {number} matchCount - The maximum number of best matches to return.
  *
- * @return {object[]} - A list of top matches containing the source text, target text, and calculated score.
+ * @return {ScoredTranslationType[]} - A list of top matches containing the source text, target text, and calculated score.
  */
-export function findBestMatches(quoteStr: string, alignmentMap_: object | null, matchCount: number) {
-  const orderedMatches:any = {}
-  const topMatches:object[] = []
+export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapType, matchCount: number) {
+  type ScoredMatchType = Record<string, { score: number; match: AlignmentMapType[string] }>;
+  const orderedMatches: ScoredMatchType = {};
+  const topMatches: ScoredTranslationType[] = [];
 
   const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
   if (originalWords?.length) {
@@ -38,14 +47,11 @@ export function findBestMatches(quoteStr: string, alignmentMap_: object | null, 
       const score = fuzz.ratio(originalStr, quoteStr);
       console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
       if (score) {
-        // @ts-ignore
         orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
       }
     }
     const orderedList = Object.entries(orderedMatches)
-      // @ts-ignore
       .sort(([, a], [, b]) => b.score - a.score)
-      // @ts-ignore
       .map(([key, value]) => ({ original: key, ...value }));
 
     console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
@@ -69,11 +75,13 @@ export function findBestMatches(quoteStr: string, alignmentMap_: object | null, 
  *
  * @param {object} targetBook - The object representing the target book containing chapters and verses.
  * @param {string} bookId - The identifier of the Bible book being processed.
- * @param {Record<string, any>} alignmentMap_ - A map where original language strings are aligned to target language strings, with metadata such as occurrences and references.
+ * @param {AlignmentMapType} alignmentMap_ - A map where original language strings are aligned to target language strings, with metadata such as occurrences and references.
  * @return {void} Does not return a value.
  */
-export function addAlignmentsForBibleBook(targetBook: object, bookId:string, alignmentMap_: Record<string, any>) {
-  const chapters = targetBook && Object.keys(targetBook);
+export function addAlignmentsForBibleBook(targetBook: object, bookId:string, alignmentMap_: AlignmentMapType ) {
+  // @ts-ignore
+  const chapterData = targetBook?.chapters ? targetBook.chapters : targetBook;
+  const chapters = Object.keys(chapterData);
   if (chapters?.length) {
     for (const chapter of chapters) {
       if (chapter === "manifest" || chapter === "headers") {
@@ -81,7 +89,7 @@ export function addAlignmentsForBibleBook(targetBook: object, bookId:string, ali
       }
 
       // @ts-ignore
-      const verses = targetBook[chapter] || {};
+      const verses = chapterData[chapter] || {};
       const chapterRef = `${bookId} ${chapter}`;
       for (const verse of Object.keys(verses)) {
         const verseRef = `${chapterRef}:${verse}`;
@@ -116,7 +124,18 @@ export function addAlignmentsForBibleBook(targetBook: object, bookId:string, ali
   }
 }
 
-export function findAlignmentSuggestions(newContextId:object, alignmentMap_:object|null) {
+/**
+ * Finds alignment suggestions by matching the quote in given context and searching 
+ * alignment map, ranking possible matches, and then creating an AI prompt passing closest
+ * matches.
+ *
+ * @param {object} newContextId - The context details for the current alignment process,
+ *                                including information such as quote string or reference.
+ * @param {AlignmentMapType} alignmentMap_ - The alignment map containing source and target
+ *                                           word mappings with scores for evaluation.
+ * @return {string} AI prompt.
+ */
+export function findAlignmentSuggestions(newContextId:object, alignmentMap_:AlignmentMapType, targetBible:object) {
   if (newContextId) {
     const orderedMatches:any = {}
     // @ts-ignore
@@ -146,12 +165,14 @@ export function findAlignmentSuggestions(newContextId:object, alignmentMap_:obje
       console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
 
       // build AI prompt
+
       // @ts-ignore
       const verseText = UsfmFileConversionHelpers.getVerseTextFromBible(targetBible, newContextId?.reference)
       const prompt = AIPromptTemplate.replaceAll('{translationCsv}', orderedTsv.join('\n'))
         .replaceAll('{translatedText}', verseText)
         .replaceAll('{sourceWord}', quoteStr)
       console.log(`changedCurrentCheck - prompt`, prompt);
+      return prompt;
     }
   }
 }
