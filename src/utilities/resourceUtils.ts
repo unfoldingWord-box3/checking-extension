@@ -210,6 +210,16 @@ async function processHelpsIntoJson(resource:any, resourcesPath:string, folderPa
     return false
 }
 
+export function getTranslations(projectPath: string): object|null {
+    if (projectPath && fs.existsSync(projectPath)) {
+        const translationsPath = path.join(projectPath, 'alignments/translations.json')
+        const translations = readJsonFile(translationsPath);
+        return translations
+    }
+    return null
+}
+
+
 /**
  * loads all the resources for checking tool.
  * @param filePath path to the file.

@@ -17,30 +17,31 @@ import * as fs from "fs-extra";
 import { TranslationCheckingPanel } from "./panels/TranslationCheckingPanel";
 import { GeneralObject, ResourcesObject, TranslationCheckingPostMessages } from "../types";
 import {
-    changeTargetVerse,
-    cleanUpFailedCheck,
-    downloadLatestLangHelpsResourcesFromCatalog,
-    downloadTargetBible,
-    fetchBibleManifest,
-    findBibleResources,
-    findOwnersForLang,
-    findResourcesForLangAndOwner,
-    getBookForTestament,
-    getBookIdFromPath,
-    getLanguagesInCatalog,
-    getLatestResourcesCatalog,
-    getMetaData,
-    getRepoPath,
-    getResourceIdsInCatalog,
-    getResourcesForChecking,
-    getSavedCatalog,
-    getServer,
-    initProject,
-    isRepoInitialized,
-    loadResources,
-    removeHomePath,
-    resourcesPath,
-    saveCatalog,
+  changeTargetVerse,
+  cleanUpFailedCheck,
+  downloadLatestLangHelpsResourcesFromCatalog,
+  downloadTargetBible,
+  fetchBibleManifest,
+  findBibleResources,
+  findOwnersForLang,
+  findResourcesForLangAndOwner,
+  getBookForTestament,
+  getBookIdFromPath,
+  getLanguagesInCatalog,
+  getLatestResourcesCatalog,
+  getMetaData,
+  getRepoPath,
+  getResourceIdsInCatalog,
+  getResourcesForChecking,
+  getSavedCatalog,
+  getServer,
+  getTranslations,
+  initProject,
+  isRepoInitialized,
+  loadResources,
+  removeHomePath,
+  resourcesPath,
+  saveCatalog,
 } from "./utilities/resourceUtils";
 import {
     delay,
@@ -1164,6 +1165,19 @@ export class CheckingProvider implements CustomTextEditorProvider {
                         command: "update",
                         data: this.getCheckingResources(document),
                     } as TranslationCheckingPostMessages);
+
+                    delay(500).then(async() => {
+                      const { projectPath, repoFolderExists } = await getWorkSpaceFolder();
+                      if (repoFolderExists) {
+                        const translations = getTranslations(projectPath || '')
+                        if (translations) {
+                          webviewPanel.webview.postMessage({
+                            command: "previousTranslations",
+                            data: translations,
+                          } as TranslationCheckingPostMessages);
+                        }
+                      }
+                    })
                 })
             } else {
                 console.log(`updateWebview - not first load`)

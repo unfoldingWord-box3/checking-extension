@@ -146,3 +146,19 @@ export function tsvToObjects(tsvLines:string) {
     expectedColumns,
   };
 }
+
+/**
+ * process the CSV data into index files
+ * @param {string} csvLines
+ */
+export function csvToObjects(csvLines:string) {
+  const tsvLines = csvLines.replace(/,/g, '\t');
+  const csvObjects = tsvToObjects(tsvLines);
+  
+  return {
+    csvItems: csvObjects.tsvItems,
+    parseErrorMsg: csvObjects.parseErrorMsg,
+    error: csvObjects.error,
+    expectedColumns: csvObjects.expectedColumns,
+  };
+}

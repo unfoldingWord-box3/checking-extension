@@ -98,6 +98,7 @@ type TranslationCheckingProps = {
   createNewOlCheck: createNewOlCheckFunction,
   initialContextId: object;
   openCheckingFile: openCheckingFileFunction;
+  previousTranslations: AlignmentMapType;
   projectKey: string;
   promptUserForOptionCallback: promptUserForOptionCallbackFunction;
   saveCheckingData: saveCheckingDataFunction;
@@ -110,6 +111,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    createNewOlCheck: _createNewOlCheck,
    initialContextId,
    openCheckingFile,
+   previousTranslations,
    projectKey,
    promptUserForOptionCallback,
    saveCheckingData,
@@ -167,22 +169,6 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`currentContextId changed to ${JSON.stringify(currentContextId)}`)
     }
   }, [currentContextId]);
-
-  useEffect(() => {
-    if (targetBible) {
-      const alignmentMap_: AlignmentMapType = {};
-      addAlignmentsForBibleBook(targetBible, bookId, alignmentMap_);
-      // console.log(`alignmentMap`, alignmentMap)
-      setAlignmentMap(alignmentMap_);
-      findAlignmentSuggestions(contextId, alignmentMap_, targetBible);
-
-      // callLmStudioAPI(prompt).then(response => {
-      //   if (response) {
-      //     console.log(`changedCurrentCheck - response`, response);
-      //   }
-      // });
-    }
-  }, [targetBible]);
   
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
           const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
@@ -200,7 +186,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
-      findAlignmentSuggestions(newContextId, alignmentMap || {}, targetBible);
+      findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible);
 
       // callLmStudioAPI(prompt).then(response => {
       //   if (response) {

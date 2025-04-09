@@ -43,17 +43,27 @@ function getSubPath(basePath:string, subPath:string):string {
   return subPath
 }
 
+/**
+ * Recursively fetches all file paths within a specified directory and its subdirectories.
+ *
+ * @param {string} basePath - The base directory for searching files.
+ * @param {string[]} [arrayOfFiles=[]] - An optional array to store the file paths as they are found.
+ * @param {string} [subPath=''] - An optional subdirectory path relative to the base directory.
+ * @return {string[]} - An array containing the relative paths of all files found in the directory and its subdirectories.
+ */
 export function getAllFiles(basePath: string, arrayOfFiles: string[] = [], subPath = ''): string[] {
   const currentPath = path.join(basePath, subPath);
   const files = fs.readdirSync(currentPath);
 
   files.forEach((file:string) => {
-    const filePath = path.join(currentPath, file);
-    const _subPath = getSubPath(subPath, file);
-    if (fs.statSync(filePath).isDirectory()) {
-      getAllFiles(basePath, arrayOfFiles, _subPath);
-    } else {
-      arrayOfFiles.push(_subPath);
+    if (file !== '.DS_Store') {
+      const filePath = path.join(currentPath, file);
+      const _subPath = getSubPath(subPath, file);
+      if (fs.statSync(filePath).isDirectory()) {
+        getAllFiles(basePath, arrayOfFiles, _subPath);
+      } else {
+        arrayOfFiles.push(_subPath);
+      }
     }
   });
 

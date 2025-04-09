@@ -15,6 +15,7 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'
+import { AlignmentMapType } from "../../../src/utilities/shared/translationUtils";
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
@@ -78,6 +79,7 @@ function getCallBack(key:string):any {
 type StateType = {
     checkingObj: ResourcesObject;
     initialContextId: object;
+    previousTranslations: AlignmentMapType;
 };
 
 console.log("TranslationCheckingView.tsx")
@@ -86,10 +88,12 @@ function TranslationCheckingView() {
     const [state, _setState] = useState<StateType>({
         checkingObj: {},
         initialContextId: {},
+        previousTranslations: {},
     })
     const {
         checkingObj,
         initialContextId,
+        previousTranslations,
     } = state
 
     function setState(newState:object) {
@@ -147,6 +151,15 @@ function TranslationCheckingView() {
         })
     }
 
+    async function loadPreviousTranslations_(previousTranslations: AlignmentMapType) {
+        if (previousTranslations && Object.keys(previousTranslations).length) {
+            setState({
+                previousTranslations,
+            })
+        }
+    }
+
+
     /**
      * Handles incoming message events and executes specific functions based on the command within the event's data.
      *
@@ -180,6 +193,10 @@ function TranslationCheckingView() {
 
         const update = (data: TnTSV) => {
             initData(data);
+        };
+
+        const loadPreviousTranslations = (data: AlignmentMapType) => {
+            loadPreviousTranslations_(data);
         };
 
         const getSecretResponse = (value: string|undefined) => {
@@ -259,6 +276,7 @@ function TranslationCheckingView() {
             ["uploadToDCSResponse"]: uploadToDCSResponse,
             ["uploadToDcsStatusResponse"]: uploadToDcsStatusResponse,
             ["createNewOlCheckResponse"]: createNewOlCheckResponse,
+            ["previousTranslations"]: loadPreviousTranslations,
         };
 
         const mappedCommand = commandToFunctionMapping[command];
@@ -523,13 +541,14 @@ function TranslationCheckingView() {
               {/*<StoreContextProvider>*/}
               <TranslationCheckingPane
                 checkingObj={checkingObj}
-                saveCheckingData={saveCheckingData}
-                initialContextId={initialContextId}
-                projectKey={projectKey}
-                uploadToDCS={uploadToDCS}
                 createNewOlCheck={createNewOlCheck}
-                promptUserForOptionCallback={promptUserForOptionCallback}
+                initialContextId={initialContextId}
                 openCheckingFile={openCheckingFile}
+                previousTranslations={previousTranslations}
+                projectKey={projectKey}
+                promptUserForOptionCallback={promptUserForOptionCallback}
+                saveCheckingData={saveCheckingData}
+                uploadToDCS={uploadToDCS}
               />
               {/*</StoreContextProvider>*/}
           </AuthContextProvider>
