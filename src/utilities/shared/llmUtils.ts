@@ -1,3 +1,5 @@
+import { ScoredTranslationType } from "./translationUtils";
+
 export const AIPromptTemplate =
 `Using the following translation data, identify words in the provided Translated text that correspond to translations of \`{sourceWord}\`. Return your results in CSV format with columns for "sourceText", “translatedText" and “score”:
 
@@ -67,11 +69,11 @@ export async function callLmStudioAPI(prompt: string) {
 /**
  * Sorts an array of objects by their "score" property in either ascending or descending order.
  *
- * @param {object[]} topMatches - The array of objects to be sorted. Each object is expected to have a "score" property.
+ * @param {ScoredTranslationType[]} topMatches - The array of objects to be sorted. Each object is expected to have a "score" property.
  * @param {boolean} [descending=true] - Flag indicating the sorting order. If true, the array will be sorted in descending order.
- * @return {object[]} The sorted array of objects.
+ * @return {ScoredTranslationType[]} The sorted array of objects.
  */
-export function sortByScore(topMatches:object[], descending:boolean = true) {
+export function sortByScore(topMatches:ScoredTranslationType[], descending:boolean = true) {
   if (descending) {
     // @ts-ignore
     return topMatches.sort((a, b) => b.score - a.score);

@@ -16,8 +16,11 @@ import {
   AlignmentMapType,
   buildAiPrompt,
   cleanupVerse,
+  getBestTranslations,
+  getScoredTranslations,
   getTopMatchesForQuote,
   normalize,
+  scoredTranslationType,
 } from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
 import { csvToObjects } from "../utilities/shared/tsvUtils";
@@ -152,7 +155,10 @@ const csvStartCodes = [
   '```\n'
 ];
 
+const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 
 suite('AI', () => {
   suiteTeardown(() => {
@@ -160,8 +166,7 @@ suite('AI', () => {
   });
 
     test('Generate AI Prompt', () => {
-      const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
-      const translationsPath = path.join(projectFolder, 'translations.json')
+      const translationsPath = path.join(projectFolder, 'translations.json');
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
       const quoteStr = normalize(`τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`)
       const verseText = cleanupVerse(`আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে, `)
@@ -173,15 +178,20 @@ suite('AI', () => {
     })
 
     test('Parse AI Response', () => {
-    for (const startCode of csvStartCodes) {
-      const index = response.indexOf(startCode);
-      if (index >= 0) {
-        const endIndex = response.indexOf('```', index + startCode.length);
-        const csv = response.substring(index + startCode.length, endIndex);
-        const tsvObjects = csvToObjects(csv);
-        console.log(`quoteStr = ${tsvObjects.csvItems}`);
-        const expectedSelection = `তোমাদের অপরাধে ও পাপে`
+      for (const startCode of csvStartCodes) {
+        const index = response.indexOf(startCode);
+        if (index >= 0) {
+          const endIndex = response.indexOf('```', index + startCode.length);
+          const csv = response.substring(index + startCode.length, endIndex);
+          const scoredTranslations:scoredTranslationType = getScoredTranslations(csv);
+          console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
+  
+          // Obtain best translations
+          const matchedTranslations = getBestTranslations(sourceText, translation, scoredTranslations);
+  
+          console.log(JSON.stringify(matchedTranslations, null, 2));
+        }
       }
-    }
   });
 })
+

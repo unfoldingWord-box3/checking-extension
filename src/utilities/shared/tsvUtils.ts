@@ -153,12 +153,28 @@ export function tsvToObjects(tsvLines:string) {
  */
 export function csvToObjects(csvLines:string) {
   const tsvLines = csvLines.replace(/,/g, '\t');
-  const csvObjects = tsvToObjects(tsvLines);
-  
-  return {
-    csvItems: csvObjects.tsvItems,
-    parseErrorMsg: csvObjects.parseErrorMsg,
-    error: csvObjects.error,
-    expectedColumns: csvObjects.expectedColumns,
-  };
+  try {
+    const csvObjects = tsvToObjects(tsvLines);
+    const csvItems = csvObjects.tsvItems;
+
+    // remove double quotes
+    for (const csvItem of csvItems) {
+      for (const key of Object.keys(csvItem)) {
+        const value = csvItem[key].trim();
+        if (value.startsWith("\"") && value.endsWith("\"")) {
+          csvItem[key] = value.substring(1, value.length - 1);
+        }
+      }
+    }
+
+    return {
+      csvItems,
+      parseErrorMsg: csvObjects.parseErrorMsg,
+      error: csvObjects.error,
+      expectedColumns: csvObjects.expectedColumns,
+    };
+  } catch (e) {
+    console.warn(`csvToObjects() - error processing data:`, e);
+    return {  }
+  }
 }

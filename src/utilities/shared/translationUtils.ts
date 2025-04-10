@@ -2,7 +2,7 @@ import * as fuzz from "fuzzball";
 // @ts-ignore
 import { AlignmentHelpers, UsfmFileConversionHelpers } from 'word-aligner-lib';
 import { AIPromptTemplate, sortByScore } from "./llmUtils";
-import { objectToCsv } from "./tsvUtils";
+import { csvToObjects, objectToCsv } from "./tsvUtils";
 // @ts-ignore
 import { groupDataHelpers, verseHelpers } from 'word-aligner-lib';
 import {
@@ -12,12 +12,12 @@ import {
   // @ts-ignore
 } from 'string-punctuation-tokenizer';
 
-export type AlignmentMapType = Record<string, Array<{
+export type AlignmentElementType = Array<{
   text: string;
   occurrences: number;
   ref: string[];
-}>>;
-
+}>;
+export type AlignmentMapType = Record<string, AlignmentElementType>;
 export type ScoredTranslationType = { sourceText: string; targetText: string; score: number };
 
 /**
@@ -76,10 +76,11 @@ export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapTyp
     for (const item of orderedList.slice(0, matchCount)) {
       const targetMatches = item?.match;
       const sourceText = item?.original;
+      const totalOccurrences = targetMatches?.reduce((acc, curr) => acc + curr?.occurrences, 0);  
       for (const match of targetMatches) {
         const targetStr = match?.text;
         const occurrences = match?.occurrences;
-        const score = item?.score + occurrences / 10;
+        const score = Math.round(item?.score * occurrences / totalOccurrences);
         topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
       }
     }
@@ -104,7 +105,7 @@ export function makeString(origLang: string | string[]) {
 export function addTranslationToMap(origLang: string|string[], targetLang: string|string[], alignmentMap_: AlignmentMapType, verseRef: string) {
   const origStr = makeString(origLang).toLowerCase();
   const targetStr = makeString(targetLang).toLowerCase();
-  const mapEntry = alignmentMap_[origStr];
+  const mapEntry:AlignmentElementType = alignmentMap_[origStr] as AlignmentElementType;
   if (mapEntry) {
     // @ts-ignore
     const pos = mapEntry.findIndex(entry => entry?.text === targetStr);
@@ -209,19 +210,19 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
  *
  * @param {string} quoteStr - The input quote for which top matches are determined.
  * @param {AlignmentMapType} alignmentMap_ - The alignment map used to find matches for the quote.
- * @return {object[]} An array of objects representing the top matches for the input quote.
+ * @return {ScoredTranslationType[]} An array of objects representing the top matches for the input quote.
  */
 export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType) {
-  const topMatches: object[] = [];
+  const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
   const matchCount = (quotes.length > 1) ? 10 : 15;
 
   for (const quote of quotes) { // for each word get best translations
-    const topMatches_: object[] = findBestMatches(quote, alignmentMap_, matchCount);
+    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, alignmentMap_, matchCount);
     const sortedTopMatches = sortByScore(topMatches_.slice(0, matchCount));
     topMatches.push(...sortedTopMatches);
   }
-  return topMatches;
+  return topMatches.filter(match => match.score > 1);
 }
 
 /**
@@ -325,4 +326,109 @@ export function tokenizeQuote(quote:string, isOrigLang = false, includePunctuati
   } else {
     return tokenize({ text: quote, includePunctuation });
   }
+}
+
+export type scoredTranslationType = Array<{ sourceText: string; translatedText: string; score: number }>;
+
+/**
+ * Parses a CSV string containing translations and their respective scores,
+ * converts the score values into numerical format, and returns the parsed data.
+ *
+ * @param {string} csvLines - The input CSV string containing translation information and scores.
+ * @return {scoredTranslationType} An array of objects representing the parsed translations and their numerical scores.
+ */
+export function getScoredTranslations(csvLines:string) {
+  const { csvItems } = csvToObjects(csvLines) as { csvItems: any[] };
+  if (csvItems) {
+    // remove double quotes
+    for (const csvItem of csvItems) {
+      const key = 'score'
+      const value = csvItem[key]
+      if (value) {
+        csvItem[key] = parseFloat(value)
+      }
+    }
+  }
+  return csvItems as scoredTranslationType;
+}
+
+type TargetScores = Array<{ targetText: string; index: number; score: number }>;
+type MatchedTranslationsType = Array<{
+  targetScores: TargetScores;
+  sourceText: string;
+  translatedText: string;
+  score: number
+}>;
+
+export function getBestTranslations(sourceText: string, targetText: string, scoredTranslations: scoredTranslationType) {
+  const sourceWords = sourceText.split(" ").map(w => w.trim());
+  const targetWords = targetText.split(" ").map(w => w.trim());
+
+  const matchedTranslations: MatchedTranslationsType = scoredTranslations.map(t => {
+    const targetScores: TargetScores = [];
+    const targetTextSplit: string[] = t.translatedText?.split(" ") || [];
+    const initialScore = t.score;
+    targetWords.forEach((targetWord, index) => {
+      const score = fuzz.ratio(targetWord, t.translatedText);
+      targetScores.push({ targetText: targetWord, index, score: score / 100 * initialScore });
+    });
+    return {
+      ...t,
+      targetScores: targetScores.filter(ts => ts.score > 0.5),
+    };
+  })
+  
+  // get probability that word is in translation
+  const wordsInCurrentTranslation:{ targetWord: string, score: number }[] = []
+  for (let i = 0; i < matchedTranslations.length; i++) {
+    const mt = matchedTranslations[i];
+    for (let j = 0; j < mt.targetScores.length; j++) {
+      const ts = mt.targetScores[j];
+      const targetWord = ts.targetText;
+      const score = ts.score;
+      const index = ts.index;
+      let wordScores = wordsInCurrentTranslation[index];
+      if (!wordScores) {
+        wordScores = { targetWord, score };
+      } else if (wordScores.score < score) {
+        wordScores.score = score;
+      }
+      wordsInCurrentTranslation[index] = wordScores;
+    }
+  }
+  
+  console.log(`changedCurrentCheck - wordsInCurrentTranslation`, wordsInCurrentTranslation);
+  
+  // const translations: Record<string, any> = {};
+  //
+  // sourceWords.forEach(sourceWord => {
+  //   // Check provided translations first
+  //   const candidates = scoredTranslations.filter(t => t.sourceText.replace(/[\u0300-\u036f]/g, '') === sourceWord.replace(/[\u0300-\u036f]/g, ''));
+  //   if (candidates.length > 0) {
+  //     // Take highest scored candidate from given translations
+  //     const bestCandidate = candidates.sort((a, b) => b.score - a.score)[0];
+  //     translations[sourceWord] = {
+  //       translatedText: bestCandidate.translatedText,
+  //       confidence: bestCandidate.score,
+  //       method: 'provided'
+  //     };
+  //   } else {
+  //     // Find best fuzzy match from target words if no direct match found
+  //     const fuzzyResults = targetWords.map(targetWord => ({
+  //       word: targetWord,
+  //       score: fuzz.ratio(sourceWord, targetWord)
+  //     }));
+  //
+  //     const fuzzyMatches = fuzzyResults.sort((a, b) => b.score - a.score);
+  //     const bestFuzzyMatch = fuzzyMatches[0];
+  //
+  //     translations[sourceWord] = {
+  //       translatedText: bestFuzzyMatch.word,
+  //       confidence: bestFuzzyMatch.score,
+  //       method: 'fuzzy'
+  //     };
+  //   }
+  // });
+  //
+  // return translations;
 }
