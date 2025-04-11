@@ -80,12 +80,12 @@ export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapTyp
       for (const match of targetMatches) {
         const targetStr = match?.text;
         const occurrences = match?.occurrences;
-        const score = Math.round(item?.score * occurrences / totalOccurrences);
+        const score = item?.score + occurrences / totalOccurrences;
         topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
       }
     }
   }
-  return topMatches.slice(0, matchCount);
+  return topMatches;
 }
 
 export function makeString(origLang: string | string[]) {
@@ -219,7 +219,14 @@ export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: Alignment
 
   for (const quote of quotes) { // for each word get best translations
     const topMatches_: ScoredTranslationType[] = findBestMatches(quote, alignmentMap_, matchCount);
-    const sortedTopMatches = sortByScore(topMatches_.slice(0, matchCount));
+    const sortedTopMatches = sortByScore(topMatches_).slice(0, matchCount);
+    const highScore = sortedTopMatches[0]?.score;
+    // rescale so top match is a 1000
+    const factor = 1000 / highScore;
+    for (const topMatch of sortedTopMatches) {
+      const score = topMatch.score * factor;
+      topMatch.score = Math.round(score) / 10;
+    }
     topMatches.push(...sortedTopMatches);
   }
   return topMatches.filter(match => match.score > 1);
