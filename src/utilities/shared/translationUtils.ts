@@ -80,7 +80,7 @@ export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapTyp
       for (const match of targetMatches) {
         const targetStr = match?.text;
         const occurrences = match?.occurrences;
-        const score = item?.score + occurrences / totalOccurrences;
+        const score = Math.round(item?.score) + occurrences / totalOccurrences;
         topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
       }
     }
@@ -222,10 +222,11 @@ export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: Alignment
     const sortedTopMatches = sortByScore(topMatches_).slice(0, matchCount);
     const highScore = sortedTopMatches[0]?.score;
     // rescale so top match is a 1000
-    const factor = 1000 / highScore;
+    const factor = 100 / Math.round(highScore);
     for (const topMatch of sortedTopMatches) {
-      const score = topMatch.score * factor;
-      topMatch.score = Math.round(score) / 10;
+      const score = Math.floor(topMatch.score)
+      const occurrences = topMatch.score - score;
+      topMatch.score = Math.round((score * factor + occurrences) * 1000) / 1000;
     }
     topMatches.push(...sortedTopMatches);
   }
@@ -367,75 +368,153 @@ type MatchedTranslationsType = Array<{
   score: number
 }>;
 
-export function getBestTranslations(sourceText: string, targetText: string, scoredTranslations: scoredTranslationType) {
-  const sourceWords = sourceText.split(" ").map(w => w.trim());
-  const targetWords = targetText.split(" ").map(w => w.trim());
+export function highlightBestWordsInTranslation(sourceText: string, targetText: string, scoredTranslations: scoredTranslationType) {
+  const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
+  const targetWords = targetText.split(" ").map(w => normalizer(w).trim());
+  let highlightedWords:{ targetText: string, sourceText: string, index: number, score: number }[] = []
+  const dupeCheck: Record<string, number[]> = {};
 
-  const matchedTranslations: MatchedTranslationsType = scoredTranslations.map(t => {
-    const targetScores: TargetScores = [];
-    const targetTextSplit: string[] = t.translatedText?.split(" ") || [];
+  for (let tIndex = 0; tIndex < scoredTranslations.length; tIndex++) {
+    const t = scoredTranslations[tIndex];
+    const targetTextSplit = normalizer(t.translatedText)?.split(" ") || [];
     const initialScore = t.score;
-    targetWords.forEach((targetWord, index) => {
-      const score = fuzz.ratio(targetWord, t.translatedText);
-      targetScores.push({ targetText: targetWord, index, score: score / 100 * initialScore });
-    });
-    return {
-      ...t,
-      targetScores: targetScores.filter(ts => ts.score > 0.5),
-    };
-  })
-  
-  // get probability that word is in translation
-  const wordsInCurrentTranslation:{ targetWord: string, score: number }[] = []
-  for (let i = 0; i < matchedTranslations.length; i++) {
-    const mt = matchedTranslations[i];
-    for (let j = 0; j < mt.targetScores.length; j++) {
-      const ts = mt.targetScores[j];
-      const targetWord = ts.targetText;
-      const score = ts.score;
-      const index = ts.index;
-      let wordScores = wordsInCurrentTranslation[index];
-      if (!wordScores) {
-        wordScores = { targetWord, score };
-      } else if (wordScores.score < score) {
-        wordScores.score = score;
+    for (let index = 0; index < targetWords.length; index++) {
+      const targetWord = targetWords[index];
+      for (let singleTargetWordIndex = 0; singleTargetWordIndex < targetTextSplit.length; singleTargetWordIndex++) {
+        const singleTargetWord = targetTextSplit[singleTargetWordIndex];
+        
+        // get best match to targetWord
+        const targetFuzzScore = fuzz.ratio(singleTargetWord, targetWord);
+        if (!(targetFuzzScore > 1)) {
+          continue; // if no match, then skip
+        }
+
+        // get best match to sourceWord
+        let highestSourceText = '';
+        let highSourceFuzzScore = 0;
+        const sourceTextToMatch = normalizer(t.sourceText);
+        for (let i = 0; i < sourceWords.length; i++) {
+          const sourceWord = sourceWords[i];
+          const sourceFuzzScore = fuzz.ratio(sourceTextToMatch, sourceWord);
+          if (sourceFuzzScore > highSourceFuzzScore) {
+            highestSourceText = sourceWord;
+            highSourceFuzzScore = sourceFuzzScore;
+          }
+        }
+        
+        const combinedScore = (targetFuzzScore / 100) * (highSourceFuzzScore / 100) * initialScore;
+        if (!(highSourceFuzzScore > 1)) {
+          continue; // if no match, then skip
+        }
+        
+        let saveTarget = !highlightedWords[index];
+        if (!saveTarget) { // if word already found, see if higher score
+          const currentScore = highlightedWords[index].score;
+          if (currentScore < combinedScore) { // if new score is a better match, replace it
+            saveTarget = true;
+          }
+        }
+        if (saveTarget) {
+          let previousMatchBetter = false;
+          for (let i = 0; i <index; i++) {
+            if (highlightedWords[i]) {
+              const previousScore = highlightedWords[i].score
+              if (highestSourceText === highlightedWords[i].sourceText) {
+                if (previousScore < combinedScore) {
+                  delete highlightedWords[i]; // if current match better, remove previous
+                } else {
+                  previousMatchBetter = true;
+                  break
+                }
+              }
+            }
+          }
+          if (!previousMatchBetter) { // this is better match
+            highlightedWords[index] = {
+              targetText: targetWord,
+              sourceText: highestSourceText,
+              index,
+              score: combinedScore,
+            };
+          }
+        }
       }
-      wordsInCurrentTranslation[index] = wordScores;
     }
   }
   
-  console.log(`changedCurrentCheck - wordsInCurrentTranslation`, wordsInCurrentTranslation);
-  
-  // const translations: Record<string, any> = {};
-  //
-  // sourceWords.forEach(sourceWord => {
-  //   // Check provided translations first
-  //   const candidates = scoredTranslations.filter(t => t.sourceText.replace(/[\u0300-\u036f]/g, '') === sourceWord.replace(/[\u0300-\u036f]/g, ''));
-  //   if (candidates.length > 0) {
-  //     // Take highest scored candidate from given translations
-  //     const bestCandidate = candidates.sort((a, b) => b.score - a.score)[0];
-  //     translations[sourceWord] = {
-  //       translatedText: bestCandidate.translatedText,
-  //       confidence: bestCandidate.score,
-  //       method: 'provided'
-  //     };
-  //   } else {
-  //     // Find best fuzzy match from target words if no direct match found
-  //     const fuzzyResults = targetWords.map(targetWord => ({
-  //       word: targetWord,
-  //       score: fuzz.ratio(sourceWord, targetWord)
-  //     }));
-  //
-  //     const fuzzyMatches = fuzzyResults.sort((a, b) => b.score - a.score);
-  //     const bestFuzzyMatch = fuzzyMatches[0];
-  //
-  //     translations[sourceWord] = {
-  //       translatedText: bestFuzzyMatch.word,
-  //       confidence: bestFuzzyMatch.score,
-  //       method: 'fuzzy'
-  //     };
-  //   }
-  // });
-  //
-  // return translations;
+  highlightedWords = highlightedWords.filter(item => item)
+
+    // get count of each word
+  for (let i = 0; i < highlightedWords.length; i++) {
+    const targetWord = highlightedWords[i].targetText;
+    if (dupeCheck[targetWord]) {
+      dupeCheck[targetWord].push(i);
+    } else {
+      dupeCheck[targetWord] = [i];
+    }
+  }
+
+  // double check duplicated translated words
+  for (const targetWord in dupeCheck) {
+    const dupeList = dupeCheck[targetWord];
+
+    if (dupeList.length > 1) {
+      // now see if source words are also duplicated
+      for (let i = 0; i < dupeList.length; i++) {
+        const index = dupeList[i];
+        if (!highlightedWords[index]) { // if already removed, skip
+          continue;
+        }
+        const firstSourceWord = highlightedWords[index].sourceText;
+        let sourceDuplicateFound = [];
+        for (let j = i + 1; j < dupeList.length; j++) {
+          const secondIndex = dupeList[j];
+          const secondSourceWord = highlightedWords[secondIndex].sourceText;
+          if (firstSourceWord === secondSourceWord) {
+            sourceDuplicateFound.push(secondIndex);
+          }
+        }
+
+        if ((dupeList.length > 1) && (sourceDuplicateFound.length < 1)) {
+          // if target duplicated, but source is not, remove extras
+          for (const dupeIndex of sourceDuplicateFound) {
+            const firstDupeIndex = index;
+            const secondDupeIndex = dupeIndex;
+            let removeIndex = secondDupeIndex;
+            if (highlightedWords[secondDupeIndex].score > highlightedWords[firstDupeIndex].score) {
+              removeIndex = firstDupeIndex;
+            }
+            delete highlightedWords[removeIndex];
+          }
+        }
+      }
+    }
+  }
+
+  const averageScore = highlightedWords.reduce((sum, word) => sum + word.score, 0) / highlightedWords.length;
+
+  // Sort highlightWords by index in ascending order
+  let highlightedWords_ = highlightedWords.sort((a, b) => a.index - b.index);
+
+  if (averageScore < 60) {
+    // limit to words above average score
+    highlightedWords_ = highlightedWords_.filter(word => word.score > averageScore);
+    console.log(`changedCurrentCheck - highlightWords_`, highlightedWords_);
+  }
+
+  const foundHighlightedWords = [];
+  for (let i = 0; i < targetWords.length; i++) {
+    const targetWord = targetWords[i];
+    const pos = highlightedWords_.findIndex(w => (w.targetText === targetWord))
+    if (pos >= 0) {
+      const highlightedWord = highlightedWords_[pos];
+      const highlightedWord_ = { 
+        ...highlightedWord,
+        index: i,
+      };
+      foundHighlightedWords.push(highlightedWord_)
+    }
+  }
+
+  return foundHighlightedWords;
 }

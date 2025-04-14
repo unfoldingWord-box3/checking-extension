@@ -16,7 +16,7 @@ import {
   AlignmentMapType,
   buildAiPrompt,
   cleanupVerse,
-  getBestTranslations,
+  highlightBestWordsInTranslation,
   getScoredTranslations,
   getTopMatchesForQuote,
   normalize,
@@ -141,16 +141,15 @@ suite('Parse Data', () => {
 
 const response = `\`\`\`csv
 translatedText,sourceText,score
-আর,καὶ,189.2
-তোমরা,ὑμῶν,107.6
-তোমাদের,ὑμῶন,142.3
-অপরাধে,παραπτώμασιν,100.1
-ও,καὶ,249.7
-পাপে,ἁμαρτίαις,100.3
-\`\`\`
-`;
+আর,καὶ,100.168
+তোমরা,ὑμῶν,99.017
+তোমাদের,ὑμῶন,99.76
+অপরাধে,παραπτώμασιν,99.677
+ও,καὶ,100.282
+পাপে,ἁμαρτίαις,100.333
+\`\`\``;
 
-const csvStartCodes = [
+const csvStartString = [
   '```csv\n',
   '```\n'
 ];
@@ -178,7 +177,7 @@ suite('AI', () => {
     })
 
     test('Parse AI Response', () => {
-      for (const startCode of csvStartCodes) {
+      for (const startCode of csvStartString) { // try different possibilities for the csv start in md
         const index = response.indexOf(startCode);
         if (index >= 0) {
           const endIndex = response.indexOf('```', index + startCode.length);
@@ -187,9 +186,11 @@ suite('AI', () => {
           console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
   
           // Obtain best translations
-          const matchedTranslations = getBestTranslations(sourceText, translation, scoredTranslations);
+          const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
   
-          console.log(JSON.stringify(matchedTranslations, null, 2));
+          // map to ordered string
+          const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
+          console.log(highlightedText);
         }
       }
   });
