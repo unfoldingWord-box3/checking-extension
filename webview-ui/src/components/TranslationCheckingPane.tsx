@@ -186,7 +186,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
-      findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible);
+      const translations = '' // TODO get full translated verse
+      findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible, translations);
 
       // callLmStudioAPI(prompt).then(response => {
       //   if (response) {

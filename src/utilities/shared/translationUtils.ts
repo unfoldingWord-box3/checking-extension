@@ -1,23 +1,17 @@
 import * as fuzz from "fuzzball";
 // @ts-ignore
-import { AlignmentHelpers, UsfmFileConversionHelpers } from 'word-aligner-lib';
+import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
 import { AIPromptTemplate, sortByScore } from "./llmUtils";
 import { csvToObjects, objectToCsv } from "./tsvUtils";
 // @ts-ignore
-import { groupDataHelpers, verseHelpers } from 'word-aligner-lib';
-import {
-  normalizer,
-  tokenize,
-  tokenizeOrigLang,
-  // @ts-ignore
-} from 'string-punctuation-tokenizer';
+import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-tokenizer";
 
-export type AlignmentElementType = Array<{
+export type AlignmentElementType = {
   text: string;
   occurrences: number;
   ref: string[];
-}>;
-export type AlignmentMapType = Record<string, AlignmentElementType>;
+};
+export type AlignmentMapType = Record<string, AlignmentElementType[]>;
 export type ScoredTranslationType = { sourceText: string; targetText: string; score: number };
 
 /**
@@ -47,24 +41,41 @@ export function addOriginalAlignment(origLang: any[], alignment: any, targetLang
  * based on a scoring mechanism. The function returns a list of the top matches with their
  * corresponding source text, target text, and calculated score.
  *
- * @param {string} quoteStr - The input quote string to be compared against the alignment map.
+ * @param {string} quoteWord - The input quote string to be compared against the alignment map.
  * @param {AlignmentMapType} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
  * @param {number} matchCount - The maximum number of best matches to return.
  *
  * @return {ScoredTranslationType[]} - A list of top matches containing the source text, target text, and calculated score.
  */
-export function findBestMatches(quoteStr: string, alignmentMap_: AlignmentMapType, matchCount: number) {
-  type ScoredMatchType = Record<string, { score: number; match: AlignmentMapType[string] }>;
+export function findBestMatches(quoteWord: string, alignmentMap_: AlignmentMapType, matchCount: number, translation: string) {
+  type ScoredMatchType = Record<string, { score: number; match: AlignmentMapType[string]; bestTargetMatch: AlignmentElementType|null }>;
   const orderedMatches: ScoredMatchType = {};
   const topMatches: ScoredTranslationType[] = [];
+  const translationWords = tokenize({ text: translation.toLowerCase(), includePunctuation: false, normalize: true })
+  quoteWord = normalizer(quoteWord)
 
   const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
   if (originalWords?.length) {
     for (const originalStr of originalWords) {
-      const score = fuzz.ratio(originalStr, quoteStr);
+      const score = fuzz.ratio(originalStr, quoteWord);
       // console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
-      if (score) {
-        orderedMatches[originalStr] = { score, match: alignmentMap_[originalStr] };
+      const originalThreshold = 70;
+      if (score > originalThreshold) {
+        let bestTargetMatchScore = 0;
+        let bestTargetMatch:AlignmentElementType|null = null;
+        for (const translationWord of translationWords) {
+          const targetMatches:AlignmentElementType[] = alignmentMap_[originalStr];
+          for (const match of targetMatches || []) {
+            const matchText = match?.text;
+            const targetScore = fuzz.ratio(matchText, translationWord);
+            if (targetScore > bestTargetMatchScore) {
+              bestTargetMatch = match;
+              bestTargetMatchScore = targetScore;
+            }
+          }
+        }
+        const targetScore = score * bestTargetMatchScore / 100; // combine scores
+        orderedMatches[originalStr] = { score: targetScore, bestTargetMatch, match: alignmentMap_[originalStr] };
       }
     }
     const orderedList = Object.entries(orderedMatches)
@@ -105,7 +116,7 @@ export function makeString(origLang: string | string[]) {
 export function addTranslationToMap(origLang: string|string[], targetLang: string|string[], alignmentMap_: AlignmentMapType, verseRef: string) {
   const origStr = makeString(origLang).toLowerCase();
   const targetStr = makeString(targetLang).toLowerCase();
-  const mapEntry:AlignmentElementType = alignmentMap_[origStr] as AlignmentElementType;
+  const mapEntry:AlignmentElementType[] = alignmentMap_[origStr] as AlignmentElementType[];
   if (mapEntry) {
     // @ts-ignore
     const pos = mapEntry.findIndex(entry => entry?.text === targetStr);
@@ -206,19 +217,22 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
 }
 
 /**
- * Finds and returns the top matches for a given quote based on an alignment map.
+ * Finds and returns the top translation matches for each word in a given quote based on an alignment map.
+ * Uses scoring to identify the best matches and rescales scores to ensure consistency.
  *
- * @param {string} quoteStr - The input quote for which top matches are determined.
- * @param {AlignmentMapType} alignmentMap_ - The alignment map used to find matches for the quote.
- * @return {ScoredTranslationType[]} An array of objects representing the top matches for the input quote.
+ * @param {string} quoteStr - The input quote string, which may contain multiple words, to find top matches for.
+ * @param {AlignmentMapType} alignmentMap_ - The alignment map used to match source text to target translations.
+ * @param {string} translation
+ * @return {ScoredTranslationType[]} An array of objects representing the top matches, each containing the source text,
+ *                                   target text, and a calculated score.
  */
-export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType) {
+export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string) {
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
   const matchCount = (quotes.length > 1) ? 10 : 15;
 
   for (const quote of quotes) { // for each word get best translations
-    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, alignmentMap_, matchCount);
+    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, alignmentMap_, matchCount, translation);
     const sortedTopMatches = sortByScore(topMatches_).slice(0, matchCount);
     const highScore = sortedTopMatches[0]?.score;
     // rescale so top match is a 1000
@@ -260,7 +274,7 @@ export function cleanupVerse(verseText:string) {
  *                               verse text for the AI prompt.
  * @return {string} A prompt to pass to AI to get the best translation.
  */
-export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object) {
+export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object, translation: string) {
   if (contextId) {
     const quoteStr = normalize(getQuoteStr(contextId));
     // @ts-ignore
@@ -269,7 +283,7 @@ export function findAlignmentSuggestions(contextId: object, alignmentMap_: Align
     verseText = cleanupVerse(verseText);
 
     if (quoteStr) {
-      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap_);
+      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap_, translation);
       const prompt = buildAiPrompt(topMatches, verseText, quoteStr);
       return prompt;
     }
@@ -354,6 +368,8 @@ export function getScoredTranslations(csvLines:string) {
       const value = csvItem[key]
       if (value) {
         csvItem[key] = parseFloat(value)
+      } else if (typeof value === 'string') {
+        csvItem[key] = normalizer(value)
       }
     }
   }
@@ -376,7 +392,7 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
 
   for (let tIndex = 0; tIndex < scoredTranslations.length; tIndex++) {
     const t = scoredTranslations[tIndex];
-    const targetTextSplit = normalizer(t.translatedText)?.split(" ") || [];
+    const targetTextSplit = (t.translatedText)?.split(" ") || [];
     const initialScore = t.score;
     for (let index = 0; index < targetWords.length; index++) {
       const targetWord = targetWords[index];
@@ -392,7 +408,7 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
         // get best match to sourceWord
         let highestSourceText = '';
         let highSourceFuzzScore = 0;
-        const sourceTextToMatch = normalizer(t.sourceText);
+        const sourceTextToMatch = t.sourceText;
         for (let i = 0; i < sourceWords.length; i++) {
           const sourceWord = sourceWords[i];
           const sourceFuzzScore = fuzz.ratio(sourceTextToMatch, sourceWord);

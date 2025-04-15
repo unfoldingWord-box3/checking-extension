@@ -125,7 +125,7 @@ suite('Parse Data', () => {
     console.log(`alignmentCount = ${alignmentCount}`)
     assert.ok(alignmentCount > 1);
     const outputFolder = path.join(projectFolder, 'translations.json')
-    fs.outputJsonSync(outputFolder, alignmentMap_);
+    fs.outputJsonSync(outputFolder, alignmentMap_, { spaces: 2});
   });
 
   test.skip('Recursively Process all OT usfms and checks and extract translations From Files', () => {
@@ -154,9 +154,10 @@ const csvStartString = [
   '```\n'
 ];
 
+// from tN abstract nouns - Eph 2:1 - ULT - in your trespasses and sins
 const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
-const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 
 suite('AI', () => {
@@ -167,9 +168,11 @@ suite('AI', () => {
     test('Generate AI Prompt', () => {
       const translationsPath = path.join(projectFolder, 'translations.json');
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
-      const quoteStr = normalize(`τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`)
+      const quoteStr = normalize(sourceText)
+      const translation_ = normalize(translation)
+      // assert.ok(quoteStr === sourceText);
       const verseText = cleanupVerse(`আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে, `)
-      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap);
+      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
       const prompt = buildAiPrompt(topMatches, verseText, quoteStr)
       const promptPath = path.join(projectFolder, 'prompt.txt')
       fs.outputFileSync(promptPath, prompt, "UTF-8");
@@ -191,8 +194,17 @@ suite('AI', () => {
           // map to ordered string
           const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
           console.log(highlightedText);
+
+          const expectedWords = expectedSelection.split(' ').map(word => normalize(word));
+          for (let i = 0; i < expectedWords.length; i++) {
+            const expectedWord = expectedWords[i]
+            const highlightedWord = highlightedWords[i].targetText
+            assert.ok(expectedWord === highlightedWord);
+          }
+          assert.ok(highlightedText === normalize(expectedSelection));
         }
       }
+      assert.ok(false); // csv not found
   });
 })
 
