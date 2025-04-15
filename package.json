@@ -203,6 +203,7 @@
     "lodash.clonedeep": "^4.5.0",
     "original-fs": "^1.2.0",
     "ospath": "^1.2.2",
+    "prop-types": "^15.8.1",
     "string-punctuation-tokenizer": "^2.2.0",
     "tc-source-content-updater": "1.4.31",
     "tsv-groupdata-parser": "^1.1.1",

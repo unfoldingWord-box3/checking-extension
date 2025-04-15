@@ -1,11 +1,11 @@
-// @ts-ignore
-import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
 import { AIPromptTemplate, sortByScore } from "./llmUtils";
 import { csvToObjects, objectToCsv } from "./tsvUtils";
 // @ts-ignore
 import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-tokenizer";
 // @ts-ignore
 import * as fuzz from "fuzzball";
+// @ts-ignore
+import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
 
 export type AlignmentElementType = {
   text: string;
