@@ -30,7 +30,7 @@ jobs:
       - run: yarn --version
 
       - name: Install pnpm
-        run: npm install --global pnpm
+        run: npm install --global pnpm@9.5.0
       - run: pnpm --version
 
       - name: Install vsce
