@@ -204,6 +204,25 @@ export function getQuoteStr(contextId: object) {
 }
 
 /**
+ * Converts an array of objects containing translation matches into a CSV format string.
+ *
+ * @param {object[]} topMatches - An array of objects representing translation matches,
+ * each containing keys such as "score", "targetText", and "sourceText".
+ * @return {string} A string containing the translation matches in CSV format.
+ */
+export function getTranslationCsv(topMatches: object[]) {
+  // build translation tables as csv
+  const headers = [
+    { key: "score" },
+    { key: "targetText" },
+    { key: "sourceText" },
+  ];
+  const translationCsv = objectToCsv(headers, topMatches);
+  // console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
+  return translationCsv;
+}
+
+/**
  * Generates an AI prompt by formatting translation matches into a CSV
  * and replacing placeholders in a template string.
  *
@@ -216,17 +235,10 @@ export function getQuoteStr(contextId: object) {
  * @return {string} The constructed AI prompt with placeholders replaced by the provided parameters.
  */
 export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: string) {
-  // build translation tables as csv
-  const headers = [
-    { key: "score" },
-    { key: "targetText" },
-    { key: "sourceText" },
-  ];
-  const orderedTsv = objectToCsv(headers, topMatches);
-  // console.log(`changedCurrentCheck - sortedTopMatches`, orderedTsv);
+  const translationCsv = getTranslationCsv(topMatches);
 
   // build AI prompt
-  const prompt = AIPromptTemplate.replaceAll("{translationCsv}", orderedTsv.join("\n"))
+  const prompt = AIPromptTemplate.replaceAll("{translationCsv}", translationCsv.join("\n"))
     .replaceAll("{translatedText}", verseText)
     .replaceAll("{sourceWord}", quoteStr);
   console.log(`changedCurrentCheck - prompt`, prompt);
@@ -388,30 +400,48 @@ export function tokenizeQuote(quote:string, isOrigLang = false, includePunctuati
   }
 }
 
-export type scoredTranslationType = Array<{ sourceText: string; translatedText: string; score: number }>;
+export type scoredTranslationForPromptType = Array<{ sourceText: string; translatedText: string; score: number }>;
+export type scoredTranslationType = Array<{ sourceText: string; targetText: string; score: number }>;
 
 /**
  * Parses a CSV string containing translations and their respective scores,
  * converts the score values into numerical format, and returns the parsed data.
  *
  * @param {string} csvLines - The input CSV string containing translation information and scores.
- * @return {scoredTranslationType} An array of objects representing the parsed translations and their numerical scores.
+ * @return {Object} An array of objects representing the parsed translations and their numerical scores.
  */
 export function getScoredTranslations(csvLines:string) {
   const { csvItems } = csvToObjects(csvLines) as { csvItems: any[] };
   if (csvItems) {
     // remove double quotes
     for (const csvItem of csvItems) {
-      const key = 'score'
-      const value = csvItem[key]
-      if (value) {
-        csvItem[key] = parseFloat(value)
-      } else if (typeof value === 'string') {
-        csvItem[key] = normalizer(value)
+      for (const key of Object.keys(csvItem)) {
+        const value = csvItem[key]
+        if (key === 'score') {
+          csvItem[key] = parseFloat(value)
+        } else if (typeof value === 'string') {
+          csvItem[key] = normalizer(value)
+        }
       }
     }
   }
-  return csvItems as scoredTranslationType;
+  return csvItems as Object;
+}
+
+/**
+ * Remaps scored translations into a specific prompt format by restructuring
+ * the objects within the array to only include score, translatedText, and sourceText.
+ *
+ * @param {Array<scoredTranslationType>} scoredTranslations - An array of objects containing translation data with their respective scores.
+ * @return {Array<Object>} An array of objects containing only the score, translatedText, and sourceText properties.
+ */
+export function remapScoredTranslationsToPromptFormat(scoredTranslations:scoredTranslationType): scoredTranslationForPromptType {
+  const scoredTranslations_ = scoredTranslations.map(t => ({
+    score: t.score,
+    translatedText: t.targetText,
+    sourceText: t.sourceText,
+  }));
+  return scoredTranslations_
 }
 
 type TargetScores = Array<{ targetText: string; index: number; score: number }>;
@@ -422,7 +452,7 @@ type MatchedTranslationsType = Array<{
   score: number
 }>;
 
-export function highlightBestWordsInTranslation(sourceText: string, targetText: string, scoredTranslations: scoredTranslationType) {
+export function highlightBestWordsInTranslation(sourceText: string, targetText: string, scoredTranslations: scoredTranslationForPromptType) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
   const targetWords = targetText.split(" ").map(w => normalizer(w).trim());
   let highlightedWords:{ targetText: string, sourceText: string, index: number, score: number }[] = []
@@ -500,57 +530,66 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
 
     // get count of each word
   for (let i = 0; i < highlightedWords.length; i++) {
-    const targetWord = highlightedWords[i].targetText;
-    if (dupeCheck[targetWord]) {
-      dupeCheck[targetWord].push(i);
+    const sourceText = highlightedWords[i].sourceText;
+    if (dupeCheck[sourceText]) {
+      dupeCheck[sourceText].push(i);
     } else {
-      dupeCheck[targetWord] = [i];
+      dupeCheck[sourceText] = [i];
     }
   }
 
   // double check duplicated translated words
-  for (const targetWord in dupeCheck) {
-    const dupeList = dupeCheck[targetWord];
+  for (const sourceText in dupeCheck) {
+    const dupeList = dupeCheck[sourceText];
 
     if (dupeList.length > 1) {
-      // now see if source words are also duplicated
+      // now see if target words are also duplicated
       for (let i = 0; i < dupeList.length; i++) {
         const index = dupeList[i];
         if (!highlightedWords[index]) { // if already removed, skip
           continue;
         }
-        const firstSourceWord = highlightedWords[index].sourceText;
-        let sourceDuplicateFound = [];
+        const firstTargetWord = highlightedWords[index].targetText;
+        let targetDuplicateFound = [];
         for (let j = i + 1; j < dupeList.length; j++) {
           const secondIndex = dupeList[j];
-          const secondSourceWord = highlightedWords[secondIndex].sourceText;
-          if (firstSourceWord === secondSourceWord) {
-            sourceDuplicateFound.push(secondIndex);
+          const secondTargetWord = highlightedWords[secondIndex].targetText;
+          if (firstTargetWord === secondTargetWord) {
+            targetDuplicateFound.push(secondIndex);
           }
         }
 
-        if ((dupeList.length > 1) && (sourceDuplicateFound.length < 1)) {
-          // if target duplicated, but source is not, remove extras
-          for (const dupeIndex of sourceDuplicateFound) {
-            const firstDupeIndex = index;
-            const secondDupeIndex = dupeIndex;
-            let removeIndex = secondDupeIndex;
-            if (highlightedWords[secondDupeIndex].score > highlightedWords[firstDupeIndex].score) {
-              removeIndex = firstDupeIndex;
+        if ((dupeList.length > 1) && (targetDuplicateFound.length < 1)) {
+          // if source duplicated, but target is not, remove all but highest match
+          let highIndex = -1
+          let highScore = -1
+          for (const dupeIndex of dupeList) {
+            const currentScore = highlightedWords[dupeIndex]?.score
+            if (currentScore > highScore) {
+              highIndex = dupeIndex;
+              highScore = currentScore;
             }
-            delete highlightedWords[removeIndex];
           }
+
+          // delete worse matches
+          for (const dupeIndex of dupeList) {
+            if (dupeIndex !== highIndex){
+              delete highlightedWords[dupeIndex];
+            }
+          }
+          break;
         }
       }
     }
   }
 
-  const averageScore = highlightedWords.reduce((sum, word) => sum + word.score, 0) / highlightedWords.length;
+  let highlightedWords_ = highlightedWords.filter(word => word);
+  const averageScore = highlightedWords_.reduce((sum, word) => sum + word.score, 0) / highlightedWords.length;
 
   // Sort highlightWords by index in ascending order
-  let highlightedWords_ = highlightedWords.sort((a, b) => a.index - b.index);
+  highlightedWords_ = highlightedWords_.sort((a, b) => a.index - b.index);
 
-  if (averageScore < 60) {
+  if (averageScore < 80) {
     // limit to words above average score
     highlightedWords_ = highlightedWords_.filter(word => word.score > averageScore);
     console.log(`changedCurrentCheck - highlightWords_`, highlightedWords_);

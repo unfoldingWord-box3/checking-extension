@@ -21,6 +21,9 @@ import {
   getTopMatchesForQuote,
   normalize,
   scoredTranslationType,
+  getTranslationCsv,
+  remapScoredTranslationsToPromptFormat,
+  scoredTranslationForPromptType,
 } from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
 import { csvToObjects } from "../utilities/shared/tsvUtils";
@@ -141,12 +144,12 @@ suite('Parse Data', () => {
 
 const response = `\`\`\`csv
 translatedText,sourceText,score
-আর,καὶ,100.168
-তোমরা,ὑμῶν,99.017
-তোমাদের,ὑμῶন,99.76
-অপরাধে,παραπτώμασιν,99.677
-ও,καὶ,100.282
-পাপে,ἁμαρτίαις,100.333
+আর,καὶ,100.7063
+তোমরা,τοῖς,100.0013
+তোমাদের,τοῖς,100.0041
+অপরাধে,παραπτώμασιν,100.5
+ও,καὶ,100.959
+পাপে,ἁμαρτίαις,100.1765
 \`\`\``;
 
 const csvStartString = [
@@ -159,6 +162,7 @@ const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
 const normalizedTranslation = "আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে"
 const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+const rawOriginalVerse = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে, `;
 const normalizedSource = "τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν"
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
@@ -173,9 +177,9 @@ suite('AI', () => {
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
       const quoteStr = normalize(sourceText)
       const translation_ = normalize(translation)
-      const expectedSelection_ = normalize(expectedSelection)
+      // const expectedSelection_ = normalize(expectedSelection)
       // assert.ok(quoteStr === sourceText);
-      const verseText = cleanupVerse(`আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে, `)
+      const verseText = cleanupVerse(rawOriginalVerse)
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
       const prompt = buildAiPrompt(topMatches, verseText, quoteStr)
       const promptPath = path.join(projectFolder, 'prompt.txt')
@@ -183,19 +187,48 @@ suite('AI', () => {
       console.log(prompt)
     })
 
-    test.skip('Parse AI Response', () => {
+    test('Parse top Translation Matches', () => {
+      const translationsPath = path.join(projectFolder, 'translations.json');
+      const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
+      const quoteStr = normalize(sourceText)
+      const translation_ = normalize(translation)
+      // const expectedSelection_ = normalize(expectedSelection)
+      // assert.ok(quoteStr === sourceText);
+      const verseText = cleanupVerse(rawOriginalVerse)
+      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
+      const translationCsv = getTranslationCsv(topMatches);
+      const scoredTranslations = getScoredTranslations(translationCsv.join('\n'))  as scoredTranslationType
+      const translations = remapScoredTranslationsToPromptFormat(scoredTranslations)
+
+      const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, translations);
+
+      // map to string
+      const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
+      console.log(highlightedText);
+
+      const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
+      for (let i = 0; i < expectedWords.length; i++) {
+        const expectedWord = expectedWords[i]
+        const highlightedWord = highlightedWords[i].targetText
+        assert.ok(expectedWord === highlightedWord);
+      }
+      assert.ok(highlightedText === normalize(normalizedExpectedSelection));
+    });
+    
+    test('Parse AI Response', () => {
+      let foundCsv = false
       for (const startCode of csvStartString) { // try different possibilities for the csv start in md
         const index = response.indexOf(startCode);
         if (index >= 0) {
           const endIndex = response.indexOf('```', index + startCode.length);
           const csv = response.substring(index + startCode.length, endIndex);
-          const scoredTranslations:scoredTranslationType = getScoredTranslations(csv);
+          const scoredTranslations = getScoredTranslations(csv) as scoredTranslationForPromptType;
           console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
   
           // Obtain best translations
           const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
   
-          // map to ordered string
+          // map to string
           const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
           console.log(highlightedText);
 
@@ -206,9 +239,11 @@ suite('AI', () => {
             assert.ok(expectedWord === highlightedWord);
           }
           assert.ok(highlightedText === normalize(normalizedExpectedSelection));
+          foundCsv = true
+          break;
         }
       }
-      assert.ok(false); // csv not found
+      assert.ok(foundCsv);
   });
 })
 
