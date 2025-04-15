@@ -59,6 +59,9 @@ importers:
       string-punctuation-tokenizer:
         specifier: ^2.2.0
         version: 2.2.0
+      word-aligner-lib:
+        specifier: 0.9.1-beta.10
+        version: 0.9.1-beta.10(prop-types@15.8.1)(webpack@5.98.0)
     devDependencies:
       '@types/dompurify':
         specifier: ^3.0.5
@@ -2297,6 +2300,12 @@ packages:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==, tarball: https://registry.npmjs.org/which/-/which-2.0.2.tgz}
     engines: {node: '>= 8'}
     hasBin: true
+
+  word-aligner-lib@0.9.1-beta.10:
+    resolution: {integrity: sha512-MOkdu5t0LfvuQd2lO0HxmKaVip6YsKI42VP/Pn/FI43vZCegauOzicrX3t5tDonmZedL+Lgf2EytQ8PlIMm/zA==, tarball: https://registry.npmjs.org/word-aligner-lib/-/word-aligner-lib-0.9.1-beta.10.tgz}
+    engines: {node: '>=18'}
+    peerDependencies:
+      prop-types: ^15.x
 
   word-aligner-lib@0.9.1-beta.11:
     resolution: {integrity: sha512-ZYGP7amt9B3b+66x0OalF+7IJD0fy/SDynuYhyDSFGivKJqkHak/5/KlVDJz/OfGd7PGcQIpeCdgrsP1OG8ZVw==, tarball: https://registry.npmjs.org/word-aligner-lib/-/word-aligner-lib-0.9.1-beta.11.tgz}
@@ -4691,6 +4700,20 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
+
+  word-aligner-lib@0.9.1-beta.10(prop-types@15.8.1)(webpack@5.98.0):
+    dependencies:
+      deep-equal: 2.2.3
+      file-loader: 6.2.0(webpack@5.98.0)
+      lodash.clonedeep: 4.5.0
+      prop-types: 15.8.1
+      string-punctuation-tokenizer: 2.2.0
+      tc-strings: 0.1.7
+      usfm-js: 3.4.3
+      word-aligner: 1.0.3(usfm-js@3.4.3)
+      wordmap-lexer: 0.3.6
+    transitivePeerDependencies:
+      - webpack
 
   word-aligner-lib@0.9.1-beta.11(prop-types@15.8.1)(webpack@5.98.0):
     dependencies:
