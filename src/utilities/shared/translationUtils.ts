@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as fuzz from "fuzzball";
 // @ts-ignore
 import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
