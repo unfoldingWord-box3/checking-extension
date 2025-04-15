@@ -36,64 +36,81 @@ export function addOriginalAlignment(origLang: any[], alignment: any, targetLang
   }
 }
 
+type ScoredMatchElementType = {
+  score: number;
+  matches: AlignmentElementType[];
+  bestOriginalMatch: {
+    text: string;
+    occurrences: number;
+    ref: string[];
+    originalText: string;
+    targetText: string;
+  };
+};
+
 /**
  * Finds the best matching text strings between an input quote and a provided alignment map,
  * based on a scoring mechanism. The function returns a list of the top matches with their
  * corresponding source text, target text, and calculated score.
  *
  * @param {string} quoteWord - The input quote string to be compared against the alignment map.
- * @param {AlignmentMapType} alignmentMap_ - An object mapping source strings to their respective matches and occurrences.
+ * @param {AlignmentMapType} targetAlignmentMap - An object mapping target strings to their respective original language matches and occurrences.
  * @param {number} matchCount - The maximum number of best matches to return.
  *
  * @return {ScoredTranslationType[]} - A list of top matches containing the source text, target text, and calculated score.
  */
-export function findBestMatches(quoteWord: string, alignmentMap_: AlignmentMapType, matchCount: number, translation: string) {
-  type ScoredMatchType = Record<string, { score: number; match: AlignmentMapType[string]; bestTargetMatch: AlignmentElementType|null }>;
-  const orderedMatches: ScoredMatchType = {};
+export function findBestMatches(quoteWord: string, targetAlignmentMap: AlignmentMapType, matchCount: number, translation: string) {
+  type ScoredMatchObjectType = Record<string, ScoredMatchElementType>;
   const topMatches: ScoredTranslationType[] = [];
   const translationWords = tokenize({ text: translation.toLowerCase(), includePunctuation: false, normalize: true })
   quoteWord = normalizer(quoteWord)
 
-  const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
-  if (originalWords?.length) {
-    for (const originalStr of originalWords) {
-      const score = fuzz.ratio(originalStr, quoteWord);
-      // console.log(`changedCurrentCheck - originalStr ${originalStr}, score ${score}`);
-      const originalThreshold = 70;
-      if (score > originalThreshold) {
-        let bestTargetMatchScore = 0;
-        let bestTargetMatch:AlignmentElementType|null = null;
-        for (const translationWord of translationWords) {
-          const targetMatches:AlignmentElementType[] = alignmentMap_[originalStr];
-          for (const match of targetMatches || []) {
-            const matchText = match?.text;
-            const targetScore = fuzz.ratio(matchText, translationWord);
-            if (targetScore > bestTargetMatchScore) {
-              bestTargetMatch = match;
-              bestTargetMatchScore = targetScore;
-            }
+  const targetThreshold = 50;
+  const originalThreshold = 70;
+
+  const foundMatches: ScoredMatchElementType[] = []
+  const _targetWords = targetAlignmentMap && Object.keys(targetAlignmentMap);
+  if (_targetWords?.length) {
+    for (const _targetWord of _targetWords) {
+      const originalMatches:AlignmentElementType[] = targetAlignmentMap[_targetWord];
+      for (const translationWord of translationWords) {
+        const targetScore = fuzz.ratio(_targetWord, translationWord);
+        if (targetScore < targetThreshold) {
+          continue
+        }
+        const currentMatches: ScoredMatchElementType[] = []
+        for (const match of originalMatches || []) {
+          const originalMatchText = match?.text;
+          const originalScore = fuzz.ratio(originalMatchText, quoteWord);
+          if (originalScore > originalThreshold) {
+            const combinedScore = originalScore * targetScore / 100; // combine scores
+            const bestOriginalMatch = { ...match, originalText: originalMatchText, targetText: _targetWord };
+            const newMatch:ScoredMatchElementType = { score: combinedScore, bestOriginalMatch, matches: originalMatches }
+            currentMatches.push(newMatch);
           }
         }
-        const targetScore = score * bestTargetMatchScore / 100; // combine scores
-        orderedMatches[originalStr] = { score: targetScore, bestTargetMatch, match: alignmentMap_[originalStr] };
+
+        if (currentMatches.length) {
+          const currentMatches_ = currentMatches.sort((a, b) => b.score - a.score);
+          foundMatches.push(...currentMatches_.slice(0, 2 * matchCount));
+        }
       }
     }
-    const orderedList = Object.entries(orderedMatches)
-      .sort(([, a], [, b]) => b.score - a.score)
-      .map(([key, value]) => ({ original: key, ...value }));
+
+    const orderedList = foundMatches.sort((a, b) => b.score - a.score);
 
     // console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
 
     for (const item of orderedList.slice(0, matchCount)) {
-      const targetMatches = item?.match;
-      const sourceText = item?.original;
-      const totalOccurrences = targetMatches?.reduce((acc, curr) => acc + curr?.occurrences, 0);  
-      for (const match of targetMatches) {
-        const targetStr = match?.text;
-        const occurrences = match?.occurrences;
-        const score = Math.round(item?.score) + occurrences / totalOccurrences;
-        topMatches.push({ sourceText: sourceText, score, targetText: targetStr });
-      }
+      const bestOriginalMatch = item?.bestOriginalMatch;
+      const originalMatches = item?.matches;
+      const targetText = bestOriginalMatch?.targetText;
+      const originalText = bestOriginalMatch?.originalText;
+      const totalOccurrences = originalMatches?.reduce((acc, curr) => acc + curr?.occurrences, 0);
+      const match = item?.bestOriginalMatch;
+      const occurrences = match?.occurrences || 0;
+      const score = Math.round(item?.score) + occurrences / totalOccurrences;
+      topMatches.push({ sourceText: originalText || '', score, targetText });
     }
   }
   return topMatches;
@@ -230,17 +247,38 @@ export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: Alignment
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
   const matchCount = (quotes.length > 1) ? 10 : 15;
+  
+  // transform map to key by target word rather than original
+  const targetAlignmentMap: AlignmentMapType = {};
+  const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
+  if (originalWords?.length) {
+    for (const originalStr of originalWords) {
+      const targetMatches:AlignmentElementType[] = alignmentMap_[originalStr];
+      for (const match of targetMatches || []) {
+        const targetStr = match?.text;
+        if (targetStr) {
+          const newTranslation = { ...match, text: originalStr};
+          const currentMapping = targetAlignmentMap[targetStr];
+          if (currentMapping) {
+            currentMapping.push(newTranslation);
+          } else {
+            targetAlignmentMap[targetStr] = [newTranslation];
+          }
+        }
+      }
+    }
+  }
 
   for (const quote of quotes) { // for each word get best translations
-    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, alignmentMap_, matchCount, translation);
+    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, targetAlignmentMap, matchCount, translation);
     const sortedTopMatches = sortByScore(topMatches_).slice(0, matchCount);
     const highScore = sortedTopMatches[0]?.score;
     // rescale so top match is a 1000
-    const factor = 100 / Math.round(highScore);
+    // const factor = 100 / Math.round(highScore);
     for (const topMatch of sortedTopMatches) {
-      const score = Math.floor(topMatch.score)
-      const occurrences = topMatch.score - score;
-      topMatch.score = Math.round((score * factor + occurrences) * 1000) / 1000;
+      // const score = Math.floor(topMatch.score)
+      // const occurrences = topMatch.score - score;
+      topMatch.score = Math.round(topMatch.score * 10000) / 10000;
     }
     topMatches.push(...sortedTopMatches);
   }

@@ -157,8 +157,11 @@ const csvStartString = [
 // from tN abstract nouns - Eph 2:1 - ULT - in your trespasses and sins
 const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
-const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+const normalizedTranslation = "আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে"
+const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+const normalizedSource = "τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν"
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
+const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
 
 suite('AI', () => {
   suiteTeardown(() => {
@@ -170,6 +173,7 @@ suite('AI', () => {
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
       const quoteStr = normalize(sourceText)
       const translation_ = normalize(translation)
+      const expectedSelection_ = normalize(expectedSelection)
       // assert.ok(quoteStr === sourceText);
       const verseText = cleanupVerse(`আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে, `)
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
