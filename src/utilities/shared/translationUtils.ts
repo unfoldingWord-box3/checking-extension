@@ -246,7 +246,7 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
 export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string) {
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
-  const matchCount = (quotes.length > 1) ? 10 : 15;
+  const matchCount = (quotes.length > 1) ? 5 : 10;
   
   // transform map to key by target word rather than original
   const targetAlignmentMap: AlignmentMapType = {};
