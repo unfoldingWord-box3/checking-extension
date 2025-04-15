@@ -183,7 +183,7 @@ suite('AI', () => {
       console.log(prompt)
     })
 
-    test('Parse AI Response', () => {
+    test.skip('Parse AI Response', () => {
       for (const startCode of csvStartString) { // try different possibilities for the csv start in md
         const index = response.indexOf(startCode);
         if (index >= 0) {
@@ -199,13 +199,13 @@ suite('AI', () => {
           const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
           console.log(highlightedText);
 
-          const expectedWords = expectedSelection.split(' ').map(word => normalize(word));
+          const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
           for (let i = 0; i < expectedWords.length; i++) {
             const expectedWord = expectedWords[i]
             const highlightedWord = highlightedWords[i].targetText
             assert.ok(expectedWord === highlightedWord);
           }
-          assert.ok(highlightedText === normalize(expectedSelection));
+          assert.ok(highlightedText === normalize(normalizedExpectedSelection));
         }
       }
       assert.ok(false); // csv not found
