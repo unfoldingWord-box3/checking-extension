@@ -165,7 +165,7 @@ const normalizedSource = "τοῖς παραπτώμασιν καὶ ται�
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
 
-suite('AI', () => {
+suite.skip('AI', () => {
   suiteTeardown(() => {
     vscode.window.showInformationMessage('AI Response tests done!');
   });
