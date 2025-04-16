@@ -7,7 +7,7 @@
     "build": "cross-env MINIFY=true npm run buildSub",
     "build:dev": "cross-env MINIFY=false npm run buildSub",
     "buildSub": "npm run makeShared && tsc && npm run viteCompile",
-    "makeShared": "node ./src/scripts/makeLink.js",
+    "makeShared": "node --inspect-brk ./src/scripts/makeLink.js",
     "viteCompile": "cross-env NODE_OPTIONS=--max-old-space-size=6050 vite build",
     "preview": "vite preview"
   },

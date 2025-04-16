@@ -5,33 +5,40 @@ const path = require('path');
 
 // console.log(`Current folder ${__dirname}`);
 
-const linkPath = path.join(__dirname, '../utilities/shared');
-const targetPath = path.join(__dirname, '../../../src/utilities/shared/');
+const sourceFolder = path.join(__dirname, '../../../src/utilities/shared/');
+const linkFolder = path.join(__dirname, '../utilities/shared');
 
-if (!fs.existsSync(linkPath)) {
-  if (fs.existsSync(targetPath)) {
-    try {
-      fs.symlinkSync(targetPath, linkPath, "dir");
-      console.log(`Symlink at '${linkPath}' created successfully!`);
-    } catch (err) {
-      console.error("Error creating symlink: '${linkPath}", err);
-      process.exit(1); // Exit with error code (1)
-    }
-  } else {
-    console.error(`target path does not exist: '${targetPath}'`);
-    process.exit(1); // Exit with error code (1)
-  }
-} else {
+if (!fs.existsSync(linkFolder)) {
   try {
-    const stats = fs.lstatSync(linkPath);
-    if (stats.isSymbolicLink()) {
-      console.log(`Symlink already exists at '${linkPath}'`);
-    } else {
-      console.error(`'${linkPath}' - This is a regular folder.`);
-      process.exit(1); // Exit with error code (1)
-    }
-  } catch (err) {
-    console.error(`Error validating: '${linkPath}'`, err);
+    fs.mkdirSync(linkFolder, { recursive: true });
+  } catch (e) {
+    console.error("Error creating folder: '${linkFolder}", e);
     process.exit(1); // Exit with error code (1)
   }
 }
+
+//Users/blm0/Development/VsCode/checking-extension/src/utilities
+
+fs.readdirSync(sourceFolder).forEach(file => {
+  if (file.endsWith('.ts')) {
+    const sourceFile = path.join(sourceFolder, file);
+    const linkFile = path.join(linkFolder, file);
+
+    try {
+      if (!fs.existsSync(linkFile)) {
+        try {
+          fs.linkSync(sourceFile, linkFile);
+          console.log(`Created hard link: ${linkFile} → ${sourceFile}`);
+        } catch (e) {
+          console.error("Error creating link from file: '${sourceFile}", e);
+          process.exit(1); // Exit with error code (1)
+        }
+      } else {
+        console.log(`Hard link already exists: ${linkFile}`);
+      }
+    } catch (e) {
+      console.error("Error verifying file: '${linkFile}", e);
+      process.exit(1); // Exit with error code (1)
+    }
+  }
+});
