@@ -30,4 +30,4 @@ temp
 /.idea/
 /.env
 /.env.json
-/webview-ui/src/shared/
+/webview-ui/src/utilities/shared/

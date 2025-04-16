@@ -7,7 +7,7 @@
     "build": "cross-env MINIFY=true npm run buildSub",
     "build:dev": "cross-env MINIFY=false npm run buildSub",
     "buildSub": "npm run copyShared && tsc && npm run viteCompile",
-    "copyShared": "mkdir -p ./src/shared && cp -f ../src/shared/*.ts ./src/shared/ && chmod u-w ./src/shared/*.ts",
+    "copyShared": "mkdir -p ./src/utilities/shared && cp -f ../src/utilities/shared/*.ts ./src/utilities/shared/ && chmod u-w ./src/utilities/shared/*.ts",
     "viteCompile": "cross-env NODE_OPTIONS=--max-old-space-size=6050 vite build",
     "preview": "vite preview"
   },

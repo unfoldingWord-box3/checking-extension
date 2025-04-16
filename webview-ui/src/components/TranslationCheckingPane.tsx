@@ -33,7 +33,7 @@ import {
   addAlignmentsForBibleBook,
   AlignmentMapType,
   findAlignmentSuggestions,
-} from "../shared/translationUtils";
+} from "../utilities/shared/translationUtils";
 // @ts-ignore
 import { groupDataHelpers } from "word-aligner-lib"
 

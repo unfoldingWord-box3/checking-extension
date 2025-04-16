@@ -1,7 +1,11 @@
 // @ts-ignore
 import * as fs from "fs-extra";
 import * as path from "path";
-import { addAlignmentsForBibleBook, addAlignmentsForCheckingData, AlignmentMapType } from "../shared/translationUtils";
+import {
+  addAlignmentsForBibleBook,
+  addAlignmentsForCheckingData,
+  AlignmentMapType
+} from "./shared/translationUtils";
 import { isNT } from "./BooksOfTheBible";
 import { getParsedUSFM } from "./resourceUtils";
 import { getAllFiles } from "./fileUtils";

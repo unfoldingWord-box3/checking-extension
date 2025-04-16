@@ -23,7 +23,7 @@ import {
   scoredTranslationType,
   getTranslationCsv
 // @ts-ignore
-} from "../shared/translationUtils";
+} from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
 
 import { getTranslationsFromFolder } from "../utilities/translationFileUtils";
