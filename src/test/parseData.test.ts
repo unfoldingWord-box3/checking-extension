@@ -179,20 +179,18 @@ suite('AI', () => {
     vscode.window.showInformationMessage('AI Response tests done!');
   });
 
-    test('Generate AI Prompt', () => {
-      const translationsPath = path.join(projectFolder, 'translations.json');
+    test("Generate AI Prompt", async () => {
+      const translationsPath = path.join(projectFolder, "translations.json");
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
-      const quoteStr = normalize(sourceText)
-      const translation_ = normalize(translation)
-      // const expectedSelection_ = normalize(expectedSelection)
-      // assert.ok(quoteStr === sourceText);
-      const verseText = cleanupVerse(rawOriginalVerse)
+      const quoteStr = normalize(sourceText);
+      const translation_ = normalize(translation);
+      const verseText = cleanupVerse(rawOriginalVerse);
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
-      const prompt = buildAiPrompt(topMatches, verseText, quoteStr)
-      const promptPath = path.join(tempFolder, 'prompt.txt')
+      const prompt = await buildAiPrompt(topMatches, verseText, quoteStr);
+      const promptPath = path.join(tempFolder, "prompt.txt");
       fs.outputFileSync(promptPath, prompt, "UTF-8");
-      console.log(prompt)
-    })
+      console.log(prompt);
+    }).timeout(10000);
 
     test('Parse top Translation Matches', () => {
       const translationsPath = path.join(projectFolder, 'translations.json');
