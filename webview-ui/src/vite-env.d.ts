@@ -16,7 +16,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": "/src", // Shortcut alias to reference '/src' directory
-      "node_modules": "/node_modules", // Alias for node_modules folder
     },
+    modules: ["node_modules"], // Add 'node_modules' folder for searching import modules
   },
 });
