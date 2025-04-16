@@ -1,5 +1,5 @@
 // @ts-ignore
-import { AIPromptTemplate, sortByScore } from "./llmUtils";
+import { AIPromptTemplate, AIPromptTemplate1, AIPromptTemplate2, sortByScore } from "./llmUtils";
 import { csvToObjects, objectToCsv } from "./tsvUtils";
 // @ts-ignore
 import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-tokenizer";
@@ -7,6 +7,7 @@ import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-token
 import * as fuzz from "fuzzball";
 // @ts-ignore
 import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
+const math = require('mathjs');
 
 export type AlignmentElementType = {
   text: string;
@@ -236,11 +237,11 @@ export function getTranslationCsv(topMatches: object[]) {
  * @param {string} quoteStr - The source word or phrase to be included in the AI prompt.
  * @return {string} The constructed AI prompt with placeholders replaced by the provided parameters.
  */
-export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: string) {
+export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: string, template = AIPromptTemplate1) {
   const translationCsv = getTranslationCsv(topMatches);
 
   // build AI prompt
-  const prompt = AIPromptTemplate.replaceAll("{translationCsv}", translationCsv.join("\n"))
+  const prompt = template.replaceAll("{translationCsv}", translationCsv.join("\n"))
     .replaceAll("{translatedText}", verseText)
     .replaceAll("{sourceWord}", quoteStr);
   console.log(`changedCurrentCheck - prompt`, prompt);
@@ -260,7 +261,7 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
 export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string) {
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
-  const matchCount = (quotes.length > 1) ? 5 : 10;
+  const matchCount = (quotes.length > 2) ? 5 : 10;
   
   // transform map to key by translated word rather than original
   const translatedAlignmentMap: AlignmentMapType = {};
@@ -326,7 +327,7 @@ export function cleanupVerse(verseText:string) {
  *                               verse text for the AI prompt.
  * @return {string} A prompt to pass to AI to get the best translation.
  */
-export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object, translation: string) {
+export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object) {
   if (contextId) {
     const quoteStr = normalize(getQuoteStr(contextId));
     // @ts-ignore
@@ -335,7 +336,7 @@ export function findAlignmentSuggestions(contextId: object, alignmentMap_: Align
     verseText = cleanupVerse(verseText);
 
     if (quoteStr) {
-      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap_, translation);
+      const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap_, verseText);
       const prompt = buildAiPrompt(topMatches, verseText, quoteStr);
       return prompt;
     }
@@ -418,7 +419,15 @@ export function getScoredTranslations(csvLines:string) {
     for (const csvItem of csvItems) {
       for (const key of Object.keys(csvItem)) {
         const value = csvItem[key]
-        if (key === 'score') {
+        if (key === 'probability') {
+          // example = "100.0041*100.5*100.959*100.3456";
+          let value2 = math.evaluate(value);
+          const parts = value.split("*");
+          for (let i = 0; i < parts.length; i++) {
+            value2 = value2 / 100;
+          }
+          csvItem[key] = value2
+        } else if (key === 'score') {
           csvItem[key] = parseFloat(value)
         } else if (typeof value === 'string') {
           csvItem[key] = normalizer(value)

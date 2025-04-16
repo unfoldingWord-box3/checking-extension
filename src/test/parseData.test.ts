@@ -29,6 +29,7 @@ import { isNT } from "../utilities/BooksOfTheBible";
 import { getTranslationsFromFolder } from "../utilities/translationFileUtils";
 import { readJsonFile } from "../utilities/fileUtils";
 import { autoDetectProjectFolder } from "./checkToTsv.test";
+import { AIPromptTemplate2 } from "../utilities/shared/llmUtils";
 
 const home = ospath.home();
 const baseFolder = autoDetectProjectFolder();
@@ -143,25 +144,11 @@ suite('Parse Data', () => {
   });
 });
 
-const response = `\`\`\`csv
-translatedText,sourceText,score
-আর,καὶ,100.7063
-তোমরা,τοῖς,100.0013
-তোমাদের,τοῖς,100.0041
-অপরাধে,παραπτώμασιν,100.5
-ও,καὶ,100.959
-পাপে,ἁμαρτίαις,100.1765
-\`\`\``;
-
-const csvStartString = [
-  '```csv\n',
-  '```\n'
-];
-
 const tempFolder = path.join(baseFolder, './src/test/fixtures/testing_temp')
+const projectFolder = path.join(baseFolder, './src/test/fixtures/bn_glt_en_eph/alignments')
+const responseFolder = path.join(baseFolder, './src/test/fixtures/responses');
 
 // from tN abstract nouns - Eph 2:1 - ULT - in your trespasses and sins
-const projectFolder = path.join(baseFolder, './src/test/fixtures/bn_glt_en_eph/alignments')
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
 const normalizedTranslation = "আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে"
 const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
@@ -169,6 +156,24 @@ const rawOriginalVerse = `আর তোমরা তোমাদের অপর
 const normalizedSource = "τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν"
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
+
+export function extractCsvFromResponse(response : string) {
+  const csvStartString = [
+    '```csv\n',
+    '```\n'
+  ];
+  
+  let foundCsv = ''
+  for (const startCode of csvStartString) { // try different possibilities for the csv start in md
+    const index = response.toLowerCase().indexOf(startCode.toLowerCase());
+    if (index >= 0) {
+      const endIndex = response.indexOf("```", index + startCode.length);
+      foundCsv = response.substring(index + startCode.length, endIndex);
+      break;
+    }
+  }
+  return foundCsv;
+}
 
 suite('AI', function () {
   this.timeout(10000); // set timeout for each test in suite
@@ -188,7 +193,7 @@ suite('AI', function () {
     const translation_ = normalize(translation);
     const verseText = cleanupVerse(rawOriginalVerse);
     const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
-    const prompt = await buildAiPrompt(topMatches, verseText, quoteStr);
+    const prompt = await buildAiPrompt(topMatches, verseText, quoteStr, AIPromptTemplate2);
     const promptPath = path.join(tempFolder, "prompt.txt");
     fs.outputFileSync(promptPath, prompt, "UTF-8");
     console.log(prompt);
@@ -221,35 +226,41 @@ suite('AI', function () {
       assert.ok(highlightedText === normalize(normalizedExpectedSelection));
     });
     
-    test('Parse AI Response', () => {
-      let foundCsv = false
-      for (const startCode of csvStartString) { // try different possibilities for the csv start in md
-        const index = response.indexOf(startCode);
-        if (index >= 0) {
-          const endIndex = response.indexOf('```', index + startCode.length);
-          const csv = response.substring(index + startCode.length, endIndex);
-          const scoredTranslations = getScoredTranslations(csv) as scoredTranslationType;
-          console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
-  
-          // Obtain best translations
-          const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
-  
-          // map to string
-          const highlightedText = highlightedWords.map(word => word.translatedText).join(' ');
-          console.log(highlightedText);
-
-          const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
-          for (let i = 0; i < expectedWords.length; i++) {
-            const expectedWord = expectedWords[i]
-            const highlightedWord = highlightedWords[i].translatedText
-            assert.ok(expectedWord === highlightedWord);
-          }
-          assert.ok(highlightedText === normalize(normalizedExpectedSelection));
-          foundCsv = true
-          break;
-        }
-      }
+    test('Parse AI Response from AIPromptTemplate1', () => {
+      const responsePath = path.join(responseFolder, 'response1.txt');
+      const response = fs.readFileSync(responsePath, "UTF-8")?.toString() || '';
+      const foundCsv = extractCsvFromResponse(response);
       assert.ok(foundCsv);
+
+      const scoredTranslations = getScoredTranslations(foundCsv) as scoredTranslationType;
+      console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
+
+      // Obtain best translations
+      const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
+
+      // map to string
+      const highlightedText = highlightedWords.map(word => word.translatedText).join(' ');
+      console.log(highlightedText);
+
+      const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
+      for (let i = 0; i < expectedWords.length; i++) {
+        const expectedWord = expectedWords[i]
+        const highlightedWord = highlightedWords[i].translatedText
+        assert.ok(expectedWord === highlightedWord);
+      }
+      assert.ok(highlightedText === normalize(normalizedExpectedSelection));
+  });
+
+  test('Parse AI Response from AIPromptTemplate2', () => {
+    const responsePath = path.join(responseFolder, 'response2.txt');
+    const response = fs.readFileSync(responsePath, "UTF-8")?.toString() || '';
+    const foundCsv = extractCsvFromResponse(response);
+    
+    const scoredTranslations = getScoredTranslations(foundCsv);
+    console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
+
+    const promptPath = path.join(tempFolder, "scored2.json");
+    fs.outputJsonSync(promptPath, scoredTranslations, { spaces: 2});
   });
 })
 

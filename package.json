@@ -201,6 +201,7 @@
     "fs-extra": "^11.2.0",
     "fuzzball": "^2.2.2",
     "lodash.clonedeep": "^4.5.0",
+    "mathjs": "^14.4.0",
     "original-fs": "^1.2.0",
     "ospath": "^1.2.2",
     "prop-types": "^15.8.1",

@@ -1,11 +1,23 @@
 import { ScoredTranslationType } from "./translationUtils";
 
-export const AIPromptTemplate =
+export const AIPromptTemplate2 =
+  `Using the following Translation Data CSV, come up with the top 5 likely translations of \`{sourceWord}\` using only words from \`{translatedText}\`. Return your results in CSV format with columns for "translation" and “probability”:
+
+Translation Data:
+\`\`\` CSV
+{translationCsv}
+\`\`\`
+
+Your response should only be a CSV file.`
+
+
+export const AIPromptTemplate1 =
 `Using the following translation data, identify words in the provided Translated text that correspond to translations of \`{sourceWord}\`. Return your results in CSV format with columns for "sourceText", “translatedText" and “score”:
 
 Translation Data:
+\`\`\`csv
 {translationCsv}
-
+\`\`\`
 
 Translated Text
 \`\`\`
@@ -16,7 +28,6 @@ Ensure the CSV output is structured with columns of:
 \`translatedText,sourceText,score\`
 
 Provide only the translations that appear in the text.`
-
 
 /**
  * Calls the LM Studio API with the specified prompt and returns the generated text.
