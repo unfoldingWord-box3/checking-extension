@@ -170,7 +170,9 @@ const normalizedSource = "τοῖς παραπτώμασιν καὶ ται�
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
 
-suite('AI', () => {
+suite('AI', function () {
+  this.timeout(10000); // set timeout for each test in suite
+  
   suiteSetup(() => {
     fs.ensureDirSync(tempFolder)
   })
@@ -180,7 +182,6 @@ suite('AI', () => {
   });
 
   test("Generate AI Prompt", async function() {
-    this.timeout(10000);
     const translationsPath = path.join(projectFolder, "translations.json");
     const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
     const quoteStr = normalize(sourceText);
