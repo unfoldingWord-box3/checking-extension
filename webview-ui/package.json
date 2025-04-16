@@ -29,6 +29,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "string-punctuation-tokenizer": "^2.2.0",
+    "uw-tsv-parser": "^1.0.3",
     "word-aligner-lib": "0.9.1-beta.10"
   },
   "devDependencies": {
