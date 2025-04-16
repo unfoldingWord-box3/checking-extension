@@ -31,3 +31,4 @@ temp
 /.env
 /.env.json
 /webview-ui/src/utilities/shared/
+/src/test/fixtures/testing_temp/

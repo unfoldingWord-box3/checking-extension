@@ -28,6 +28,7 @@ import { isNT } from "../utilities/BooksOfTheBible";
 
 import { getTranslationsFromFolder } from "../utilities/translationFileUtils";
 import { readJsonFile } from "../utilities/fileUtils";
+import { autoDetectProjectFolder } from "./checkToTsv.test";
 
 const home = ospath.home();
 
@@ -155,8 +156,12 @@ const csvStartString = [
   '```\n'
 ];
 
+const baseFolder = autoDetectProjectFolder();
+
+const tempFolder = path.join(baseFolder, './src/test/fixtures/testing_temp')
+
 // from tN abstract nouns - Eph 2:1 - ULT - in your trespasses and sins
-const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
+const projectFolder = path.join(baseFolder, './src/test/fixtures/bn_glt_en_eph/alignments')
 const translation = `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
 const normalizedTranslation = "আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে"
 const sourceText = `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
@@ -165,7 +170,11 @@ const normalizedSource = "τοῖς παραπτώμασιν καὶ ται�
 const expectedSelection = `তোমাদের অপরাধে ও পাপে`
 const normalizedExpectedSelection = "তোমাদের অপরাধে ও পাপে"
 
-suite.skip('AI', () => {
+suite('AI', () => {
+  suiteSetup(() => {
+    fs.ensureDirSync(tempFolder)
+  })
+
   suiteTeardown(() => {
     vscode.window.showInformationMessage('AI Response tests done!');
   });
@@ -180,7 +189,7 @@ suite.skip('AI', () => {
       const verseText = cleanupVerse(rawOriginalVerse)
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
       const prompt = buildAiPrompt(topMatches, verseText, quoteStr)
-      const promptPath = path.join(projectFolder, 'prompt.txt')
+      const promptPath = path.join(tempFolder, 'prompt.txt')
       fs.outputFileSync(promptPath, prompt, "UTF-8");
       console.log(prompt)
     })

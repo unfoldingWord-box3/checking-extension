@@ -26,7 +26,7 @@ import { tsvToObjects } from "../utilities/shared/tsvUtils";
 
 const TEST_FILE = './src/test/fixtures/tit.twl_check';
 
-function autoDetectProjectFolder() {
+export function autoDetectProjectFolder() {
   const home = ospath.home();
   let projectFolder = path.join(__dirname, '../..');
   if (!fs.existsSync(path.join(projectFolder, TEST_FILE))) { // check relative to test folder
@@ -38,6 +38,7 @@ function autoDetectProjectFolder() {
       }
     }
   }
+  console.log('base folder is at', projectFolder)
   return projectFolder;
 }
 
