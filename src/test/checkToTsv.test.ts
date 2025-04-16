@@ -20,7 +20,8 @@ import isEqual from "deep-equal";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from "vscode";
-import { tsvToObjects } from "../utilities/shared/tsvUtils";
+// @ts-ignore
+import { tsvToObjects } from "../shared/tsvUtils";
 // import * as myExtension from '../extension';
 
 const TEST_FILE = './src/test/fixtures/tit.twl_check';

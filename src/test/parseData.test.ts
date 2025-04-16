@@ -21,12 +21,10 @@ import {
   getTopMatchesForQuote,
   normalize,
   scoredTranslationType,
-  getTranslationCsv,
-  remapScoredTranslationsToPromptFormat,
-  scoredTranslationForPromptType,
-} from "../utilities/shared/translationUtils";
+  getTranslationCsv
+// @ts-ignore
+} from "../shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
-import { csvToObjects } from "../utilities/shared/tsvUtils";
 
 import { getTranslationsFromFolder } from "../utilities/translationFileUtils";
 import { readJsonFile } from "../utilities/fileUtils";
@@ -198,18 +196,17 @@ suite('AI', () => {
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
       const translationCsv = getTranslationCsv(topMatches);
       const scoredTranslations = getScoredTranslations(translationCsv.join('\n'))  as scoredTranslationType
-      const translations = remapScoredTranslationsToPromptFormat(scoredTranslations)
 
-      const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, translations);
+      const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
 
       // map to string
-      const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
+      const highlightedText = highlightedWords.map(word => word.translatedText).join(' ');
       console.log(highlightedText);
 
       const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
       for (let i = 0; i < expectedWords.length; i++) {
         const expectedWord = expectedWords[i]
-        const highlightedWord = highlightedWords[i].targetText
+        const highlightedWord = highlightedWords[i].translatedText
         assert.ok(expectedWord === highlightedWord);
       }
       assert.ok(highlightedText === normalize(normalizedExpectedSelection));
@@ -222,20 +219,20 @@ suite('AI', () => {
         if (index >= 0) {
           const endIndex = response.indexOf('```', index + startCode.length);
           const csv = response.substring(index + startCode.length, endIndex);
-          const scoredTranslations = getScoredTranslations(csv) as scoredTranslationForPromptType;
+          const scoredTranslations = getScoredTranslations(csv) as scoredTranslationType;
           console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
   
           // Obtain best translations
           const highlightedWords = highlightBestWordsInTranslation(sourceText, translation, scoredTranslations);
   
           // map to string
-          const highlightedText = highlightedWords.map(word => word.targetText).join(' ');
+          const highlightedText = highlightedWords.map(word => word.translatedText).join(' ');
           console.log(highlightedText);
 
           const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
           for (let i = 0; i < expectedWords.length; i++) {
             const expectedWord = expectedWords[i]
-            const highlightedWord = highlightedWords[i].targetText
+            const highlightedWord = highlightedWords[i].translatedText
             assert.ok(expectedWord === highlightedWord);
           }
           assert.ok(highlightedText === normalize(normalizedExpectedSelection));

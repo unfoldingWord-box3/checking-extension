@@ -15,7 +15,7 @@ import { APP_NAME, APP_VERSION } from "../common/constants.js";
 import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'
-import { AlignmentMapType } from "../../../src/utilities/shared/translationUtils";
+import { AlignmentMapType } from "../shared/translationUtils";
 
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 

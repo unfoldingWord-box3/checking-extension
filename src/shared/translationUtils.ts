@@ -1,3 +1,4 @@
+// @ts-ignore
 import { AIPromptTemplate, sortByScore } from "./llmUtils";
 import { csvToObjects, objectToCsv } from "./tsvUtils";
 // @ts-ignore
@@ -13,7 +14,7 @@ export type AlignmentElementType = {
   ref: string[];
 };
 export type AlignmentMapType = Record<string, AlignmentElementType[]>;
-export type ScoredTranslationType = { sourceText: string; targetText: string; score: number };
+export type ScoredTranslationType = { sourceText: string; translatedText: string; score: number };
 
 /**
  * This function adds content from an alignment object to the original language array and recursively processes
@@ -45,38 +46,38 @@ type ScoredMatchElementType = {
     occurrences: number;
     ref: string[];
     originalText: string;
-    targetText: string;
+    translatedText: string;
   };
 };
 
 /**
  * Finds the best matching text strings between an input quote and a provided alignment map,
  * based on a scoring mechanism. The function returns a list of the top matches with their
- * corresponding source text, target text, and calculated score.
+ * corresponding source text, translated text, and calculated score.
  *
  * @param {string} quoteWord - The input quote string to be compared against the alignment map.
- * @param {AlignmentMapType} targetAlignmentMap - An object mapping target strings to their respective original language matches and occurrences.
+ * @param {AlignmentMapType} translatedAlignmentMap - An object mapping translated strings to their respective original language matches and occurrences.
  * @param {number} matchCount - The maximum number of best matches to return.
  *
- * @return {ScoredTranslationType[]} - A list of top matches containing the source text, target text, and calculated score.
+ * @return {ScoredTranslationType[]} - A list of top matches containing the source text, translated text, and calculated score.
  */
-export function findBestMatches(quoteWord: string, targetAlignmentMap: AlignmentMapType, matchCount: number, translation: string) {
+export function findBestMatches(quoteWord: string, translatedAlignmentMap: AlignmentMapType, matchCount: number, translation: string) {
   type ScoredMatchObjectType = Record<string, ScoredMatchElementType>;
   const topMatches: ScoredTranslationType[] = [];
   const translationWords = tokenize({ text: translation.toLowerCase(), includePunctuation: false, normalize: true })
   quoteWord = normalizer(quoteWord)
 
-  const targetThreshold = 50;
+  const translatedThreshold = 50;
   const originalThreshold = 70;
 
   const foundMatches: ScoredMatchElementType[] = []
-  const _targetWords = targetAlignmentMap && Object.keys(targetAlignmentMap);
-  if (_targetWords?.length) {
-    for (const _targetWord of _targetWords) {
-      const originalMatches:AlignmentElementType[] = targetAlignmentMap[_targetWord];
+  const _translatedWords = translatedAlignmentMap && Object.keys(translatedAlignmentMap);
+  if (_translatedWords?.length) {
+    for (const _translatedWord of _translatedWords) {
+      const originalMatches:AlignmentElementType[] = translatedAlignmentMap[_translatedWord];
       for (const translationWord of translationWords) {
-        const targetScore = fuzz.ratio(_targetWord, translationWord);
-        if (targetScore < targetThreshold) {
+        const translatedScore = fuzz.ratio(_translatedWord, translationWord);
+        if (translatedScore < translatedThreshold) {
           continue
         }
         const currentMatches: ScoredMatchElementType[] = []
@@ -84,8 +85,8 @@ export function findBestMatches(quoteWord: string, targetAlignmentMap: Alignment
           const originalMatchText = match?.text;
           const originalScore = fuzz.ratio(originalMatchText, quoteWord);
           if (originalScore > originalThreshold) {
-            const combinedScore = originalScore * targetScore / 100; // combine scores
-            const bestOriginalMatch = { ...match, originalText: originalMatchText, targetText: _targetWord };
+            const combinedScore = originalScore * translatedScore / 100; // combine scores
+            const bestOriginalMatch = { ...match, originalText: originalMatchText, translatedText: _translatedWord };
             const newMatch:ScoredMatchElementType = { score: combinedScore, bestOriginalMatch, matches: originalMatches }
             currentMatches.push(newMatch);
           }
@@ -105,13 +106,13 @@ export function findBestMatches(quoteWord: string, targetAlignmentMap: Alignment
     for (const item of orderedList.slice(0, matchCount)) {
       const bestOriginalMatch = item?.bestOriginalMatch;
       const originalMatches = item?.matches;
-      const targetText = bestOriginalMatch?.targetText;
+      const translatedText = bestOriginalMatch?.translatedText;
       const originalText = bestOriginalMatch?.originalText;
       const totalOccurrences = originalMatches?.reduce((acc, curr) => acc + curr?.occurrences, 0);
       const match = item?.bestOriginalMatch;
       const occurrences = match?.occurrences || 0;
       const score = Math.round(item?.score) + occurrences / totalOccurrences;
-      topMatches.push({ sourceText: originalText || '', score, targetText });
+      topMatches.push({ sourceText: originalText || '', score, translatedText });
     }
   }
   return topMatches;
@@ -208,14 +209,14 @@ export function getQuoteStr(contextId: object) {
  * Converts an array of objects containing translation matches into a CSV format string.
  *
  * @param {object[]} topMatches - An array of objects representing translation matches,
- * each containing keys such as "score", "targetText", and "sourceText".
+ * each containing keys such as "score", "translatedText", and "sourceText".
  * @return {string} A string containing the translation matches in CSV format.
  */
 export function getTranslationCsv(topMatches: object[]) {
   // build translation tables as csv
   const headers = [
     { key: "score" },
-    { key: "targetText" },
+    { key: "translatedText" },
     { key: "sourceText" },
   ];
   const translationCsv = objectToCsv(headers, topMatches);
@@ -229,7 +230,7 @@ export function getTranslationCsv(topMatches: object[]) {
  *
  * @param {object[]} topMatches - An array of match objects, where each object contains
  *                                information about the translation matches, including score,
- *                                target text, and source text.
+ *                                translated text, and source text.
  *                                These are used to generate a CSV.
  * @param {string} verseText - The translated text to be embedded in the AI prompt.
  * @param {string} quoteStr - The source word or phrase to be included in the AI prompt.
@@ -254,28 +255,28 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
  * @param {AlignmentMapType} alignmentMap_ - The alignment map used to match source text to target translations.
  * @param {string} translation
  * @return {ScoredTranslationType[]} An array of objects representing the top matches, each containing the source text,
- *                                   target text, and a calculated score.
+ *                                   translated text, and a calculated score.
  */
 export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string) {
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
   const matchCount = (quotes.length > 1) ? 5 : 10;
   
-  // transform map to key by target word rather than original
-  const targetAlignmentMap: AlignmentMapType = {};
+  // transform map to key by translated word rather than original
+  const translatedAlignmentMap: AlignmentMapType = {};
   const originalWords = alignmentMap_ && Object.keys(alignmentMap_);
   if (originalWords?.length) {
     for (const originalStr of originalWords) {
-      const targetMatches:AlignmentElementType[] = alignmentMap_[originalStr];
-      for (const match of targetMatches || []) {
-        const targetStr = match?.text;
-        if (targetStr) {
+      const translatedMatches:AlignmentElementType[] = alignmentMap_[originalStr];
+      for (const match of translatedMatches || []) {
+        const translatedWord = match?.text;
+        if (translatedWord) {
           const newTranslation = { ...match, text: originalStr};
-          const currentMapping = targetAlignmentMap[targetStr];
+          const currentMapping = translatedAlignmentMap[translatedWord];
           if (currentMapping) {
             currentMapping.push(newTranslation);
           } else {
-            targetAlignmentMap[targetStr] = [newTranslation];
+            translatedAlignmentMap[translatedWord] = [newTranslation];
           }
         }
       }
@@ -283,7 +284,7 @@ export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: Alignment
   }
 
   for (const quote of quotes) { // for each word get best translations
-    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, targetAlignmentMap, matchCount, translation);
+    const topMatches_: ScoredTranslationType[] = findBestMatches(quote, translatedAlignmentMap, matchCount, translation);
     const sortedTopMatches = sortByScore(topMatches_).slice(0, matchCount);
     const highScore = sortedTopMatches[0]?.score;
     // rescale so top match is a 1000
@@ -401,8 +402,7 @@ export function tokenizeQuote(quote:string, isOrigLang = false, includePunctuati
   }
 }
 
-export type scoredTranslationForPromptType = Array<{ sourceText: string; translatedText: string; score: number }>;
-export type scoredTranslationType = Array<{ sourceText: string; targetText: string; score: number }>;
+export type scoredTranslationType = Array<{ sourceText: string; translatedText: string; score: number }>;
 
 /**
  * Parses a CSV string containing translations and their respective scores,
@@ -429,48 +429,24 @@ export function getScoredTranslations(csvLines:string) {
   return csvItems as Object;
 }
 
-/**
- * Remaps scored translations into a specific prompt format by restructuring
- * the objects within the array to only include score, translatedText, and sourceText.
- *
- * @param {Array<scoredTranslationType>} scoredTranslations - An array of objects containing translation data with their respective scores.
- * @return {Array<Object>} An array of objects containing only the score, translatedText, and sourceText properties.
- */
-export function remapScoredTranslationsToPromptFormat(scoredTranslations:scoredTranslationType): scoredTranslationForPromptType {
-  const scoredTranslations_ = scoredTranslations.map(t => ({
-    score: t.score,
-    translatedText: t.targetText,
-    sourceText: t.sourceText,
-  }));
-  return scoredTranslations_
-}
-
-type TargetScores = Array<{ targetText: string; index: number; score: number }>;
-type MatchedTranslationsType = Array<{
-  targetScores: TargetScores;
-  sourceText: string;
-  translatedText: string;
-  score: number
-}>;
-
-export function highlightBestWordsInTranslation(sourceText: string, targetText: string, scoredTranslations: scoredTranslationForPromptType) {
+export function highlightBestWordsInTranslation(sourceText: string, translatedText: string, scoredTranslations: scoredTranslationType) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
-  const targetWords = targetText.split(" ").map(w => normalizer(w).trim());
-  let highlightedWords:{ targetText: string, sourceText: string, index: number, score: number }[] = []
+  const translatedWords = translatedText.split(" ").map(w => normalizer(w).trim());
+  let highlightedWords:{ translatedText: string, sourceText: string, index: number, score: number }[] = []
   const dupeCheck: Record<string, number[]> = {};
 
   for (let tIndex = 0; tIndex < scoredTranslations.length; tIndex++) {
     const t = scoredTranslations[tIndex];
-    const targetTextSplit = (t.translatedText)?.split(" ") || [];
+    const translatedTextSplit = (t.translatedText)?.split(" ") || [];
     const initialScore = t.score;
-    for (let index = 0; index < targetWords.length; index++) {
-      const targetWord = targetWords[index];
-      for (let singleTargetWordIndex = 0; singleTargetWordIndex < targetTextSplit.length; singleTargetWordIndex++) {
-        const singleTargetWord = targetTextSplit[singleTargetWordIndex];
+    for (let index = 0; index < translatedWords.length; index++) {
+      const translatedWord = translatedWords[index];
+      for (let singleTranslatedWordIndex = 0; singleTranslatedWordIndex < translatedTextSplit.length; singleTranslatedWordIndex++) {
+        const singleTranslatedWord = translatedTextSplit[singleTranslatedWordIndex];
         
-        // get best match to targetWord
-        const targetFuzzScore = fuzz.ratio(singleTargetWord, targetWord);
-        if (!(targetFuzzScore > 1)) {
+        // get best match to translated Word
+        const translatedFuzzScore = fuzz.ratio(singleTranslatedWord, translatedWord);
+        if (!(translatedFuzzScore > 1)) {
           continue; // if no match, then skip
         }
 
@@ -487,19 +463,19 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
           }
         }
         
-        const combinedScore = (targetFuzzScore / 100) * (highSourceFuzzScore / 100) * initialScore;
+        const combinedScore = (translatedFuzzScore / 100) * (highSourceFuzzScore / 100) * initialScore;
         if (!(highSourceFuzzScore > 1)) {
           continue; // if no match, then skip
         }
         
-        let saveTarget = !highlightedWords[index];
-        if (!saveTarget) { // if word already found, see if higher score
+        let saveTranslated = !highlightedWords[index];
+        if (!saveTranslated) { // if word already found, see if higher score
           const currentScore = highlightedWords[index].score;
           if (currentScore < combinedScore) { // if new score is a better match, replace it
-            saveTarget = true;
+            saveTranslated = true;
           }
         }
-        if (saveTarget) {
+        if (saveTranslated) {
           let previousMatchBetter = false;
           for (let i = 0; i <index; i++) {
             if (highlightedWords[i]) {
@@ -516,7 +492,7 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
           }
           if (!previousMatchBetter) { // this is better match
             highlightedWords[index] = {
-              targetText: targetWord,
+              translatedText: translatedWord,
               sourceText: highestSourceText,
               index,
               score: combinedScore,
@@ -544,24 +520,24 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
     const dupeList = dupeCheck[sourceText];
 
     if (dupeList.length > 1) {
-      // now see if target words are also duplicated
+      // now see if translated words are also duplicated
       for (let i = 0; i < dupeList.length; i++) {
         const index = dupeList[i];
         if (!highlightedWords[index]) { // if already removed, skip
           continue;
         }
-        const firstTargetWord = highlightedWords[index].targetText;
-        let targetDuplicateFound = [];
+        const firstTranslatedWord = highlightedWords[index].translatedText;
+        let translatedDuplicateFound = [];
         for (let j = i + 1; j < dupeList.length; j++) {
           const secondIndex = dupeList[j];
-          const secondTargetWord = highlightedWords[secondIndex].targetText;
-          if (firstTargetWord === secondTargetWord) {
-            targetDuplicateFound.push(secondIndex);
+          const secondTranslatedWord = highlightedWords[secondIndex].translatedText;
+          if (firstTranslatedWord === secondTranslatedWord) {
+            translatedDuplicateFound.push(secondIndex);
           }
         }
 
-        if ((dupeList.length > 1) && (targetDuplicateFound.length < 1)) {
-          // if source duplicated, but target is not, remove all but highest match
+        if ((dupeList.length > 1) && (translatedDuplicateFound.length < 1)) {
+          // if source duplicated, but translated is not, remove all but highest match
           let highIndex = -1
           let highScore = -1
           for (const dupeIndex of dupeList) {
@@ -597,9 +573,9 @@ export function highlightBestWordsInTranslation(sourceText: string, targetText: 
   }
 
   const foundHighlightedWords = [];
-  for (let i = 0; i < targetWords.length; i++) {
-    const targetWord = targetWords[i];
-    const pos = highlightedWords_.findIndex(w => (w.targetText === targetWord))
+  for (let i = 0; i < translatedWords.length; i++) {
+    const translatedWord = translatedWords[i];
+    const pos = highlightedWords_.findIndex(w => (w.translatedText === translatedWord))
     if (pos >= 0) {
       const highlightedWord = highlightedWords_[pos];
       const highlightedWord_ = { 
