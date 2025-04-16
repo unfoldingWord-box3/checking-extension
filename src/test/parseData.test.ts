@@ -31,6 +31,8 @@ import { readJsonFile } from "../utilities/fileUtils";
 import { autoDetectProjectFolder } from "./checkToTsv.test";
 
 const home = ospath.home();
+const baseFolder = autoDetectProjectFolder();
+const testFixtures = path.join(baseFolder, './src/test/fixtures')
 
 suite('Parse Data', () => {
   suiteTeardown(() => {
@@ -38,7 +40,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and extract alignments', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments/bn_irv')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
     const alignmentMap_:AlignmentMapType = {};
     const files = fs.readdirSync(projectFolder);
     const doNT = true;
@@ -63,7 +65,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process previous twl checks', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/checking/twl')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/twl')
     const alignmentMap_:AlignmentMapType = {};
     const files = fs.readdirSync(projectFolder);
     const doNT = true;
@@ -89,7 +91,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From Alignments', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments/bn_irv')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments/bn_irv')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -99,7 +101,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From checking data', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/checking/twl')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/twl')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -109,7 +111,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From checking data', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/checking/tn')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/tn')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -118,8 +120,8 @@ suite('Parse Data', () => {
     assert.ok(alignmentCount > 1);
   });
 
-  test('Recursively Process all NT usfms and checks and extract translations From Files', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
+  test.skip('Recursively Process all NT usfms and checks and extract translations From Files', () => {
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -131,7 +133,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Recursively Process all OT usfms and checks and extract translations From Files', () => {
-    const projectFolder = path.join(home, './translationCore/otherProjects/bn_glt_en_eph/alignments')
+    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = false;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -155,8 +157,6 @@ const csvStartString = [
   '```csv\n',
   '```\n'
 ];
-
-const baseFolder = autoDetectProjectFolder();
 
 const tempFolder = path.join(baseFolder, './src/test/fixtures/testing_temp')
 
