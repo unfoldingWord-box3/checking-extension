@@ -30,10 +30,9 @@ import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
 import {
-  addAlignmentsForBibleBook,
   AlignmentMapType,
   findAlignmentSuggestions,
-} from "../../../src/utilities/shared/translationUtils";
+} from "../utilities/shared/translationUtils";
 // @ts-ignore
 import { groupDataHelpers } from "word-aligner-lib"
 

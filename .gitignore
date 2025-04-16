@@ -10,6 +10,7 @@ out/
 test-webview
 test-webview-react
 .vscode-test-web/
+/src/test/fixtures/testing_temp/
 
 # Misc
 .DS_Store
@@ -24,11 +25,10 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Cache
-temp
+/webview-ui/src/utilities/shared/
 /.idea/
 /.env
 /.env.json
-/webview-ui/src/utilities/shared/
-/src/test/fixtures/testing_temp/
+
+# Cache
+temp
