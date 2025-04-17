@@ -14,14 +14,16 @@ import {
   addAlignmentsForBibleBook,
   addAlignmentsForCheckingData,
   AlignmentMapType,
+  BestPhasesElementType,
   buildAiPrompt,
   cleanupVerse,
-  highlightBestWordsInTranslation,
   getScoredTranslations,
   getTopMatchesForQuote,
+  getTranslationCsv,
+  highlightBestPhraseInTranslation,
+  highlightBestWordsInTranslation,
   normalize,
   scoredTranslationType,
-  getTranslationCsv
 // @ts-ignore
 } from "../utilities/shared/translationUtils";
 import { isNT } from "../utilities/BooksOfTheBible";
@@ -256,11 +258,11 @@ suite('AI', function () {
     const response = fs.readFileSync(responsePath, "UTF-8")?.toString() || '';
     const foundCsv = extractCsvFromResponse(response);
     
-    const scoredTranslations = getScoredTranslations(foundCsv);
-    console.log(`quoteStr =\n`,JSON.stringify(scoredTranslations, null, 2));
+    const scoredPhrases = getScoredTranslations(foundCsv) as BestPhasesElementType[];
+    console.log(`quoteStr =\n`,JSON.stringify(scoredPhrases, null, 2));
 
-    const promptPath = path.join(tempFolder, "scored2.json");
-    fs.outputJsonSync(promptPath, scoredTranslations, { spaces: 2});
+    const highlightedText = highlightBestPhraseInTranslation(translation, scoredPhrases)
+    console.log(highlightedText);
   });
 })
 

@@ -39,4 +39,4 @@ score,translatedText,sourceText
 93.0493,তোমাদেরকে,ὑমῶন
 ```
 
-Output a CSV file with columns "translation" and "rank", listing the top ranked phrases from the translated passage that best match the source phrase's meaning.
+Output a CSV file with columns "translation" and "rank", listing the top ranked phrases from the translated passage that best match the source phrase's meaning.  The output should only include the CSV file.  Do not include any other text or explanation.

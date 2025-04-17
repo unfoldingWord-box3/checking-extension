@@ -1,0 +1,67 @@
+<step1_understanding_and_breakdown>
+The original prompt has several objectives, which I will break down into the core goals and concepts:
+
+1. **Primary Task:** Identify and rank the top 5 phrases in a translated passage that best reflect the translation of a source phrase.
+2. **Output Format:** Provide a CSV file containing two columns: "translation" and "rank."
+3. **Scoring System:** Implicitly relies on the provided translation data and scores to determine rankings.
+4. **Constraints for Highlighted Phrases:**
+   - Phrases must align with, and derive meaning from, the original source phrase.
+   - Phrases should only be taken from those within the translation of the provided passage.
+
+The current prompt is clear but verbose and lacks precision in guiding adaptability. It provides significant context about the translation process but could be made more concise and structured without losing information. Additionally, introducing more explicit instructions may ensure the LLM adheres to the requirements better, especially regarding the constraints and output format.
+</step1_understanding_and_breakdown>
+
+<step2_grouping_and_organizing>
+There are several distinct yet connected elements. I will group them into related categories for concept elevation:
+
+1. **Core Goal:**
+   - Extract and rank the top 5 phrases based on their fidelity to the source phrase's translation.
+
+2. **Output Requirements:**
+   - The response must be a CSV file with columns for "translation" and "rank."
+   - Provide no additional text outside the CSV format.
+
+3. **Scoring and Ranking Logic:**
+   - Use the provided translation data to compute similarity based on scores.
+   - Rank the phrases in descending order of their scores.
+
+4. **Constraints:**
+   - Highlighted phrases should use only words from the passage translation.
+   - Ensure that the highlighted phrases collectively represent the original source phrase and its translated meaning effectively.
+
+5. **Input Details:**
+   - A specific source phrase and its translated passage are provided.
+   - Translation data includes scores that measure alignment between source and translated text.
+</step2_grouping_and_organizing>
+
+<step3_candidate_prompts>
+Based on the organized concepts, I will create candidate idea-sums for a more concise and effective prompt. Here are three candidates:
+
+**Candidate 1 (Precise and Structured):**
+"Identify the top 5 phrases in the translation of the passage that most accurately match the source phrase. Use the provided translation data to compute their relevance based on scores. Rank the phrases in descending order by score and ensure phrases are only composed of words from the passage translation. Output a CSV file with columns 'translation' and 'rank,' and no additional text."
+
+**Candidate 2 (Even More Concise):**
+"Determine and rank the 5 most accurate phrases matching the source phrase from the passage translation. Use scores from the translation data and restrict phrases to words in the passage translation. Output in a plain CSV format ('translation', 'rank') without extra text."
+
+**Candidate 3 (Highly Structured for Adaptability):**
+"You need to highlight the top 5 phrases in the translated passage most aligned with the source phrase. Use translation data scores to determine phrase accuracy and relevance. Adhere to these criteria:
+1. Phrases must include only words from the passage translation.
+2. Rank phrases by descending score order.
+3. Output a CSV file with columns 'translation' and 'rank.' Provide no additional output text."
+</step3_candidate_prompts>
+
+<step4_evaluation_and_finalization>
+Each candidate has strength depending on usability:
+
+- Candidate 1 balances precision with structured guidance. It’s adaptable to specific user requirements while being relatively concise.
+- Candidate 2 is the most concise but might lack sufficient clarity for certain systems or users.
+- Candidate 3 heavily emphasizes structure and is adaptable to other similar subtasks, e.g., extracting phrases under different contexts.
+
+**Final Decision:** I will go with Candidate 1, as it strikes a balance between clarity, adaptability, and conciseness. The structured wording is sufficient to guide the task while avoiding unnecessary verbosity.
+
+Final improved prompt:
+</step4_evaluation_and_finalization>
+
+<prompt_final_version>
+"Identify the top 5 phrases in the translation of the passage that most accurately match the source phrase. Use the provided translation data to compute their relevance based on scores. Rank the phrases in descending order by score and ensure phrases are only composed of words from the passage translation. Output a CSV file with columns 'translation' and 'rank,' and no additional text."
+</prompt_final_version>

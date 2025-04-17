@@ -14,6 +14,17 @@ export type AlignmentElementType = {
   occurrences: number;
   ref: string[];
 };
+type MatchesType = { index: number; score: number };
+export type BestPhasesElementType = {
+  translation: string;
+  rank: number;
+};
+export type BestHighlightsElementType = {
+  highlights: string;
+  score?: number;
+  matches?: MatchesType[];
+};
+
 export type AlignmentMapType = Record<string, AlignmentElementType[]>;
 export type ScoredTranslationType = { sourceText: string; translatedText: string; score: number };
 
@@ -419,15 +430,7 @@ export function getScoredTranslations(csvLines:string) {
     for (const csvItem of csvItems) {
       for (const key of Object.keys(csvItem)) {
         const value = csvItem[key]
-        if (key === 'probability') {
-          // example = "100.0041*100.5*100.959*100.3456";
-          let value2 = math.evaluate(value);
-          const parts = value.split("*");
-          for (let i = 0; i < parts.length; i++) {
-            value2 = value2 / 100;
-          }
-          csvItem[key] = value2
-        } else if (key === 'score') {
+        if (key === 'score' || key === 'rank') {
           csvItem[key] = parseFloat(value)
         } else if (typeof value === 'string') {
           csvItem[key] = normalizer(value)
@@ -438,6 +441,66 @@ export function getScoredTranslations(csvLines:string) {
   return csvItems as Object;
 }
 
+/**
+ * Highlights the best phrases in a translated text by comparing scored phrases
+ * with individual words in the translation and calculating their similarity score.
+ *
+ * @param {string} translatedText - The translated text where highlights will be identified.
+ * @param {BestPhasesElementType[]} scoredPhrases - An array of objects representing scored phrases,
+ * each containing a translation and rank.
+ * @return {BestHighlightsElementType[]} - A sorted array of objects representing the scored and ranked
+ * phrases, including the matches and their calculated scores.
+ */
+export function highlightBestPhraseInTranslation(translatedText: string, scoredPhrases: BestPhasesElementType[]) {
+  const translatedWords = translatedText.split(" ").map(w => normalizer(w).trim());
+  const dupeCheck: Record<string, number[]> = {};
+
+  const highlights:BestHighlightsElementType[] = [];
+  for (let tIndex = 0; tIndex < scoredPhrases.length; tIndex++) {
+    const t = scoredPhrases[tIndex];
+    const translatedTextSplit = (t.translation)?.split(" ") || [];
+    const initialScore = 100 - t.rank;
+    const bestMatches = []
+    let match: MatchesType;
+    for (let i = 0; i < translatedTextSplit.length; i++) {
+      const highlightedWord = translatedTextSplit[i];
+      let bestScore = 0;
+      let bestIndex = -1;
+      for (let index = 0; index < translatedWords.length; index++) {
+        const translatedWord = translatedWords[index];
+
+        // get best match between translated Word and highlight word
+        const translatedFuzzScore = fuzz.ratio(highlightedWord, translatedWord);
+        if (translatedFuzzScore > bestScore) {
+          bestScore = translatedFuzzScore
+          bestIndex = index
+        }
+      }
+
+      match = { index: bestIndex, score: bestScore };
+      bestMatches.push(match);
+    }
+    // get product of best scores
+    const bestPhraseScore = bestMatches.reduce((a, b) => a * b.score / 100, 1);
+    highlights.push ({highlights: t.translation, score: initialScore * bestPhraseScore, matches: bestMatches})
+  }
+
+  // sort scoredPhrases by score
+  const highlights_ = highlights.sort((a, b) => (b.score || 0) - (a.score || 0));
+  return highlights_;
+}
+
+/**
+ * Highlights the best matching words between the source text and the translated text,
+ * based on scored translations, and returns an array of the matched words with corresponding details.
+ *
+ * @param {string} sourceText - The original source text containing words to match.
+ * @param {string} translatedText - The translated text containing words to compare against.
+ * @param {scoredTranslationType} scoredTranslations - An array of scored translations for evaluating matching words.
+ *
+ * @return {Array<{translatedText: string, sourceText: string, index: number, score: number}>}
+ * An array of highlighted words, including the translated word, corresponding source word, index, and match score.
+ */
 export function highlightBestWordsInTranslation(sourceText: string, translatedText: string, scoredTranslations: scoredTranslationType) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
   const translatedWords = translatedText.split(" ").map(w => normalizer(w).trim());
