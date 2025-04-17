@@ -14,7 +14,7 @@ You are tasked with analyzing translation data to determine the best-matching tr
 **Response Format:**
 - Provide the result as a **CSV file**.
 - Columns: `"translation"` and `"rank"`.
-- Only include the **5 best phrases** ranked from best match to worst match.
+- Only include the **5 best phrases** ranked from best match to worst match. And remove any duplicated translations.
 
 **Data for Reference:**
 

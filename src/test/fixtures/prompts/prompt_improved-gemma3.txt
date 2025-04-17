@@ -1,0 +1,116 @@
+Okay, I understand the task. I will meticulously analyze and refine the provided prompt using my concept elevation approach. Here's how I'll proceed, documented within `<xml>` tags as requested:
+
+```xml
+<step_1>
+  <title>Initial Deep Dive (25 minutes)</title>
+  <description>
+    I’ve spent 25 minutes carefully dissecting the prompt. The core goal is to identify key phrases *within a translated passage* that best represent the meaning of a given source phrase. This isn't simply translation lookup; it requires semantic matching considering context within the target text. Several sub-goals are present:
+    1. **Phrase Extraction:** Identify potential phrases from the translated passage.
+    2. **Semantic Similarity Assessment:** Determine how well each extracted phrase captures the meaning of the source phrase, leveraging provided translation data (scores).
+    3. **Ranking:** Order these phrases by their semantic similarity score.
+    4. **Output Formatting:** Present the results as a CSV with "translation" and "rank" columns.
+    5. **Constraint**: Only use words present in the translated passage for the highlighted phrase.
+
+    The provided translation data is crucial – it's pre-computed alignment information, which should be heavily leveraged. The prompt currently relies on *telling* the LLM what to do step-by-step. This is inefficient and prone to errors.  A better approach would be to define the task as a "find the best matches" problem with clear criteria for 'best'.
+  </description>
+</step_1>
+```
+
+```xml
+<step_2>
+  <title>Concept Organization (25 minutes)</title>
+  <description>
+    I've grouped the core concepts into three main areas:
+    * **Target & Context:** This encompasses the source phrase, the translated passage, and the need to extract phrases *from within* that passage.
+    * **Matching Criteria:** This includes semantic similarity (using provided scores), the constraint of using only words from the translation, and the concept of "best" matching.
+    * **Output Specification:**  This is purely about the desired CSV format.
+
+    I've identified a key redundancy: repeatedly stating that phrases must be derived *from* the translated passage. This can be elegantly handled by framing the task as operating solely within the provided text. The prompt also over-specifies the process (e.g., "find the 5 best").  We should allow the LLM to determine a reasonable number of results, or specify a maximum if necessary.
+  </description>
+</step_2>
+```
+
+```xml
+<step_3>
+  <title>Idea-Sum Iteration (25 minutes)</title>
+  <description>
+    Let's craft idea-sums for each group:
+
+    * **Target & Context:** "Identify phrases within the provided translated passage that are relevant to the meaning of the given source phrase."
+    * **Matching Criteria:** "Prioritize phrases based on their pre-computed semantic similarity scores (provided in the data), ensuring all words originate from the translated passage."
+    * **Output Specification:** "Present the top ranked matching phrases as a CSV file with 'translation' and 'rank' columns."
+
+    After several iterations, I believe we can combine these into a single, powerful instruction. The key is to emphasize *relevance* and *ranking*.  We don’t need to explicitly say “find” or “highlight”. The LLM understands the task implicitly when given clear ranking criteria.
+  </description>
+</step_3>
+```
+
+```xml
+<step_4>
+  <title>Refinement & Final Prompt Construction (25 minutes)</title>
+  <description>
+    I've reviewed the process and identified a potential improvement: explicitly stating that the provided data *is* the source of truth for semantic similarity. This prevents the LLM from attempting to calculate similarity itself, which could be inaccurate. I also want to emphasize the importance of using only words present in the translated passage.
+
+    Here's the final prompt:
+  </description>
+</step_4>
+```
+
+**Final Prompt:**
+
+```
+You are an expert in semantic analysis and translation alignment. Your task is to identify phrases within the provided translated passage that best correspond to the meaning of the given source phrase. Use the provided data as the definitive source for semantic similarity scores between words in the source and target languages.  Prioritize phrases composed *only* of words present in the translated passage.
+
+**Source Phrase:** `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+
+**Translated Passage:** `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+
+**Translation Data:**
+```
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+86.0037,তারা,τοῖς
+86.0023,তার,τοῖς
+86.0011,তাঁর,τοῖς
+100.5,অপরাধে,παραπτώμασιν
+100.1176,পাপে,παραπτώμασιν
+88.5,অপরাধে,παραπτώমাτι
+88.0088,পাপ,παরাπτώমাτι
+80.0088,পাপ,παραπτώματα
+100.959,ও,καὶ
+100.7063,আর,καὶ
+100.2143,আরো,καὶ
+100.0055,আর,καί
+100.0026,ও,καί
+100.0008,আর,ταῖς
+100.0006,ও,ταῖς
+89.0008,তোমাদের,τὰς
+80.0041,তোমাদের,τοῖς
+80.0013,তোমরা,τοῖς
+100.1765,পাপে,ἁμαρτίαις
+100.0435,পাপী,ἁμαρτίαις
+95.2281,পাপ,ἁμαρτίας
+95.0965,পাপ,ἁμαρτίαι
+95.0435,পাপী,ἁμαρτίας
+100.3456,তোমাদের,ὑμῶν
+100.0988,তোমরা,ὑমῶν
+93.1667,তোমাদেরই,ὑমῶন
+93.0909,তোমাদেরও,ὑমῶন
+93.0493,তোমাদেরকে,ὑমῶন
+```
+
+Output a CSV file with columns "translation" and "rank", listing the top ranked phrases from the translated passage that best match the source phrase's meaning.
+```
+
+**Key Improvements:**
+
+*   **Concept Elevation:** The prompt focuses on *what* needs to be achieved (semantic alignment) rather than *how* to achieve it (step-by-step instructions).
+*   **Conciseness:** Removed redundant phrasing and streamlined the instructions.
+*   **Clarity:** Emphasized the importance of using the provided data and adhering to the word origin constraint.
+*   **Trust in LLM:** Allows the LLM more freedom to determine a reasonable number of results, reducing unnecessary constraints.
+* **Explicit Data Source**: Clearly states that the translation data is the source of truth for similarity scores.
+
+
+
+I believe this revised prompt will yield significantly better and more consistent results from the LLM.

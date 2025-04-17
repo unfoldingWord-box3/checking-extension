@@ -1,0 +1,42 @@
+You are an expert in semantic analysis and translation alignment. Your task is to identify phrases within the provided translated passage that best correspond to the meaning of the given source phrase. Use the provided data as the definitive source for semantic similarity scores between words in the source and target languages.  Prioritize phrases composed *only* of words present in the translated passage.
+
+**Source Phrase:** `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+
+**Translated Passage:** `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+
+**Translation Data:**
+```
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+86.0037,তারা,τοῖς
+86.0023,তার,τοῖς
+86.0011,তাঁর,τοῖς
+100.5,অপরাধে,παραπτώμασιν
+100.1176,পাপে,παραπτώμασιν
+88.5,অপরাধে,παραπτώমাτι
+88.0088,পাপ,παরাπτώমাτι
+80.0088,পাপ,παραπτώματα
+100.959,ও,καὶ
+100.7063,আর,καὶ
+100.2143,আরো,καὶ
+100.0055,আর,καί
+100.0026,ও,καί
+100.0008,আর,ταῖς
+100.0006,ও,ταῖς
+89.0008,তোমাদের,τὰς
+80.0041,তোমাদের,τοῖς
+80.0013,তোমরা,τοῖς
+100.1765,পাপে,ἁμαρτίαις
+100.0435,পাপী,ἁμαρτίαις
+95.2281,পাপ,ἁμαρτίας
+95.0965,পাপ,ἁμαρτίαι
+95.0435,পাপী,ἁμαρτίας
+100.3456,তোমাদের,ὑμῶν
+100.0988,তোমরা,ὑমῶν
+93.1667,তোমাদেরই,ὑমῶন
+93.0909,তোমাদেরও,ὑমῶন
+93.0493,তোমাদেরকে,ὑমῶন
+```
+
+Output a CSV file with columns "translation" and "rank", listing the top ranked phrases from the translated passage that best match the source phrase's meaning.
