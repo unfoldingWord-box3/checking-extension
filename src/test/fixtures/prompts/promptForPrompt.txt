@@ -1,11 +1,13 @@
-I want to highlight the words in a translated passage that best reflect the translation of a source phrase.  Write a prompt that would give the 5 best phrases to highlight and rank them.  And I want the response to only be a CSV file with columns for "translation" and “rank” where translation would be a phrase that best matches a translation of all the words in the source phrase and only uses words from the translation of the passage.
+I need you to write an AI prompt for the following:
+
+I want to highlight the words in a translated passage that best reflect the translation of a source phrase.  I need the 5 best phrases to highlight and are ranked.  And I want the response to only be a CSV file with columns for "translation" and “rank” where translation would be a phrase that best matches a translation of all the words in the source phrase and only uses words from the translation of the passage.
 
 Source phrase for highlighted words: `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
 
 Translation of passage: `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
 
 Translation Data:
-```csv
+```
 score,translatedText,sourceText
 100.0041,তোমাদের,τοῖς
 100.0013,তোমরা,τοῖς
