@@ -18,7 +18,7 @@
     "@material-ui/lab": "4.0.0-alpha.61",
     "@mui/lab": "5.0.0-alpha.89",
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "checking-tool-rcl": "0.9.25-beta.12",
+    "checking-tool-rcl": "0.9.26",
     "deep-equal": "1.0.1",
     "dompurify": "^3.0.9",
     "fuzzball": "^2.2.2",
@@ -31,7 +31,7 @@
     "react-dom": "^18.2.0",
     "string-punctuation-tokenizer": "^2.2.0",
     "uw-tsv-parser": "^1.0.3",
-    "word-aligner-lib": "0.9.1-beta.10"
+    "word-aligner-lib": "1.0.0"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",

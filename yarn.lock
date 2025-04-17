@@ -4012,10 +4012,10 @@ wildcard@^2.0.0:
   resolved "https://registry.npmjs.org/wildcard/-/wildcard-2.0.1.tgz"
   integrity sha512-CC1bOL87PIWSBhDcTrdeLo6eGT7mCFtrg0uIJtqJUFyK+eJnzl8A1niH56uu7KMa5XFrtiV+AQuHO3n7DsHnLQ==
 
-word-aligner-lib@0.9.1-beta.10:
-  version "0.9.1-beta.10"
-  resolved "https://registry.yarnpkg.com/word-aligner-lib/-/word-aligner-lib-0.9.1-beta.10.tgz#82946112601ba010dcb8af81dbf44b1f8d837a0e"
-  integrity sha512-MOkdu5t0LfvuQd2lO0HxmKaVip6YsKI42VP/Pn/FI43vZCegauOzicrX3t5tDonmZedL+Lgf2EytQ8PlIMm/zA==
+word-aligner-lib@1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/word-aligner-lib/-/word-aligner-lib-1.0.0.tgz#9e44a00e05175cbaee9df9417ac8d876839babb0"
+  integrity sha512-S3eVSmeX6dRT1fEsLelaDrq5zp/yDGM72UFHpmyX3dVOLyYclrCtdN3nT1fcIp1she/zlRH1Lf7T22Dvav0E7g==
   dependencies:
     deep-equal "^2.0.5"
     file-loader "^6.2.0"
