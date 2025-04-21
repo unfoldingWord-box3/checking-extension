@@ -1,0 +1,147 @@
+Certainly! Below, I have broken the process into detailed steps as you requested.
+
+---
+
+### **<Step_1> Preliminary Review**
+#### **Analysis of the Original Prompt:**
+- **Goal:** Generate a CSV file containing 5 ranked translations that best reflect the source phrase using only phrases from a given translated passage.
+- **Inputs:** A source phrase, the translation of a passage, and translation data with scores.
+- **Outputs:** A ranked CSV file with two columns: "translation" and "rank."
+- **Features of the provided prompt:**
+  - Clearly indicates a need for AI interpretation to extract high-quality matches.
+  - Asks for rankings based on similarity (likely via calculated match scores) while ensuring the output is constrained to the provided translation.
+
+#### **Weaknesses in the Original Prompt:**
+1. **Fragmentation of Concepts:** The prompt breaks instructions across multiple sentences but doesn't organize them into a unified goal or framework. The reader may get confused between different pieces of information (e.g., translation constraints, ranking rules, etc.).
+2. **Lack of Clarity:** The scoring mechanism, expected behavior when scores are equal, and nuances of how phrases should be detected (only contiguous phrases or combinations?) are not adequately specified.
+3. **Verbosity:** Some information can be stated more concisely while retaining meaning.
+4. **Generality:** The prompt doesn't define whether the score solely determines ranking or if other linguistic factors (e.g., contextual accuracy) are also involved.
+
+#### **Conceptual Goals:**
+The core of concept elevation requires distilling the goals into three main pillars:
+1. **Action:** Precisely define what the AI is tasked with (highlighting phrases and producing a CSV).
+2. **Input Handling:** Clearly specify the three inputs (source phrase, translated passage, and scoring data) and how they interact.
+3. **Output Specification:** Ensure the format, method of ranking, and constraints are explicit for the AI to follow easily.
+
+</Step_1>
+
+---
+
+### **<Step_2> Organizing Key Concepts**
+#### **Identified Key Groups Based on Concept Elevation**
+1. **Core Task Definition:**
+   - Highlight phrases from the provided translation that best reflect the meaning of the source phrase.
+   - Limit selection to a maximum of 5 phrases, ranked by score-based relevance.
+2. **Input Description:**
+   - **Source Phrase:** Guide for identifying relevant content.
+   - **Translated Passage:** Strict boundary for the output; selected phrases can only consist of words/phrases in this translation.
+   - **Translation Data:** Source-to-translation matches and scores for calculating relevance.
+3. **Output Requirements:**
+   - Produce a CSV file with two columns: "translation" and "rank."
+   - Ensure the order corresponds to descending relevance (highest-ranked first).
+   - Maintain a strict cap of 5 phrase entries.
+4. **Methodology and Ranking Strategy:**
+   - How to generate and rank phrases:
+     - Score-based ranking: Sum scores of the words in each phrase.
+     - Phrase constraints: Phrases may contain one or more contiguous or non-contiguous words, but must only include those in the translated passage.
+   - Handle ties by ordering based on appearance in the translated passage (earlier phrases take precedence).
+
+**Output of this step:**
+Each group highlights a clearer, higher-level abstraction of the instructions for simplicity and adaptability.
+
+</Step_2>
+
+---
+
+### **<Step_3> Developing the Improved Prompt**
+#### **Candidate Prompt:**
+Here is the first draft of a more concise and concept-elevated version:
+
+<prompt_candidate>
+Given the following inputs:
+1. A **source phrase** as the reference: `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+2. A **translated passage**: `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+3. A **dataset of word-to-word translations and scores** (see below):
+
+```
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+...
+```
+
+
+Your task is to identify **up to 5 phrases**, ranked by relevance, from the translated passage that best reflect the meaning of the source phrase, using only words and phrases present in the translated passage. Follow these steps:
+
+1. Use the dataset to evaluate relevance:
+   - Match translated words in the passage to their **source equivalents** using the dataset.
+   - Sum the scores of individual words within each candidate phrase to calculate its relevance.
+2. Rank the phrases:
+   - Start with the phrase that has the **highest summed score**.
+   - If two phrases have equal scores, choose the one that appears earlier in the translated passage.
+   - Ensure uniqueness (select different phrases for each rank).
+3. Output the result:
+   - Format the response as a CSV file with two columns: "translation" (phrase) and "rank" (1-5).
+   - Ensure no more than 5 phrases are returned.
+
+</prompt_candidate>
+
+</Step_3>
+
+---
+
+### **<Step_4> Refinement and Finalization**
+#### **Critical Review:**
+- **Strengths:**
+  - The candidate prompt is more concise, grouping core tasks and clarifying actions within a logical sequence.
+  - Describes scoring, ranking, and constraints with sufficient specificity for predictable and accurate AI behavior.
+- **Room for Improvement:**
+  - Might benefit from explicitly defining whether phrases can include non-contiguous words from the passage.
+
+#### **Final Adjustments:**
+Added a note about whether phrases need to be contiguous and ensured even word order is well-defined.
+
+<prompt_final>
+You are tasked with identifying the **top 5 phrases** from a translated passage that best reflect the meaning of a provided source phrase. Follow these steps carefully:
+
+### **Inputs:**
+1. **Source Phrase:** `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+2. **Translated Passage:** `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+3. **Translation Data:** A CSV file containing word-to-word mapping between the source and translation, along with scores (example below):
+
+```
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+...
+```
+
+
+### **Task:**
+1. Identify **up to 5 phrases** from the translated passage that best reflect the source phrase.
+   - Each phrase can only include **words present in the translated passage**.
+   - Phrases **must be contiguous**.
+2. Rank the phrases by relevance:
+   - Relevance is determined by the **summed scores of individual words** in each phrase, using the translation data.
+   - In case of tied scores, prioritize by **earliest appearance** in the passage.
+3. Return the results in CSV format:
+   - Include two columns: "translation" (selected phrase) and "rank" (1-5).
+   - Ensure the output contains no more than 5 entries.
+
+### **Example:**
+```
+translation,rank
+তোমাদের অপরাধে ও পাপে,1
+তোমাদের পাপে ও অপরাধে,2
+অপরাধে তোমাদের এবং পাপে,3
+পাপে তোমাদের এবং অপরাধে,4
+তোমাদের ও পাপে অপরাধে,5
+```
+
+</prompt_final>
+
+</Step_4>
+
+---
+
+This final prompt is precise, conceptually elevated, and optimized for clear AI interpretation. Let me know if you'd like further refinements!

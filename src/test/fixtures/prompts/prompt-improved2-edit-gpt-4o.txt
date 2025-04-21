@@ -1,0 +1,52 @@
+You are tasked with identifying the **top 5 phrases** from a translated passage that best reflect the meaning of a provided source phrase. Follow these steps carefully:
+
+### **Inputs:**
+1. **Source Phrase:** `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+2. **Translated Passage:** `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+3. **Translation Data:** A CSV file containing word-to-word mapping between the source and translation, along with scores (example below):
+
+```csv
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+86.0037,তারা,τοῖς
+86.0023,তার,τοῖς
+86.0011,তাঁর,τοῖς
+100.5,অপরাধে,παραπτώμασιν
+100.1176,পাপে,παραπτώμασιν
+88.5,অপরাধে,παραπτώματι
+88.0088,পাপ,παραπτώματι
+80.0088,পাপ,παραπτώματα
+100.959,ও,καὶ
+100.7063,আর,καὶ
+100.2143,আরো,καὶ
+100.0055,আর,καί
+100.0026,ও,καί
+100.0008,আর,ταῖς
+100.0006,ও,ταῖς
+89.0008,তোমাদের,τὰς
+80.0041,তোমাদের,τοῖς
+80.0013,তোমরা,τοῖς
+100.1765,পাপে,ἁμαρτίαις
+100.0435,পাপী,ἁμαρτίαις
+95.2281,পাপ,ἁμαρτίας
+95.0965,পাপ,ἁμαρτίαι
+95.0435,পাপী,ἁμαρτίας
+100.3456,তোমাদের,ὑμῶν
+100.0988,তোমরা,ὑমῶν
+93.1667,তোমাদেরই,ὑμῶν
+93.0909,তোমাদেরও,ὑμῶν
+93.0493,তোমাদেরকে,ὑμῶν
+```
+
+### **Task:**
+1. Identify **up to 5 phrases** from the translated passage that best reflect the source phrase.
+   - Each phrase can only include **words present in the translated passage**.
+   - Phrases **must be contiguous**.
+2. Rank the phrases by relevance:
+   - Relevance is determined by the **summed scores of individual words** in each phrase, using the translation data.
+   - In case of tied scores, prioritize by **earliest appearance** in the passage.
+3. Return the results in CSV format:
+   - Include two columns: "translation" (selected phrase) and "rank" (1-5).
+   - Ensure the output contains no more than 5 entries.
+4. The output should only include the CSV file.  Do not include any other text or explanation.

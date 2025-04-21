@@ -57,4 +57,15 @@ score,translatedText,sourceText
 
 </prompt_to_improve>
 
+<example_response>
+```csv
+translation,rank
+তোমাদের অপরাধে ও পাপে,1
+তোমাদের পাপে ও অপরাধে,2
+অপরাধে তোমাদের এবং পাপে,3
+পাপে তোমাদের এবং অপরাধে,4
+তোমাদের ও পাপে অপরাধে,5
+```
+</example_response>
+
 When improving this prompt, do each step inside <xml> tags so we can audit your reasoning.

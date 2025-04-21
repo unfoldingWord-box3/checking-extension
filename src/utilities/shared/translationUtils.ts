@@ -26,7 +26,33 @@ export type BestHighlightsElementType = {
 };
 
 export type AlignmentMapType = Record<string, AlignmentElementType[]>;
-export type ScoredTranslationType = { sourceText: string; translatedText: string; score: number };
+type HighlightedWordsType = { highlight: string, index: number };
+export type ScoredTranslationType = {
+  sourceText: string;
+  translatedText: string;
+  quoteWord: string;
+  score: number;
+  highLightedWords: HighlightedWordsType[];
+};
+
+type ScoredMatchElementType = {
+  score: number;
+  bestTranslationMatch: BestTranslatedWordType[];
+  bestOriginalMatch: {
+    text: string;
+    occurrences: number;
+    ref: string[];
+    originalText: string;
+    quoteWord: string;
+    translatedText: string;
+  };
+};
+
+type TranslatedWordMatchType = { index: number; translatedWord: string, score: number } | null;
+type BestTranslatedWordType = {
+  score: number;
+  matched: TranslatedWordMatchType
+};
 
 /**
  * This function adds content from an alignment object to the original language array and recursively processes
@@ -50,18 +76,6 @@ export function addOriginalAlignment(origLang: any[], alignment: any, targetLang
   }
 }
 
-type ScoredMatchElementType = {
-  score: number;
-  matches: AlignmentElementType[];
-  bestOriginalMatch: {
-    text: string;
-    occurrences: number;
-    ref: string[];
-    originalText: string;
-    translatedText: string;
-  };
-};
-
 /**
  * Finds the best matching text strings between an input quote and a provided alignment map,
  * based on a scoring mechanism. The function returns a list of the top matches with their
@@ -74,7 +88,6 @@ type ScoredMatchElementType = {
  * @return {ScoredTranslationType[]} - A list of top matches containing the source text, translated text, and calculated score.
  */
 export function findBestMatches(quoteWord: string, translatedAlignmentMap: AlignmentMapType, matchCount: number, translation: string) {
-  type ScoredMatchObjectType = Record<string, ScoredMatchElementType>;
   const topMatches: ScoredTranslationType[] = [];
   const translationWords = tokenize({ text: translation.toLowerCase(), includePunctuation: false, normalize: true })
   quoteWord = normalizer(quoteWord)
@@ -83,50 +96,97 @@ export function findBestMatches(quoteWord: string, translatedAlignmentMap: Align
   const originalThreshold = 70;
 
   const foundMatches: ScoredMatchElementType[] = []
-  const _translatedWords = translatedAlignmentMap && Object.keys(translatedAlignmentMap);
-  if (_translatedWords?.length) {
-    for (const _translatedWord of _translatedWords) {
-      const originalMatches:AlignmentElementType[] = translatedAlignmentMap[_translatedWord];
-      for (const translationWord of translationWords) {
-        const translatedScore = fuzz.ratio(_translatedWord, translationWord);
-        if (translatedScore < translatedThreshold) {
-          continue
-        }
-        const currentMatches: ScoredMatchElementType[] = []
-        for (const match of originalMatches || []) {
-          const originalMatchText = match?.text;
-          const originalScore = fuzz.ratio(originalMatchText, quoteWord);
-          if (originalScore > originalThreshold) {
-            const combinedScore = originalScore * translatedScore / 100; // combine scores
-            const bestOriginalMatch = { ...match, originalText: originalMatchText, translatedText: _translatedWord };
-            const newMatch:ScoredMatchElementType = { score: combinedScore, bestOriginalMatch, matches: originalMatches }
-            currentMatches.push(newMatch);
+  const _translatedPhrases = translatedAlignmentMap && Object.keys(translatedAlignmentMap);
+  if (_translatedPhrases?.length) {
+    for (const _translatedPhrase of _translatedPhrases) { // cycle through the translated phrases in the translation map
+      const originalMatches: AlignmentElementType[] = translatedAlignmentMap[_translatedPhrase];
+      const _translatedWords = _translatedPhrase.split(' ')
+      const bestTranslationMatches: BestTranslatedWordType[] = [];
+      let combinedScore = 0;
+      for (let i = 0; i < _translatedWords.length; i++) { // cycle through each word of the translated phrase
+        const _translatedWord = _translatedWords[i]
+        let bestTranslatedWordScore = -1
+        let matchedWord:TranslatedWordMatchType = null
+        for (let j = 0; j < translationWords.length; j++) { // cycle through words of the given translation
+          const translatedWord = translationWords[j];
+          const translatedScore = fuzz.ratio(_translatedWord, translatedWord);
+          if (translatedScore > bestTranslatedWordScore) {
+            bestTranslatedWordScore = translatedScore;
+            matchedWord = { index: j, translatedWord, score: translatedScore };
           }
         }
 
-        if (currentMatches.length) {
-          const currentMatches_ = currentMatches.sort((a, b) => b.score - a.score);
-          foundMatches.push(...currentMatches_.slice(0, 2 * matchCount));
+        bestTranslationMatches[i] = { score: bestTranslatedWordScore, matched: matchedWord }
+        combinedScore += bestTranslatedWordScore
+      }
+      
+      if (_translatedWords.length > 1) {
+        combinedScore = combinedScore / _translatedWords.length; // get average score of all words
+      }
+
+      if (combinedScore < translatedThreshold) {
+        continue
+      }
+      
+      let translatedScore = combinedScore
+          
+      const currentMatches: ScoredMatchElementType[] = []
+      for (const match of originalMatches || []) {
+        const originalMatchText = match?.text;
+        const originalScore = fuzz.ratio(originalMatchText, quoteWord);
+        if (originalScore > originalThreshold) {
+          const combinedScore = originalScore * translatedScore / 100; // combine scores
+          const bestOriginalMatch = {
+            ...match,
+            originalText:
+            originalMatchText,
+            quoteWord,
+            translatedText: _translatedPhrase
+          };
+          const newMatch: ScoredMatchElementType = {
+            score: combinedScore,
+            bestOriginalMatch,
+            bestTranslationMatch: bestTranslationMatches
+          }
+          currentMatches.push(newMatch);
         }
       }
-    }
 
-    const orderedList = foundMatches.sort((a, b) => b.score - a.score);
-
-    // console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
-
-    for (const item of orderedList.slice(0, matchCount)) {
-      const bestOriginalMatch = item?.bestOriginalMatch;
-      const originalMatches = item?.matches;
-      const translatedText = bestOriginalMatch?.translatedText;
-      const originalText = bestOriginalMatch?.originalText;
-      const totalOccurrences = originalMatches?.reduce((acc, curr) => acc + curr?.occurrences, 0);
-      const match = item?.bestOriginalMatch;
-      const occurrences = match?.occurrences || 0;
-      const score = Math.round(item?.score) + occurrences / totalOccurrences;
-      topMatches.push({ sourceText: originalText || '', score, translatedText });
+      if (currentMatches.length) {
+        const currentMatches_ = currentMatches.sort((a, b) => b.score - a.score);
+        foundMatches.push(...currentMatches_.slice(0, 2 * matchCount));
+      }
     }
   }
+
+  const orderedList = foundMatches.sort((a, b) => b.score - a.score);
+
+  // console.log(`changedCurrentCheck - orderedMatches`, orderedMatches, orderedList);
+
+  for (const item of orderedList.slice(0, matchCount)) {
+    const bestOriginalMatch = item?.bestOriginalMatch;
+    const translatedText = bestOriginalMatch?.translatedText;
+    const originalText = bestOriginalMatch?.originalText;
+    const quoteWord = bestOriginalMatch?.quoteWord;
+    const match = item?.bestOriginalMatch;
+    //@ts-ignore
+    const highLightedWords: HighlightedWordsType[] = item?.bestTranslationMatch?.map(m => {
+      const matched = m?.matched;
+      return {
+        highlight: matched?.translatedWord,
+        index: matched?.index,
+      }
+    }) || [];
+    const score = item?.score;
+    topMatches.push({
+      sourceText: originalText || '',
+      score,
+      translatedText,
+      highLightedWords,
+      quoteWord
+    });
+  }
+  
   return topMatches;
 }
 
@@ -269,10 +329,9 @@ export function buildAiPrompt(topMatches: object[], verseText:string, quoteStr: 
  * @return {ScoredTranslationType[]} An array of objects representing the top matches, each containing the source text,
  *                                   translated text, and a calculated score.
  */
-export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string) {
+export function getTopMatchesForQuote(quoteStr: string, alignmentMap_: AlignmentMapType, translation: string, matchCount: number = 10) {
   const topMatches: ScoredTranslationType[] = [];
   const quotes = quoteStr.split(" ");
-  const matchCount = (quotes.length > 2) ? 5 : 10;
   
   // transform map to key by translated word rather than original
   const translatedAlignmentMap: AlignmentMapType = {};
@@ -414,8 +473,6 @@ export function tokenizeQuote(quote:string, isOrigLang = false, includePunctuati
   }
 }
 
-export type scoredTranslationType = Array<{ sourceText: string; translatedText: string; score: number }>;
-
 /**
  * Parses a CSV string containing translations and their respective scores,
  * converts the score values into numerical format, and returns the parsed data.
@@ -501,7 +558,7 @@ export function highlightBestPhraseInTranslation(translatedText: string, scoredP
  * @return {Array<{translatedText: string, sourceText: string, index: number, score: number}>}
  * An array of highlighted words, including the translated word, corresponding source word, index, and match score.
  */
-export function highlightBestWordsInTranslation(sourceText: string, translatedText: string, scoredTranslations: scoredTranslationType) {
+export function highlightBestWordsInTranslation(sourceText: string, translatedText: string, scoredTranslations: ScoredTranslationType[]) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
   const translatedWords = translatedText.split(" ").map(w => normalizer(w).trim());
   let highlightedWords:{ translatedText: string, sourceText: string, index: number, score: number }[] = []
@@ -659,4 +716,125 @@ export function highlightBestWordsInTranslation(sourceText: string, translatedTe
   }
 
   return foundHighlightedWords;
+}
+
+// function getCombinations(arr: object[], min: number, max: number): object[][] {
+//   const result: object[][] = [];
+
+//   // Get all possible combinations of size k
+//   function getCombinationsOfSize(start: number, k: number, current: object[]) {
+//     if (current.length === k) {
+//       result.push([...current]);
+//       return;
+//     }
+
+//     for (let i = start; i < arr.length; i++) {
+//       current.push(arr[i]);
+//       getCombinationsOfSize(i + 1, k, current);
+//       current.pop();
+//     }
+//   }
+
+//   // Generate combinations of different sizes
+//   for (let k = min; k <= Math.min(max, arr.length); k++) {
+//     getCombinationsOfSize(0, k, []);
+//   }
+
+//   return result;
+// }
+
+export function getBestHighlights(sourceText: string, scoredTranslations: ScoredTranslationType[]) {
+  const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
+  const highlightMap: Record<string, ScoredTranslationType[]> = {};
+
+  // map scored translations to related quote words
+  for (const t of scoredTranslations) {
+    const key = t?.quoteWord
+    let value = highlightMap[key]
+    if (!value) {
+      highlightMap[key] = [t]
+    } else {
+      value.push(t);
+    }
+  }
+  
+  const sourceWordMap = []
+  for (let i = 0; i < sourceWords.length; i++) {
+    const word = sourceWords[i];
+    const list = highlightMap[word];
+    let found:string|null = null
+    if (list) {
+      found = word;
+    }
+    sourceWordMap[i] = found
+  }
+
+  const origWordPointers = new Array(sourceWords.length).fill(0);
+  
+  const combinations: object[] = []
+  let index = -1
+  while (combinations.length < 50) {
+    // find next match for quote word
+    const foundMatches:ScoredTranslationType[] = []
+    for (let i = 0; i < origWordPointers.length; i++) {
+      const pointer = origWordPointers[i]
+      const sourceWord = sourceWords[i]
+      if (sourceWord) {
+        const matches = highlightMap[sourceWord]
+        
+        // check for duplicate highlights
+        let keep = true
+        for (let j = 0; j < i; j++) {
+          const previousHighlightedWords = foundMatches[j]?.highLightedWords;
+          const previousHighlight = previousHighlightedWords?.[0]?.index
+          const currentHighlightedWords = matches[pointer]?.highLightedWords;
+          const currentHighlight = currentHighlightedWords?.[0]?.index
+          if (pointer < matches.length) {
+            keep = true
+            if (previousHighlightedWords && currentHighlightedWords) {
+              if (previousHighlight === currentHighlight && previousHighlightedWords.length === currentHighlightedWords.length) {
+                const previousScore = foundMatches[j]?.score
+                const currentScore = matches[pointer]?.score
+                if (currentScore > previousScore) {
+                  delete foundMatches[j];
+                } else {
+                  keep = false;
+                }
+              }
+            }
+          } else {
+            keep = false;
+          }
+        }
+        if (keep) {
+          foundMatches[i] = matches[pointer]
+        }
+      }
+    }
+    
+    // calculate average score
+    let scoreSum = 0;
+    for (const match of foundMatches) {
+      if (match) {
+        const score = match.score
+        scoreSum += score
+      }
+    }
+    scoreSum = scoreSum / sourceWords.length
+    
+    // save score for combination
+    const wordMatches = { score: scoreSum, matches: foundMatches }
+    combinations.push(wordMatches);
+    
+    // move to next word and move to next match
+    index++;
+    if (index >= origWordPointers.length) {
+      index = 0;
+    }
+    origWordPointers[index]++;
+  }
+  
+  console.log(origWordPointers)
+
+  // return wordIndexes;
 }
