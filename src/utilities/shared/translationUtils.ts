@@ -32,6 +32,7 @@ export type ScoredTranslationType = {
   translatedText: string;
   quoteWord: string;
   score: number;
+  occurrences: number;
   highLightedWords: HighlightedWordsType[];
 };
 
@@ -169,6 +170,7 @@ export function findBestMatches(quoteWord: string, translatedAlignmentMap: Align
     const originalText = bestOriginalMatch?.originalText;
     const quoteWord = bestOriginalMatch?.quoteWord;
     const match = item?.bestOriginalMatch;
+    const occurrences = match?.occurrences;
     //@ts-ignore
     const highLightedWords: HighlightedWordsType[] = item?.bestTranslationMatch?.map(m => {
       const matched = m?.matched;
@@ -183,7 +185,8 @@ export function findBestMatches(quoteWord: string, translatedAlignmentMap: Align
       score,
       translatedText,
       highLightedWords,
-      quoteWord
+      quoteWord,
+      occurrences
     });
   }
   
@@ -718,46 +721,45 @@ export function highlightBestWordsInTranslation(sourceText: string, translatedTe
   return foundHighlightedWords;
 }
 
-// function getCombinations(arr: object[], min: number, max: number): object[][] {
-//   const result: object[][] = [];
-
-//   // Get all possible combinations of size k
-//   function getCombinationsOfSize(start: number, k: number, current: object[]) {
-//     if (current.length === k) {
-//       result.push([...current]);
-//       return;
-//     }
-
-//     for (let i = start; i < arr.length; i++) {
-//       current.push(arr[i]);
-//       getCombinationsOfSize(i + 1, k, current);
-//       current.pop();
-//     }
-//   }
-
-//   // Generate combinations of different sizes
-//   for (let k = min; k <= Math.min(max, arr.length); k++) {
-//     getCombinationsOfSize(0, k, []);
-//   }
-
-//   return result;
-// }
-
 export function getBestHighlights(sourceText: string, scoredTranslations: ScoredTranslationType[]) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
-  const highlightMap: Record<string, ScoredTranslationType[]> = {};
+  type HighlightMatchesType = { occurrences: number; matches: ScoredTranslationType[] };
+  const highlightMap: Record<string, HighlightMatchesType> = {};
 
+  
   // map scored translations to related quote words
   for (const t of scoredTranslations) {
     const key = t?.quoteWord
     let value = highlightMap[key]
     if (!value) {
-      highlightMap[key] = [t]
+      highlightMap[key] =  { occurrences: 0, matches: [t] }
     } else {
-      value.push(t);
+      value?.matches?.push(t);
     }
   }
   
+  // get total occurrences for source word
+  for (const key in highlightMap) {
+    let occurrencesSum = 0
+    for (const value of highlightMap[key]?.matches) {
+      occurrencesSum += value?.occurrences || 0
+    }
+    highlightMap[key].occurrences = occurrencesSum
+  }
+
+  // update score based on frequncy of occurrence
+  for (const key in highlightMap) {
+    const totalOccurrences = highlightMap[key]?.occurrences
+    for (const value of highlightMap[key]?.matches) {
+      if (value) {
+        const occurrences = value?.occurrences || 0;
+        const score = value?.score || 0;
+        // value.score = (score + (occurrences/totalOccurrences) * 100) / 2 // average
+        value.score = score * (occurrences/totalOccurrences)
+      }
+    }
+  }
+
   const sourceWordMap = []
   for (let i = 0; i < sourceWords.length; i++) {
     const word = sourceWords[i];
@@ -780,7 +782,7 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
       const pointer = origWordPointers[i]
       const sourceWord = sourceWords[i]
       if (sourceWord) {
-        const matches = highlightMap[sourceWord]
+        const matches = highlightMap[sourceWord]?.matches
         
         // check for duplicate highlights
         let keep = true
@@ -789,7 +791,7 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
           const previousHighlight = previousHighlightedWords?.[0]?.index
           const currentHighlightedWords = matches[pointer]?.highLightedWords;
           const currentHighlight = currentHighlightedWords?.[0]?.index
-          if (pointer < matches.length) {
+          if (pointer < matches?.length) {
             keep = true
             if (previousHighlightedWords && currentHighlightedWords) {
               if (previousHighlight === currentHighlight && previousHighlightedWords.length === currentHighlightedWords.length) {
@@ -833,8 +835,9 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
     }
     origWordPointers[index]++;
   }
-  
-  console.log(origWordPointers)
+
+  const sortedCombinations = combinations.sort((a, b) => (b as any).score - (a as any).score);
+  console.log(sortedCombinations);
 
   // return wordIndexes;
 }
