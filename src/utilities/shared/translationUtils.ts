@@ -7,7 +7,6 @@ import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-token
 import * as fuzz from "fuzzball";
 // @ts-ignore
 import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
-const math = require('mathjs');
 
 export type AlignmentElementType = {
   text: string;
