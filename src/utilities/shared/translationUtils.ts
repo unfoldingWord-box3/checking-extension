@@ -720,123 +720,133 @@ export function highlightBestWordsInTranslation(sourceText: string, translatedTe
   return foundHighlightedWords;
 }
 
+type ScoredHighlightType = { score: number; matches: ScoredTranslationType[] };
+
 export function getBestHighlights(sourceText: string, scoredTranslations: ScoredTranslationType[]) {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
   type HighlightMatchesType = { occurrences: number; matches: ScoredTranslationType[] };
   const highlightMap: Record<string, HighlightMatchesType> = {};
+  let bestHighlights: ScoredHighlightType[] = [];
 
-  
-  // map scored translations to related quote words
-  for (const t of scoredTranslations) {
-    const key = t?.quoteWord
-    let value = highlightMap[key]
-    if (!value) {
-      highlightMap[key] =  { occurrences: 0, matches: [t] }
-    } else {
-      value?.matches?.push(t);
-    }
-  }
-  
-  // get total occurrences for source word
-  for (const key in highlightMap) {
-    let occurrencesSum = 0
-    for (const value of highlightMap[key]?.matches) {
-      occurrencesSum += value?.occurrences || 0
-    }
-    highlightMap[key].occurrences = occurrencesSum
-  }
-
-  // update score based on frequncy of occurrence
-  for (const key in highlightMap) {
-    const totalOccurrences = highlightMap[key]?.occurrences
-    for (const value of highlightMap[key]?.matches) {
-      if (value) {
-        const occurrences = value?.occurrences || 0;
-        const score = value?.score || 0;
-        // value.score = (score + (occurrences/totalOccurrences) * 100) / 2 // average
-        value.score = score * (occurrences/totalOccurrences)
+  if (scoredTranslations?.length) {
+    // map scored translations to related quote words
+    for (const t of scoredTranslations) {
+      const key = t?.quoteWord
+      let value = highlightMap[key]
+      if (!value) {
+        highlightMap[key] =  { occurrences: 0, matches: [t] }
+      } else {
+        value?.matches?.push(t);
       }
     }
-  }
-
-  const sourceWordMap = []
-  for (let i = 0; i < sourceWords.length; i++) {
-    const word = sourceWords[i];
-    const list = highlightMap[word];
-    let found:string|null = null
-    if (list) {
-      found = word;
+    
+    // get total occurrences for source word
+    for (const key in highlightMap) {
+      let occurrencesSum = 0
+      for (const value of highlightMap[key]?.matches) {
+        occurrencesSum += value?.occurrences || 0
+      }
+      highlightMap[key].occurrences = occurrencesSum
     }
-    sourceWordMap[i] = found
-  }
 
-  const origWordPointers = new Array(sourceWords.length).fill(0);
-  
-  const combinations: object[] = []
-  let index = -1
-  while (combinations.length < 50) {
-    // find next match for quote word
-    const foundMatches:ScoredTranslationType[] = []
-    for (let i = 0; i < origWordPointers.length; i++) {
-      const pointer = origWordPointers[i]
-      const sourceWord = sourceWords[i]
-      if (sourceWord) {
-        const matches = highlightMap[sourceWord]?.matches
-        
-        // check for duplicate highlights
-        let keep = true
-        for (let j = 0; j < i; j++) {
-          const previousHighlightedWords = foundMatches[j]?.highLightedWords;
-          const previousHighlight = previousHighlightedWords?.[0]?.index
-          const currentHighlightedWords = matches[pointer]?.highLightedWords;
-          const currentHighlight = currentHighlightedWords?.[0]?.index
-          if (pointer < matches?.length) {
-            keep = true
-            if (previousHighlightedWords && currentHighlightedWords) {
-              if (previousHighlight === currentHighlight && previousHighlightedWords.length === currentHighlightedWords.length) {
-                const previousScore = foundMatches[j]?.score
-                const currentScore = matches[pointer]?.score
-                if (currentScore > previousScore) {
-                  delete foundMatches[j];
-                } else {
-                  keep = false;
+    // update score based on frequncy of occurrence
+    for (const key in highlightMap) {
+      const totalOccurrences = highlightMap[key]?.occurrences
+      for (const value of highlightMap[key]?.matches) {
+        if (value) {
+          const occurrences = value?.occurrences || 0;
+          const score = value?.score || 0;
+          // value.score = (score + (occurrences/totalOccurrences) * 100) / 2 // average
+          value.score = score * (occurrences/totalOccurrences)
+        }
+      }
+    }
+
+    const sourceWordMap = []
+    for (let i = 0; i < sourceWords.length; i++) {
+      const word = sourceWords[i];
+      const list = highlightMap[word];
+      let found:string|null = null
+      if (list) {
+        found = word;
+      }
+      sourceWordMap[i] = found
+    }
+
+    const origWordPointers = new Array(sourceWords.length).fill(0);
+
+    const combinations: ScoredHighlightType[] = [];
+    let index = -1
+    while (combinations.length < 50) {
+      // find next match for quote word
+      const foundMatches:ScoredTranslationType[] = []
+      for (let i = 0; i < origWordPointers.length; i++) {
+        const pointer = origWordPointers[i]
+        const sourceWord = sourceWords[i]
+        if (sourceWord) {
+          const matches = highlightMap[sourceWord]?.matches
+          
+          // check for duplicate highlights
+          let keep = true
+          for (let j = 0; j < i; j++) {
+            const previousHighlightedWords = foundMatches[j]?.highLightedWords;
+            const previousHighlight = previousHighlightedWords?.[0]?.index
+            const currentHighlightedWords = matches[pointer]?.highLightedWords;
+            const currentHighlight = currentHighlightedWords?.[0]?.index
+            if (pointer < matches?.length) {
+              keep = true
+              if (previousHighlightedWords && currentHighlightedWords) {
+                if (previousHighlight === currentHighlight && previousHighlightedWords.length === currentHighlightedWords.length) {
+                  const previousScore = foundMatches[j]?.score
+                  const currentScore = matches[pointer]?.score
+                  if (currentScore > previousScore) {
+                    delete foundMatches[j];
+                  } else {
+                    keep = false;
+                  }
                 }
               }
+            } else {
+              keep = false;
             }
-          } else {
-            keep = false;
+          }
+          if (keep) {
+            foundMatches[i] = matches[pointer]
           }
         }
-        if (keep) {
-          foundMatches[i] = matches[pointer]
+      }
+      
+      // calculate average score
+      let scoreSum = 0;
+      for (const match of foundMatches) {
+        if (match) {
+          const score = match.score
+          scoreSum += score
         }
       }
-    }
-    
-    // calculate average score
-    let scoreSum = 0;
-    for (const match of foundMatches) {
-      if (match) {
-        const score = match.score
-        scoreSum += score
+      scoreSum = scoreSum / sourceWords.length
+      
+      // save score for combination
+      const wordMatches = { score: scoreSum, matches: foundMatches }
+      combinations.push(wordMatches);
+      
+      // move to next word and move to next match
+      index++;
+      if (index >= origWordPointers.length) {
+        index = 0;
       }
+      origWordPointers[index]++;
     }
-    scoreSum = scoreSum / sourceWords.length
-    
-    // save score for combination
-    const wordMatches = { score: scoreSum, matches: foundMatches }
-    combinations.push(wordMatches);
-    
-    // move to next word and move to next match
-    index++;
-    if (index >= origWordPointers.length) {
-      index = 0;
-    }
-    origWordPointers[index]++;
+
+    bestHighlights = combinations.sort((a, b) => (b as any).score - (a as any).score);
+    console.log(bestHighlights);
   }
 
-  const sortedCombinations = combinations.sort((a, b) => (b as any).score - (a as any).score);
-  console.log(sortedCombinations);
+  return bestHighlights;
+}
 
-  // return wordIndexes;
+export function getElapsedSeconds(start: number) {
+  const end = Date.now();
+  const elapsed = (end - start) / (1000); // Convert milliseconds to seconds
+  return elapsed;
 }

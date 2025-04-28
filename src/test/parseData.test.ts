@@ -18,6 +18,7 @@ import {
   buildAiPrompt,
   cleanupVerse,
   getBestHighlights,
+  getElapsedSeconds,
   getScoredTranslations,
   getTopMatchesForQuote,
   getTranslationCsv,
@@ -44,7 +45,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and extract alignments', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
+    const projectFolder = path.join(testFixtures, './bn_glt/alignments')
     const alignmentMap_:AlignmentMapType = {};
     const files = fs.readdirSync(projectFolder);
     const doNT = true;
@@ -69,7 +70,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process previous twl checks', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/twl')
+    const projectFolder = path.join(testFixtures, './bn_glt/checking/twl')
     const alignmentMap_:AlignmentMapType = {};
     const files = fs.readdirSync(projectFolder);
     const doNT = true;
@@ -95,7 +96,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From Alignments', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments/bn_irv')
+    const projectFolder = path.join(testFixtures, './bn_glt/alignments/bn_irv')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -105,7 +106,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From checking data', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/twl')
+    const projectFolder = path.join(testFixtures, './bn_glt/checking/twl')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -115,7 +116,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Process all NT usfms and checks and extract translations From checking data', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/checking/tn')
+    const projectFolder = path.join(testFixtures, './bn_glt/checking/tn')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -125,7 +126,8 @@ suite('Parse Data', () => {
   });
 
   test.skip('Recursively Process all NT usfms and checks and extract translations From Files', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
+    // const projectFolder = path.join(testFixtures, './bn_glt/alignments')
+    const projectFolder = "/Users/blm0/translationCore/otherProjects/bn_glt";
     const alignmentMap_:AlignmentMapType = {};
     const doNT = true;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -137,7 +139,7 @@ suite('Parse Data', () => {
   });
 
   test.skip('Recursively Process all OT usfms and checks and extract translations From Files', () => {
-    const projectFolder = path.join(testFixtures, './bn_glt_en_eph/alignments')
+    const projectFolder = path.join(testFixtures, './bn_glt/alignments')
     const alignmentMap_:AlignmentMapType = {};
     const doNT = false;
     getTranslationsFromFolder(projectFolder, doNT, alignmentMap_);
@@ -148,7 +150,7 @@ suite('Parse Data', () => {
 });
 
 const tempFolder = path.join(baseFolder, './src/test/fixtures/testing_temp')
-const projectFolder = path.join(baseFolder, './src/test/fixtures/bn_glt_en_eph/alignments')
+const projectFolder = path.join(baseFolder, './src/test/fixtures/bn_glt/alignments')
 const responseFolder = path.join(baseFolder, './src/test/fixtures/responses');
 
 // from tN abstract nouns - Eph 2:1 - ULT - in your trespasses and sins
@@ -190,6 +192,7 @@ suite('AI', function () {
   });
 
   test("Generate AI Prompt", async function() {
+    const start = Date.now();
     const translationsPath = path.join(projectFolder, "translations.json");
     const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
     const quoteStr = normalize(sourceText);
@@ -198,11 +201,14 @@ suite('AI', function () {
     const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_, 5);
     const prompt = await buildAiPrompt(topMatches, verseText, quoteStr, AIPromptTemplate2);
     const promptPath = path.join(tempFolder, "prompt.txt");
+    const elapsed = getElapsedSeconds(start);
+    console.log(`Generate AI Prompt took: ${elapsed} seconds`);
     fs.outputFileSync(promptPath, prompt, "UTF-8");
     console.log(prompt);
   });
 
     test('Parse top Translation Matches', () => {
+      const start = Date.now();
       const translationsPath = path.join(projectFolder, 'translations.json');
       const alignmentMap = readJsonFile(translationsPath) as AlignmentMapType;
       const quoteStr = normalize(sourceText)
@@ -214,6 +220,11 @@ suite('AI', function () {
 
       const highlightedWords = getBestHighlights(sourceText, topMatches);
 
+      const elapsed = getElapsedSeconds(start);
+      console.log(`Parse top Translation Matches took: ${elapsed} seconds`);
+      
+      console.log(highlightedWords);
+      
       // // map to string
       // const highlightedText = highlightedWords?.map(word => word.translatedText).join(' ');
       // console.log(highlightedText);
@@ -228,6 +239,7 @@ suite('AI', function () {
     });
     
     test('Parse AI Response from AIPromptTemplate1', () => {
+      const start = Date.now();
       const responsePath = path.join(responseFolder, 'response1.txt');
       const response = fs.readFileSync(responsePath, "UTF-8")?.toString() || '';
       const foundCsv = extractCsvFromResponse(response);
@@ -243,6 +255,9 @@ suite('AI', function () {
       const highlightedText = highlightedWords.map(word => word.translatedText).join(' ');
       console.log(highlightedText);
 
+      const elapsed = getElapsedSeconds(start);
+      console.log(`Parse AI Response from AIPromptTemplate1 took: ${elapsed} seconds`);
+
       const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
       for (let i = 0; i < expectedWords.length; i++) {
         const expectedWord = expectedWords[i]
@@ -253,6 +268,7 @@ suite('AI', function () {
   });
 
   test('Parse AI Response from AIPromptTemplate2', () => {
+    const start = Date.now();
     const responsePath = path.join(responseFolder, 'response2.txt');
     const response = fs.readFileSync(responsePath, "UTF-8")?.toString() || '';
     const foundCsv = extractCsvFromResponse(response);
@@ -262,6 +278,9 @@ suite('AI', function () {
 
     const highlightedText = highlightBestPhraseInTranslation(translation, scoredPhrases)
     console.log(highlightedText);
+    
+    const elapsed = getElapsedSeconds(start);
+    console.log(`Parse AI Response from AIPromptTemplate2 took: ${elapsed} seconds`);
   });
 })
 
