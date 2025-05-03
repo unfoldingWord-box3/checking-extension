@@ -32,6 +32,8 @@ import { AuthContext } from "../dcs/context/AuthContext";
 import {
   AlignmentMapType,
   findAlignmentSuggestions,
+  getSuggestionsFromTopHighlights,
+  ScoredHighlightType,
 } from "../utilities/shared/translationUtils";
 // @ts-ignore
 import { groupDataHelpers } from "word-aligner-lib"
@@ -185,13 +187,9 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       console.log(`changedCurrentCheck - context`, context)
       // @ts-ignore
       const newContextId = context?.contextId
-      findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible);
-
-      // callLmStudioAPI(prompt).then(response => {
-      //   if (response) {
-      //     console.log(`changedCurrentCheck - response`, response);
-      //   }
-      // });
+      const topHighlights = findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible);
+      const suggestions = getSuggestionsFromTopHighlights(topHighlights)
+      console.log(`changedCurrentCheck - suggestions`, suggestions)
     }
 
     const _saveCheckingData = (newState:object) => {

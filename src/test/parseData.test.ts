@@ -20,11 +20,13 @@ import {
   getBestHighlights,
   getElapsedSeconds,
   getScoredTranslations,
+  getSuggestionsFromTopHighlights,
   getTopMatchesForQuote,
   getTranslationCsv,
   highlightBestPhraseInTranslation,
   highlightBestWordsInTranslation,
   normalize,
+  ScoredHighlightType,
   ScoredTranslationType,
 // @ts-ignore
 } from "../utilities/shared/translationUtils";
@@ -34,6 +36,7 @@ import { getTranslationsFromFolder } from "../utilities/translationFileUtils";
 import { readJsonFile } from "../utilities/fileUtils";
 import { autoDetectProjectFolder } from "./checkToTsv.test";
 import { AIPromptTemplate2 } from "../utilities/shared/llmUtils";
+import * as fuzz from "fuzzball";
 
 const home = ospath.home();
 const baseFolder = autoDetectProjectFolder();
@@ -218,24 +221,31 @@ suite('AI', function () {
       const verseText = cleanupVerse(rawOriginalVerse)
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap, translation_);
 
-      const highlightedWords = getBestHighlights(sourceText, topMatches);
+      const topHighlights:ScoredHighlightType[] = getBestHighlights(quoteStr, topMatches, 100);
 
       const elapsed = getElapsedSeconds(start);
       console.log(`Parse top Translation Matches took: ${elapsed} seconds`);
       
-      console.log(highlightedWords);
+      // console.log(highlightedWords);
+      const suggestions = getSuggestionsFromTopHighlights(topHighlights);
+      console.log(suggestions);
+      let matchFound = ''
+      const normalize1 = normalize(normalizedExpectedSelection);
+      for (let i = 0; i < topHighlights.length; i++) {
+        const highlightPhrase = topHighlights[i];
+        const highlightedPhraseText = highlightPhrase.highLightedText || ''
+        if (highlightedPhraseText === normalize1) {
+          matchFound = highlightedPhraseText || ''
+          console.log(`Found match ${i}: ${highlightedPhraseText}`);
+          break
+        } else {
+          const fuzzScore = fuzz.ratio(highlightedPhraseText, normalize1)
+          const calculatedScore = highlightPhrase.score
+          console.log(`Skipping ${i}, score ${fuzzScore}, calculated ${calculatedScore}: ${highlightedPhraseText}`);
+        }
+      }
       
-      // // map to string
-      // const highlightedText = highlightedWords?.map(word => word.translatedText).join(' ');
-      // console.log(highlightedText);
-      //
-      // const expectedWords = normalizedExpectedSelection.split(' ').map(word => normalize(word));
-      // for (let i = 0; i < expectedWords.length; i++) {
-      //   const expectedWord = expectedWords[i]
-      //   const highlightedWord = highlightedWords[i].translatedText
-      //   assert.ok(expectedWord === highlightedWord);
-      // }
-      // assert.ok(highlightedText === normalize(normalizedExpectedSelection));
+      assert.ok(matchFound === normalize(normalizedExpectedSelection));
     });
     
     test('Parse AI Response from AIPromptTemplate1', () => {

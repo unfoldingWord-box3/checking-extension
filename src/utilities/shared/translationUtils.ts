@@ -7,6 +7,8 @@ import { normalizer, tokenize, tokenizeOrigLang } from "string-punctuation-token
 import * as fuzz from "fuzzball";
 // @ts-ignore
 import { AlignmentHelpers, groupDataHelpers, verseHelpers } from "word-aligner-lib";
+// @ts-ignore
+import isEqual from 'deep-equal'
 
 export type AlignmentElementType = {
   text: string;
@@ -397,9 +399,10 @@ export function cleanupVerse(verseText:string) {
  *                                           along with metadata like scores and references.
  * @param {object} targetBible - The object representing the Bible content, used to extract
  *                               verse text for the AI prompt.
- * @return {string} A prompt to pass to AI to get the best translation.
+ * @return {ScoredHighlightType[]} A prompt to pass to AI to get the best translation.
  */
-export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object) {
+export function findAlignmentSuggestions(contextId: object, alignmentMap_: AlignmentMapType, targetBible: object, calculated = true):ScoredHighlightType[] {
+  let topHighlights:ScoredHighlightType[] = []
   if (contextId) {
     const quoteStr = normalize(getQuoteStr(contextId));
     // @ts-ignore
@@ -409,10 +412,17 @@ export function findAlignmentSuggestions(contextId: object, alignmentMap_: Align
 
     if (quoteStr) {
       const topMatches = getTopMatchesForQuote(quoteStr, alignmentMap_, verseText);
-      const prompt = buildAiPrompt(topMatches, verseText, quoteStr);
-      return prompt;
+      
+      if (calculated) {
+        topHighlights = getBestHighlights(quoteStr, topMatches, 100);
+      } else {
+        const prompt = buildAiPrompt(topMatches, verseText, quoteStr);
+        console.log(prompt);
+        //TODO query LLM
+      }
     }
   }
+  return topHighlights
 }
 
 /**
@@ -720,9 +730,20 @@ export function highlightBestWordsInTranslation(sourceText: string, translatedTe
   return foundHighlightedWords;
 }
 
-type ScoredHighlightType = { score: number; matches: ScoredTranslationType[] };
+export type ScoredHighlightType = {
+  score: number;
+  matches: ScoredTranslationType[],
+  highLightedText?: string,
+};
 
-export function getBestHighlights(sourceText: string, scoredTranslations: ScoredTranslationType[]) {
+/**
+ * Analyzes a source text and its scored translations to determine the best highlights based on occurrences and scores, returning the top scored highlight combinations.
+ *
+ * @param {string} sourceText - The original source text containing words to be matched with translations.
+ * @param {ScoredTranslationType[]} scoredTranslations - An array of scored translations, where each contains a quote word, occurrences, and score.
+ * @return {ScoredHighlightType[]} - A list of scored highlight combinations ranked by their calculated scores.
+ */
+export function getBestHighlights(sourceText: string, scoredTranslations: ScoredTranslationType[], maxMatches = 15):ScoredHighlightType[] {
   const sourceWords = sourceText.split(" ").map(w => normalizer(w).trim());
   type HighlightMatchesType = { occurrences: number; matches: ScoredTranslationType[] };
   const highlightMap: Record<string, HighlightMatchesType> = {};
@@ -749,7 +770,7 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
       highlightMap[key].occurrences = occurrencesSum
     }
 
-    // update score based on frequncy of occurrence
+    // update score based on frequency of occurrence
     for (const key in highlightMap) {
       const totalOccurrences = highlightMap[key]?.occurrences
       for (const value of highlightMap[key]?.matches) {
@@ -757,7 +778,8 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
           const occurrences = value?.occurrences || 0;
           const score = value?.score || 0;
           // value.score = (score + (occurrences/totalOccurrences) * 100) / 2 // average
-          value.score = score * (occurrences/totalOccurrences)
+          const occurrenceFactor = occurrences / totalOccurrences / 10 + 0.9;
+          value.score = score * occurrenceFactor
         }
       }
     }
@@ -777,7 +799,9 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
 
     const combinations: ScoredHighlightType[] = [];
     let index = -1
-    while (combinations.length < 50) {
+    const defaultMax = 50;
+    const maxCount = maxMatches > defaultMax ? maxMatches: defaultMax;
+    while (combinations.length < maxCount) {
       // find next match for quote word
       const foundMatches:ScoredTranslationType[] = []
       for (let i = 0; i < origWordPointers.length; i++) {
@@ -838,15 +862,77 @@ export function getBestHighlights(sourceText: string, scoredTranslations: Scored
       origWordPointers[index]++;
     }
 
-    bestHighlights = combinations.sort((a, b) => (b as any).score - (a as any).score);
-    console.log(bestHighlights);
+    const scoredHighlights = combinations.sort((a, b) => (b as any).score - (a as any).score)
+    const topHighlightedPhrases = scoredHighlights?.map(phrase => {
+      const sortedWords = phrase.matches.sort((a, b) => a.highLightedWords[0].index - b.highLightedWords[0].index);
+      
+      // DE-DUPE when same word is result of different translations
+      let lastMatchPos = -1
+      sortedWords.forEach((match, pos) => {
+        if (lastMatchPos < 0) {
+          lastMatchPos = pos;
+        } else {
+          const lastMatch = sortedWords[lastMatchPos]
+          if (!match) {
+            // SKIP
+          } else if (lastMatch && isEqual(match?.highLightedWords, lastMatch?.highLightedWords)) {
+            const sum = match.score + lastMatch.score;
+            if (match.score > lastMatch.score) {
+              match.score = sum;
+              delete sortedWords[lastMatchPos];
+              lastMatchPos = pos
+            } else {
+              lastMatch.score = sum;
+              delete sortedWords[pos];
+            }
+          } else {
+            lastMatchPos = pos;
+          }
+        }
+      })
+
+      const filteredWords = sortedWords.filter(w => w)
+      phrase.matches = filteredWords
+      return phrase;
+    });
+    console.log(topHighlightedPhrases);
+    const foundPhrases:string[] = []
+    bestHighlights = []
+    for (let i = 0; i < topHighlightedPhrases.length && foundPhrases.length < maxMatches; i++) {
+      const phrase = topHighlightedPhrases[i]
+      const orderedWords = []
+      for (const match of phrase.matches) {
+        if (match) {
+          for (const word of match.highLightedWords) {
+            orderedWords[word.index] = word.highlight
+          }
+        }
+      }
+      const highlightedText = orderedWords.filter(w => w).join(' ');
+      if (!foundPhrases.includes(highlightedText)) {
+        foundPhrases.push(highlightedText)
+        phrase.highLightedText = highlightedText
+        bestHighlights.push(phrase)
+      }
+    }
   }
 
   return bestHighlights;
 }
 
-export function getElapsedSeconds(start: number) {
-  const end = Date.now();
-  const elapsed = (end - start) / (1000); // Convert milliseconds to seconds
-  return elapsed;
+export function getElapsedSeconds(startTime: number) {
+  const endTime = Date.now();
+  const elapsedSeconds = (endTime - startTime) / (1000); // Convert milliseconds to seconds
+  return elapsedSeconds;
+}
+
+/**
+ * Extracts and returns a list of suggested strings from the provided top highlights.
+ *
+ * @param {ScoredHighlightType[]} topHighlights - An array of highlight objects that include scored and highlighted text.
+ * @return {string[]} An array of suggested strings extracted from the highlighted text in the input.
+ */
+export function getSuggestionsFromTopHighlights(topHighlights: ScoredHighlightType[]): string[] {
+  const suggestions = topHighlights.map(item => item.highLightedText || "");
+  return suggestions;
 }
