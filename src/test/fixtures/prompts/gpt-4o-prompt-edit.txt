@@ -1,0 +1,58 @@
+**Prompt:**
+
+You are tasked with analyzing translation data to determine the best-matching translations of a specific source phrase.
+
+**Your Task:**
+1. Using the translation data provided, identify the **5 best phrases** from the "Translation of passage" that best reflect the translation of the **source phrase**.
+2. Consider only phrases constructed from words in **"Translation of passage"** and ensure they match the meaning of the **source phrase** as closely as possible.
+3. Rank these phrases based on their relevance and match quality (e.g., using scores from the provided data or heuristics combining multiple scores).
+
+**Response Format:**
+- Provide the result as a **CSV file**.
+- Columns: `"translation"` and `"rank"`.
+- Only include the **5 best phrases** ranked from best match to worst match.
+
+**Data for Reference:**
+
+- **Source phrase for highlighted words:**  
+  `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`
+
+- **Translation of passage:**  
+  `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`
+
+- **Translation Data Table:**  
+```
+score,translatedText,sourceText
+  100.0041,তোমাদের,τοῖς
+  100.0013,তোমরা,τοῖς
+  86.0037,তারা,τοῖς
+  86.0023,তার,τοῖς
+  86.0011,তাঁর,τοῖς
+  100.5,অপরাধে,παραπτώμασιν
+  100.1176,পাপে,παραπτώμασιν
+  88.5,অপরাধে,παραπτώματι
+  88.0088,পাপ,παραπτώματι
+  80.0088,পাপ,παραπτώματα
+  100.959,ও,καὶ
+  100.7063,আর,καὶ
+  100.2143,আরো,καὶ
+  100.0055,আর,καί
+  100.0026,ও,καί
+  100.0008,আর,ταῖς
+  100.0006,ও,ταῖς
+  89.0008,তোমাদের,τὰς
+  80.0041,তোমাদের,τοῖς
+  80.0013,তোমরা,τοῖς
+  100.1765,পাপে,ἁμαρτίαις
+  100.0435,পাপী,ἁμαρτίαις
+  95.2281,পাপ,ἁμαρτίας
+  95.0965,পাপ,ἁμαρτίαι
+  95.0435,পাপী,ἁμαρτίας
+  100.3456,তোমাদের,ὑμῶν
+  100.0988,তোমরা,ὑμῶν
+  93.1667,তোমাদেরই,ὑμῶν
+  93.0909,তোমাদেরও,ὑμῶν
+  93.0493,তোমাদেরকে,ὑμῶν
+```
+
+Provide only the CSV output with the **5 best phrases** and their rankings.

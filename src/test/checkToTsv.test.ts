@@ -5,7 +5,6 @@ import {
   getParsedUSFM,
   importSelectionsDataIntoCheckData,
   reMapGlVerseRefsToTarget_,
-  tsvToObjects,
 } from "../utilities/resourceUtils";
 // @ts-ignore
 import * as fs from "fs-extra";
@@ -21,11 +20,13 @@ import isEqual from "deep-equal";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from "vscode";
+// @ts-ignore
+import { tsvToObjects } from "../utilities/shared/tsvUtils";
 // import * as myExtension from '../extension';
 
 const TEST_FILE = './src/test/fixtures/tit.twl_check';
 
-function autoDetectProjectFolder() {
+export function autoDetectProjectFolder() {
   const home = ospath.home();
   let projectFolder = path.join(__dirname, '../..');
   if (!fs.existsSync(path.join(projectFolder, TEST_FILE))) { // check relative to test folder
@@ -37,6 +38,7 @@ function autoDetectProjectFolder() {
       }
     }
   }
+  console.log('base folder is at', projectFolder)
   return projectFolder;
 }
 

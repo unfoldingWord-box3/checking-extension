@@ -27,14 +27,17 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0(react@18.3.1)
       checking-tool-rcl:
-        specifier: 0.9.24
-        version: 0.9.24(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0)
+        specifier: 0.9.26
+        version: 0.9.26(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0)
       deep-equal:
         specifier: 1.0.1
         version: 1.0.1
       dompurify:
         specifier: ^3.0.9
         version: 3.2.4
+      fuzzball:
+        specifier: ^2.2.2
+        version: 2.2.2
       gitea-react-toolkit:
         specifier: 2.4.1
         version: 2.4.1(@material-ui/core@4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -53,6 +56,15 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      string-punctuation-tokenizer:
+        specifier: ^2.2.0
+        version: 2.2.0
+      uw-tsv-parser:
+        specifier: ^1.0.3
+        version: 1.0.3
+      word-aligner-lib:
+        specifier: 1.0.0
+        version: 1.0.0(prop-types@15.8.1)(webpack@5.98.0)
     devDependencies:
       '@types/dompurify':
         specifier: ^3.0.5
@@ -68,7 +80,7 @@ importers:
         version: 1.57.5
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.4(vite@5.4.14(@types/node@22.13.10)(terser@5.39.0))
+        version: 4.3.4(vite@5.4.18(@types/node@22.13.10)(terser@5.39.0))
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -76,8 +88,8 @@ importers:
         specifier: ^5.3.3
         version: 5.8.2
       vite:
-        specifier: ^5.0.12
-        version: 5.4.14(@types/node@22.13.10)(terser@5.39.0)
+        specifier: 5.4.18
+        version: 5.4.18(@types/node@22.13.10)(terser@5.39.0)
 
 packages:
 
@@ -1021,8 +1033,8 @@ packages:
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==, tarball: https://registry.npmjs.org/charenc/-/charenc-0.0.2.tgz}
 
-  checking-tool-rcl@0.9.24:
-    resolution: {integrity: sha512-BeQUa4UWVdxJH504DDIcTe0sw4xPP4YV6t6ukjlZ8dvVbN2+ibFd+7yNBwLqlhZE2M8lZox0sRoQOvJLzcs4yA==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.24.tgz}
+  checking-tool-rcl@0.9.26:
+    resolution: {integrity: sha512-BSJohpZAJPBaYDS01P9uwOgAPChFH/asAWpS/sZ9KrfbRBXpHq2lVzlOsktPvIJHHj99WynjHNHcWSA3Xr09KQ==, tarball: https://registry.npmjs.org/checking-tool-rcl/-/checking-tool-rcl-0.9.26.tgz}
     peerDependencies:
       prop-types: ^15.x
       react: 18.3.1
@@ -1300,6 +1312,9 @@ packages:
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==, tarball: https://registry.npmjs.org/functions-have-names/-/functions-have-names-1.2.3.tgz}
 
+  fuzzball@2.2.2:
+    resolution: {integrity: sha512-NCJZdEur2qTZ6/dYjkvLnNOnDxN4JG1rOWSRJS2ser4cFGVqFNBu2JjudxU2kZrHqfKg1zmtHii/JmWLaEeDHw==, tarball: https://registry.npmjs.org/fuzzball/-/fuzzball-2.2.2.tgz}
+
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==, tarball: https://registry.npmjs.org/gensync/-/gensync-1.0.0-beta.2.tgz}
     engines: {node: '>=6.9.0'}
@@ -1364,6 +1379,9 @@ packages:
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==, tarball: https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz}
     engines: {node: '>= 0.4'}
+
+  heap@0.2.7:
+    resolution: {integrity: sha512-2bsegYkkHO+h/9MGbn6KWcE45cHZgPANo5LXF7EvWdT0yT2EguSVO1nDgU5c8+ZOPwp2vMNa7YFsJhVcDR9Sdg==, tarball: https://registry.npmjs.org/heap/-/heap-0.2.7.tgz}
 
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==, tarball: https://registry.npmjs.org/hoist-non-react-statics/-/hoist-non-react-statics-3.3.2.tgz}
@@ -2211,8 +2229,8 @@ packages:
   vfile@2.3.0:
     resolution: {integrity: sha512-ASt4mBUHcTpMKD/l5Q+WJXNtshlWxOogYyGYYrg4lt/vuRjC1EFQtlAofL5VmtVNIZJzWYFJjzGWZ0Gw8pzW1w==, tarball: https://registry.npmjs.org/vfile/-/vfile-2.3.0.tgz}
 
-  vite@5.4.14:
-    resolution: {integrity: sha512-EK5cY7Q1D8JNhSaPKVK4pwBFvaTmZxEnoKXLG/U9gmdDcihQGNzFlgIvaxezFR4glP1LsuiedwMBqCXH3wZccA==, tarball: https://registry.npmjs.org/vite/-/vite-5.4.14.tgz}
+  vite@5.4.18:
+    resolution: {integrity: sha512-1oDcnEp3lVyHCuQ2YFelM4Alm2o91xNoMncRm1U7S+JdYfYOvbiGZ3/CxGttrOu2M/KcGz7cRC2DoNUA6urmMA==, tarball: https://registry.npmjs.org/vite/-/vite-5.4.18.tgz}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
     peerDependencies:
@@ -2285,6 +2303,12 @@ packages:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==, tarball: https://registry.npmjs.org/which/-/which-2.0.2.tgz}
     engines: {node: '>= 8'}
     hasBin: true
+
+  word-aligner-lib@1.0.0:
+    resolution: {integrity: sha512-S3eVSmeX6dRT1fEsLelaDrq5zp/yDGM72UFHpmyX3dVOLyYclrCtdN3nT1fcIp1she/zlRH1Lf7T22Dvav0E7g==, tarball: https://registry.npmjs.org/word-aligner-lib/-/word-aligner-lib-1.0.0.tgz}
+    engines: {node: '>=18'}
+    peerDependencies:
+      prop-types: ^15.x
 
   word-aligner@1.0.3:
     resolution: {integrity: sha512-Nzg/iBZWmOMGsdnptWelPZ/EnTuFnbkb/61x8dUKM6+T9PmUt0078Ui6WO0SKkUPtNDTRYcRXVgM2opYmTi+Fw==, tarball: https://registry.npmjs.org/word-aligner/-/word-aligner-1.0.3.tgz}
@@ -3009,14 +3033,14 @@ snapshots:
 
   '@types/vscode-webview@1.57.5': {}
 
-  '@vitejs/plugin-react@4.3.4(vite@5.4.14(@types/node@22.13.10)(terser@5.39.0))':
+  '@vitejs/plugin-react@4.3.4(vite@5.4.18(@types/node@22.13.10)(terser@5.39.0))':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.10)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.10)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 5.4.14(@types/node@22.13.10)(terser@5.39.0)
+      vite: 5.4.18(@types/node@22.13.10)(terser@5.39.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -3257,7 +3281,7 @@ snapshots:
 
   charenc@0.0.2: {}
 
-  checking-tool-rcl@0.9.24(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0):
+  checking-tool-rcl@0.9.26(@types/react@18.3.18)(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.98.0):
     dependencies:
       '@material-ui/core': 4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3281,6 +3305,7 @@ snapshots:
       usfm-js: 3.4.3
       uw-tsv-parser: 1.0.3
       word-aligner: 1.0.3(usfm-js@3.4.3)
+      word-aligner-lib: 1.0.0(prop-types@15.8.1)(webpack@5.98.0)
       wordmap-lexer: 0.3.6
     transitivePeerDependencies:
       - '@types/react'
@@ -3568,6 +3593,12 @@ snapshots:
 
   functions-have-names@1.2.3: {}
 
+  fuzzball@2.2.2:
+    dependencies:
+      heap: 0.2.7
+      lodash: 4.17.21
+      setimmediate: 1.0.5
+
   gensync@1.0.0-beta.2: {}
 
   get-caller-file@2.0.5: {}
@@ -3646,6 +3677,8 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  heap@0.2.7: {}
 
   hoist-non-react-statics@3.3.2:
     dependencies:
@@ -4579,7 +4612,7 @@ snapshots:
       unist-util-stringify-position: 1.1.2
       vfile-message: 1.1.1
 
-  vite@5.4.14(@types/node@22.13.10)(terser@5.39.0):
+  vite@5.4.18(@types/node@22.13.10)(terser@5.39.0):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.5.3
@@ -4664,6 +4697,20 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
+
+  word-aligner-lib@1.0.0(prop-types@15.8.1)(webpack@5.98.0):
+    dependencies:
+      deep-equal: 2.2.3
+      file-loader: 6.2.0(webpack@5.98.0)
+      lodash.clonedeep: 4.5.0
+      prop-types: 15.8.1
+      string-punctuation-tokenizer: 2.2.0
+      tc-strings: 0.1.7
+      usfm-js: 3.4.3
+      word-aligner: 1.0.3(usfm-js@3.4.3)
+      wordmap-lexer: 0.3.6
+    transitivePeerDependencies:
+      - webpack
 
   word-aligner@1.0.3(usfm-js@3.4.3):
     dependencies:

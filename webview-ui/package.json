@@ -6,7 +6,8 @@
     "start": "vite",
     "build": "cross-env MINIFY=true npm run buildSub",
     "build:dev": "cross-env MINIFY=false npm run buildSub",
-    "buildSub": "tsc && npm run viteCompile",
+    "buildSub": "npm run makeShared && tsc && npm run viteCompile",
+    "makeShared": "node ./src/scripts/makeLink.js",
     "viteCompile": "cross-env NODE_OPTIONS=--max-old-space-size=6050 vite build",
     "preview": "vite preview"
   },
@@ -17,15 +18,19 @@
     "@material-ui/lab": "4.0.0-alpha.61",
     "@mui/lab": "5.0.0-alpha.89",
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "checking-tool-rcl": "0.9.24",
+    "checking-tool-rcl": "0.9.26",
     "deep-equal": "1.0.1",
     "dompurify": "^3.0.9",
+    "fuzzball": "^2.2.2",
     "gitea-react-toolkit": "2.4.1",
     "localforage": "^1.10.0",
     "marked": "^12.0.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "string-punctuation-tokenizer": "^2.2.0",
+    "uw-tsv-parser": "^1.0.3",
+    "word-aligner-lib": "1.0.0"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
@@ -35,6 +40,6 @@
     "@vitejs/plugin-react": "^4.2.1",
     "cross-env": "^7.0.3",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "vite": "5.4.18"
   }
 }

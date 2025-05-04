@@ -3,9 +3,9 @@ import React, { useContext, useEffect, useState } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 import {
-    Checker,
-    TranslationUtils,
-    twArticleHelpers,
+  Checker,
+  TranslationUtils,
+  twArticleHelpers,
 }
 // @ts-ignore
 from 'checking-tool-rcl'
@@ -20,15 +20,23 @@ import {
   Toolbar,
   Typography,
 } from "@material-ui/core";
-import MenuIcon from '@material-ui/icons/Menu'
-import ErrorIcon from '@material-ui/icons/Error';
-import DoneOutlineIcon from '@material-ui/icons/DoneOutline';
+import MenuIcon from "@material-ui/icons/Menu";
+import ErrorIcon from "@material-ui/icons/Error";
+import DoneOutlineIcon from "@material-ui/icons/DoneOutline";
 // @ts-ignore
 import { APP_NAME, APP_VERSION } from "../common/constants.js";
 // @ts-ignore
 import CommandDrawer from "../dcs/components/CommandDrawer.jsx";
 // @ts-ignore
 import { AuthContext } from "../dcs/context/AuthContext";
+import {
+  AlignmentMapType,
+  findAlignmentSuggestions,
+  getSuggestionsFromTopHighlights,
+  ScoredHighlightType,
+} from "../utilities/shared/translationUtils";
+// @ts-ignore
+import { groupDataHelpers } from "word-aligner-lib"
 
 const showDocument = true // set this to false to disable showing ta or tw articles
 
@@ -91,17 +99,20 @@ type TranslationCheckingProps = {
   createNewOlCheck: createNewOlCheckFunction,
   initialContextId: object;
   openCheckingFile: openCheckingFileFunction;
+  previousTranslations: AlignmentMapType;
   projectKey: string;
   promptUserForOptionCallback: promptUserForOptionCallbackFunction;
   saveCheckingData: saveCheckingDataFunction;
   uploadToDCS: uploadToDCSFunction;
 };
 
+
 const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
    checkingObj,
    createNewOlCheck: _createNewOlCheck,
    initialContextId,
    openCheckingFile,
+   previousTranslations,
    projectKey,
    promptUserForOptionCallback,
    saveCheckingData,
@@ -109,7 +120,8 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
 }) => {
     const classes = useStyles()
     const [currentContextId, setCurrentContextId] = useState<object>(initialContextId || {});
-    const [drawerOpen, setDrawerOpen] = useState(false)
+    const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
+    const [alignmentMap, setAlignmentMap] = useState<AlignmentMapType|null>(null)
 
     const LexiconData:object = checkingObj.lexicons;
     const translations:object = checkingObj.locales
@@ -128,26 +140,57 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
     const targetBible = checkingObj.targetBible
     const isEmptyProject = checkingObj.EMPTY
 
+    const contextId = initialContextId || {}
+    const project = checkingObj.project;
+    // @ts-ignore
+    const bookId = project?.bookId
+    // @ts-ignore
+    const resourceId = project?.resourceId
+    // @ts-ignore
+    const languageId = project?.languageId || 'en'
+    // @ts-ignore
+    const targetLanguageName = checkingObj.targetBible?.manifest?.language_name
+    // @ts-ignore
+    const targetLanguageDirection = checkingObj.targetBible?.manifest?.direction
+    // @ts-ignore
+    const bookName = ALL_BIBLE_BOOKS[bookId]
+
+
     // @ts-ignore
     const _authContext = useContext(AuthContext);
     // @ts-ignore
     const { showDialogContent } = _authContext?.actions || {}
 
-    useEffect(() => {
-      setCurrentContextId(initialContextId)
-    }, [initialContextId]);
+  useEffect(() => {
+    setCurrentContextId(initialContextId)
+  }, [initialContextId]);
 
+  useEffect(() => {
+    if (currentContextId && Object.keys(currentContextId).length) {
+      console.log(`currentContextId changed to ${JSON.stringify(currentContextId)}`)
+    }
+  }, [currentContextId]);
+  
     const translate = (key:string, data:object|null = null, defaultStr: string|null = null) => {
         const translation = TranslationUtils.lookupTranslationForKey(translations, key, data, defaultStr)
         return translation
     };
-
+  
     const getLexiconData_ = (lexiconId:string, entryId:string) => {
         console.log(`loadLexiconEntry(${lexiconId}, ${entryId})`)
         // @ts-ignore
         const entryData = (LexiconData && LexiconData[lexiconId]) ? LexiconData[lexiconId][entryId] : null;
         return { [lexiconId]: { [entryId]: entryData } };
     };
+    
+    const changedCurrentCheck = (context:object)=> {
+      console.log(`changedCurrentCheck - context`, context)
+      // @ts-ignore
+      const newContextId = context?.contextId
+      const topHighlights = findAlignmentSuggestions(newContextId, previousTranslations || {}, targetBible);
+      const suggestions = getSuggestionsFromTopHighlights(topHighlights)
+      console.log(`changedCurrentCheck - suggestions`, suggestions)
+    }
 
     const _saveCheckingData = (newState:object) => {
         // @ts-ignore
@@ -173,31 +216,16 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
       });
     }
 
-    const contextId = initialContextId || {}
-    const project = checkingObj.project;
-    // @ts-ignore
-    const bookId = project?.bookId
-    // @ts-ignore
-    const resourceId = project?.resourceId
-    // @ts-ignore
-    const languageId = project?.languageId || 'en'
-    // @ts-ignore
-    const targetLanguageName = checkingObj.targetBible?.manifest?.language_name
-    // @ts-ignore
-    const targetLanguageDirection = checkingObj.targetBible?.manifest?.direction
-    // @ts-ignore
-    const bookName = ALL_BIBLE_BOOKS[bookId]
-
     let glWordsData, checkingData, checkType;
     if (resourceId === 'twl') {
         const glTwData: object = checkingObj.tw;
         glWordsData = glTwData
-        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && groupDataHelpers.extractGroupData(checks)
         checkType = 'translationWords'
     } else if (resourceId === 'tn') {
         const glTaData: object = checkingObj.ta;
         glWordsData = glTaData
-        checkingData = haveChecks && twArticleHelpers.extractGroupData(checks)
+        checkingData = haveChecks && groupDataHelpers.extractGroupData(checks)
         checkType = 'translationNotes'
     }
 
@@ -533,6 +561,7 @@ const TranslationCheckingPane: React.FC<TranslationCheckingProps> = ({
             styles={{ width: "97vw", height: "65vw", overflowX: "auto", overflowY: "auto" }}
             alignedGlBible={alignedGlBible}
             bibles={bibles}
+            changedCurrentCheck={changedCurrentCheck}
             changeTargetVerse={changeTargetVerse}
             checkingData={checkingData}
             checkType={checkType}

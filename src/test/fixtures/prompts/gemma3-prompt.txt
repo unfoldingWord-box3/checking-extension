@@ -1,0 +1,58 @@
+Here's a prompt designed to extract the 5 best phrases from the translated passage that correspond to the source phrase `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`, ranked by relevance.  The response should be in CSV format as requested.
+
+**Prompt:**
+
+"You are an expert in linguistic alignment between ancient Greek and Bengali translations. Your task is to identify the best phrases within the provided Bengali translation that most accurately reflect the meaning of the Greek phrase `τοῖς παραπτώμασιν καὶ ταῖς ἁμαρτίαις ὑμῶν`.  You will be given a CSV file containing scores representing the alignment between individual words in both languages.
+
+1. **Consider the entire source phrase:** Focus on finding *phrases* (combinations of words) that, as a whole, best capture the meaning of the Greek phrase. Do not simply select the highest-scoring individual words.
+2. **Prioritize complete coverage:**  A good phrase should ideally include translations corresponding to all parts of the original Greek phrase (`τοῖς`, `παραπτώμασιν`, `καὶ`, `ταῖς`, `ἁμαρτίαις`, `ὑμῶν`).
+3. **Use only words from the provided Bengali translation:**  Do not introduce any new words that are not present in the passage: `আর তোমরা তোমাদের অপরাধে ও পাপে মৃত ছিলে`.
+4. **Rank by relevance:** Rank the identified phrases from 1 to 5, with 1 being the most relevant and 5 being the least. Relevance is determined by a combination of high individual word scores (from the provided CSV) *and* how well the phrase captures the overall meaning of the source Greek phrase.
+5. **Output Format:**  Your response MUST be a CSV file with two columns: `translation` and `rank`. The `translation` column should contain the Bengali phrase, and the `rank` column should contain its corresponding rank (1-5). Only include the top 5 phrases."
+
+**Data to provide along with the prompt:**
+
+```csv
+score,translatedText,sourceText
+100.0041,তোমাদের,τοῖς
+100.0013,তোমরা,τοῖς
+86.0037,তারা,τοῖς
+86.0023,তার,τοῖς
+86.0011,তাঁর,τοῖς
+100.5,অপরাধে,παραπτώμασιν
+100.1176,পাপে,παραπτώμασιν
+88.5,অপরাধে,παραπτώματι
+88.0088,পাপ,παραπτώματι
+80.0088,পাপ,παραπτώματα
+100.959,ও,καὶ
+100.7063,আর,καὶ
+100.2143,আরো,καὶ
+100.0055,আর,καί
+100.0026,ও,καί
+100.0008,আর,ταῖς
+100.0006,ও,ταῖς
+89.0008,তোমাদের,τὰς
+80.0041,তোমাদের,τοῖς
+80.0013,তোমরা,τοῖς
+100.1765,পাপে,ἁμαρτίαις
+100.0435,পাপী,ἁμαρτίαις
+95.2281,পাপ,ἁμαρτίας
+95.0965,পাপ,ἁμαρτίαι
+95.0435,পাপী,ἁμαρτίας
+100.3456,তোমাদের,ὑμῶν
+100.0988,তোমরা,ὑমῶν
+93.1667,তোমাদেরই,ὑμῶν
+93.0909,তোমাদেরও,ὑμῶν
+93.0493,তোমাদেরকে,ὑμῶν
+```
+
+**Expected CSV Output (Example - the actual ranking may vary based on the model's interpretation):**
+
+```csv
+translation,rank
+"তোমাদের অপরাধে ও পাপে",1
+"তোমরা তোমাদের অপরাধে ও পাপে",2
+"অপরাধে ও পাপে",3
+"তোমাদের অপরাধে",4
+"পাপে",5
+```
