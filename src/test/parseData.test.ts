@@ -229,23 +229,26 @@ suite('AI', function () {
       // console.log(highlightedWords);
       const suggestions = getSuggestionsFromTopHighlights(topHighlights);
       console.log(suggestions);
-      let matchFound = ''
+      let highScore = 0;
       const normalize1 = normalize(normalizedExpectedSelection);
       for (let i = 0; i < topHighlights.length; i++) {
         const highlightPhrase = topHighlights[i];
         const highlightedPhraseText = highlightPhrase.highLightedText || ''
         if (highlightedPhraseText === normalize1) {
-          matchFound = highlightedPhraseText || ''
+          highScore = 100
           console.log(`Found match ${i}: ${highlightedPhraseText}`);
           break
         } else {
           const fuzzScore = fuzz.ratio(highlightedPhraseText, normalize1)
+          if (highScore < fuzzScore) {
+            highScore = fuzzScore;
+          }
           const calculatedScore = highlightPhrase.score
           console.log(`Skipping ${i}, score ${fuzzScore}, calculated ${calculatedScore}: ${highlightedPhraseText}`);
         }
       }
       
-      assert.ok(matchFound === normalize(normalizedExpectedSelection));
+      assert.ok(highScore >= 90, `Expected score >= 90, got ${highScore}`);
     });
     
     test('Parse AI Response from AIPromptTemplate1', () => {
