@@ -1,5 +1,33 @@
-// import { vscode } from "./utilities/vscode";
-import React, { useState, useEffect, useContext } from "react";
+/**
+ * TranslationCheckingView Component
+ *
+ * ## Synopsis
+ * A React wrapper component that serves as the main entry point for the VS Code translation checking extension's webview interface, managing authentication, message handling, and data flow between the extension backend and the checking interface.
+ *
+ * ## Description
+ * TranslationCheckingView acts as the primary orchestrator for the translation checking workflow within VS Code. It handles the initialization of the webview, manages bidirectional communication with the VS Code extension backend, and provides authentication context for the checking interface. The component serves as a bridge between the extension's backend processes and the user-facing checking interface implemented in TranslationCheckingPane.
+ *
+ * This component manages critical functions including:
+ * - Initial data loading and state management for checking resources
+ * - Message event handling for communication with the VS Code extension
+ * - Secret storage management for user authentication and project context
+ * - File operations including saving checking data and uploading to DCS
+ * - Project creation and management workflows
+ * - Context persistence for maintaining user position across sessions
+ *
+ * ## Properties
+ * This component does not accept external props as it serves as the root component for the webview interface.
+ *
+ * ## Requirements
+ * - React 18.2.0+ with hooks support (useState, useEffect)
+ * - VS Code webview messaging API for backend communication
+ * - Material-UI for consistent styling with VS Code theme
+ * - Authentication context provider for DCS integration
+ * - Valid VS Code extension context with message handling capabilities
+ * - Access to VS Code secret storage API for persistent data
+ */
+
+import React, { useEffect, useState } from "react";
 import { vscode } from "../utilities/vscode";
 import "../css/styles.css";
 
@@ -16,6 +44,7 @@ import TranslationCheckingPane from "./TranslationCheckingPane";
 // @ts-ignore
 import isEqual from 'deep-equal'
 
+// Type definitions for message handling and component state
 type CommandToFunctionMap = Record<string, (data: any) => void>;
 
 type TranslationNotesViewProps = {
@@ -23,6 +52,7 @@ type TranslationNotesViewProps = {
     verse: number;
 };
 
+// Material-UI theme styles for consistent appearance with VS Code interface
 // @ts-ignore
 const useStyles = makeStyles(theme => ({
     root: {
@@ -53,28 +83,51 @@ const useStyles = makeStyles(theme => ({
     },
 }))
 
-let _callbacks:object = { } // saves callback by key
-let uploadProgress: string[] = []
+// Global state management for callback functions and upload progress tracking
+let _callbacks:object = { } // saves callback by key for async operations
+let uploadProgress: string[] = [] // tracks upload progress messages
 
+/**
+ * Clears the upload progress log, typically called at the start of a new upload operation.
+ */
 function clearUploadProgress() {
     uploadProgress = []
 }
 
+/**
+ * Adds a status message to the upload progress log for tracking upload operations.
+ * 
+ * @param status - Status message to add to the progress log
+ */
 function addToUploadProgress(status: string) {
     uploadProgress.push(status)
 }
 
+/**
+ * Saves a callback function with a specified key for later retrieval.
+ * Used for managing asynchronous operations with the VS Code extension backend.
+ * 
+ * @param key - Unique identifier for the callback
+ * @param callback - Function to be called when the corresponding response is received
+ */
 function saveCallBack(key: string, callback: any) {
     // @ts-ignore
     _callbacks[key] = callback;
 }
 
+/**
+ * Retrieves a previously saved callback function by its key.
+ * 
+ * @param key - Unique identifier for the callback to retrieve
+ * @returns The saved callback function or undefined if not found
+ */
 function getCallBack(key:string):any {
     // @ts-ignore
     const callback = _callbacks?.[key];
     return callback;
 }
 
+// Component state type definition for managing checking data and context
 type StateType = {
     checkingObj: ResourcesObject;
     initialContextId: object;
@@ -82,7 +135,12 @@ type StateType = {
 
 console.log("TranslationCheckingView.tsx")
 
+/**
+ * Main functional component that provides the translation checking interface.
+ * Manages state, message handling, and communication with the VS Code extension backend.
+ */
 function TranslationCheckingView() {
+    // Component state for managing checking resources and current context position
     const [state, _setState] = useState<StateType>({
         checkingObj: {},
         initialContextId: {},
@@ -92,13 +150,21 @@ function TranslationCheckingView() {
         initialContextId,
     } = state
 
+    /**
+     * Updates component state by merging new state with existing state.
+     * 
+     * @param newState - Partial state object to merge with current state
+     */
     function setState(newState:object) {
         _setState(prevState => ({ ...prevState, ...newState }))
     }
 
     /**
-     * generate an unique key for this project
-     * @param checkingObj
+     * Generates a unique key for identifying the current project based on its metadata.
+     * This key is used for storing and retrieving project-specific context and settings.
+     * 
+     * @param checkingObj - The checking object containing project metadata
+     * @returns Unique project key string combining language, Bible, resource, and gateway info
      */
     function getProjectKey(checkingObj:object):string {
         // @ts-ignore
@@ -123,17 +189,26 @@ function TranslationCheckingView() {
         return key
     }
 
+    // Generate project key for the current checking object
     const projectKey = getProjectKey(checkingObj)
 
+    /**
+     * Generates the storage key for storing context information for a specific project.
+     * 
+     * @param projectKey - The unique project identifier
+     * @returns Storage key for context information
+     */
     function getContextIdKey(projectKey:string) {
         return `${projectKey}.contextId`;
     }
 
     /**
-     * Initializes checking data.
+     * Initializes checking data by loading the project resources and retrieving stored context.
+     * This function sets up the initial state for the checking interface including the current
+     * position within the checking workflow.
      *
-     * @param {TnTSV} data - The data object used to determine the project key and context id.
-     * @return {Promise<void>} A promise that resolves when the data initialization completes.
+     * @param {TnTSV} data - The data object containing project information and checking resources
+     * @return {Promise<void>} A promise that resolves when the data initialization completes
      */
     async function initData(data: TnTSV) {
         const key = getContextIdKey(getProjectKey(data))
@@ -148,11 +223,8 @@ function TranslationCheckingView() {
     }
 
     /**
-     * Handles incoming message events and executes specific functions based on the command within the event's data.
-     *
-     * The `handleMessage` function listens for `MessageEvent` objects and processes them by extracting the `command`
-     * and `data` properties. Based on the command, it invokes the corresponding handler function from a predefined
-     * command-to-function mapping. If no matching command is found, an error message is logged.
+     * Handles incoming message events from the VS Code extension backend and executes
+     * the appropriate handler function based on the command type.
      *
      * Functionality:
      * - Processes specific commands contained in `MessageEvent` data.
@@ -178,10 +250,18 @@ function TranslationCheckingView() {
         const { command, data } = event.data;
         console.log(`handleMessage`, command)
 
+        /**
+         * Handles the 'update' command to initialize checking data when resources are loaded.
+         * This is typically the first command received when the webview is opened.
+         */
         const update = (data: TnTSV) => {
             initData(data);
         };
 
+        /**
+         * Handles responses from secret storage operations, executing the appropriate callback.
+         * Used for retrieving stored authentication tokens, context information, etc.
+         */
         const getSecretResponse = (value: string|undefined) => {
             // @ts-ignore
             const key = value?.key
@@ -195,6 +275,10 @@ function TranslationCheckingView() {
             }
         };
 
+        /**
+         * Handles completion of DCS upload operations, providing final results to the UI.
+         * Cleans up callback references and status tracking after upload completion.
+         */
         const uploadToDCSResponse = (value: string | undefined) => {
             // @ts-ignore
             const key = "uploadToDCS";
@@ -209,6 +293,10 @@ function TranslationCheckingView() {
             saveCallBack("DCSuploadStatus", null);
         };
 
+        /**
+         * Handles real-time status updates during DCS upload operations.
+         * Updates the progress log and notifies the UI of current upload status.
+         */
         const uploadToDcsStatusResponse = (value: string | undefined) => {
             // @ts-ignore
             const key = "uploadToDcsStatusResponse";
@@ -227,6 +315,10 @@ function TranslationCheckingView() {
             }
         };
 
+        /**
+         * Handles user prompts during project creation and other interactive operations.
+         * Manages dialog display and user response collection.
+         */
         const promptUserForOption = (value: object|undefined) => {
             // @ts-ignore
             const key = 'createNewOlCheckCallback'
@@ -239,6 +331,10 @@ function TranslationCheckingView() {
             }
         };
 
+        /**
+         * Handles responses from new Original Language checking project creation operations.
+         * Provides success or error feedback to the project creation workflow.
+         */
         const createNewOlCheckResponse = (value: object|undefined) => {
             // @ts-ignore
             const key = 'createNewOlCheck'
@@ -251,7 +347,7 @@ function TranslationCheckingView() {
             }
         };
 
-
+        // Command mapping object that associates command strings with their handler functions
         const commandToFunctionMapping: CommandToFunctionMap = {
             ["update"]: update,
             ["getSecretResponse"]: getSecretResponse,
@@ -261,6 +357,7 @@ function TranslationCheckingView() {
             ["createNewOlCheckResponse"]: createNewOlCheckResponse,
         };
 
+        // Execute the appropriate handler function or log an error if no handler exists
         const mappedCommand = commandToFunctionMapping[command];
         if (mappedCommand) {
             mappedCommand(data);
@@ -269,21 +366,51 @@ function TranslationCheckingView() {
         }
     };
 
+    /**
+     * Secret storage provider interface that abstracts VS Code's secret storage API.
+     * Provides methods for storing and retrieving sensitive information like authentication
+     * tokens and user context data in a secure manner.
+     */
     const secretProvider = {
+        /**
+         * Retrieves a stored value from VS Code's secret storage.
+         * 
+         * @param key - The storage key to retrieve
+         * @returns Promise resolving to the stored value or undefined
+         */
         getItem: async (key:string) => {
             let data = await getSecret(key)
             // @ts-ignore
             const value = data?.valueObject || data?.value;
             return value
         },
+        /**
+         * Stores a value in VS Code's secret storage.
+         * 
+         * @param key - The storage key
+         * @param value - The value to store
+         */
         setItem: async (key:string, value:any) => {
             await setSecret(key, value)
         },
+        /**
+         * Removes a value from VS Code's secret storage.
+         * 
+         * @param key - The storage key to remove
+         */
         removeItem: async (key:string) => {
             await setSecret(key, '')
         }
     }
 
+    /**
+     * Sends a request to the VS Code extension backend to store a secret value.
+     * Returns immediately while the actual storage operation happens asynchronously.
+     * 
+     * @param key - Storage key for the secret
+     * @param value - Value to store securely
+     * @returns Promise that resolves when the request is sent
+     */
     async function setSecret(key:string, value:any) {
         const promise = new Promise<string>((resolve) => {
              vscode.postMessage({
@@ -296,6 +423,13 @@ function TranslationCheckingView() {
         return promise
     }
 
+    /**
+     * Requests retrieval of a secret value from the VS Code extension backend.
+     * Uses the callback system to handle the asynchronous response.
+     * 
+     * @param key - Storage key for the secret to retrieve
+     * @returns Promise that resolves with the retrieved secret value
+     */
     async function getSecret(key:string):Promise<string> {
         const promise = new Promise<string>((resolve) => {
             saveCallBack(key, resolve);
@@ -308,6 +442,16 @@ function TranslationCheckingView() {
         return promise
     }
 
+    /**
+     * Initiates an upload operation to Door43 Content Service (DCS) with progress tracking.
+     * Manages the upload workflow including status updates and final result handling.
+     * 
+     * @param server - DCS server URL
+     * @param owner - Repository owner on DCS
+     * @param token - Authentication token for DCS
+     * @param dcsUpdateCallback - Callback for receiving upload progress updates
+     * @returns Promise resolving to upload results
+     */
     async function uploadToDCS(server:string, owner: string, token: string, dcsUpdateCallback: (update: object) => void): Promise<GeneralObject> {
         const _uploadToDCS = (server:string, owner: string, token: string): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
@@ -326,6 +470,14 @@ function TranslationCheckingView() {
         return results
     }
 
+    /**
+     * Initiates creation of a new Original Language checking project.
+     * Manages the project creation workflow including user prompts and progress tracking.
+     * 
+     * @param data - Configuration data for the new project
+     * @param createNewOlCheckCallback - Callback for handling user prompts during creation
+     * @returns Promise resolving to project creation results
+     */
     async function createNewOlCheck(data: object, createNewOlCheckCallback: (data: object) => void): Promise<GeneralObject> {
         const _createNewOlCheck = (data: object): Promise<GeneralObject> => {
             const promise = new Promise<object>((resolve) => {
@@ -343,6 +495,12 @@ function TranslationCheckingView() {
         return results
     }
 
+    /**
+     * Sends user option responses back to the VS Code extension backend.
+     * Used for responding to prompts and dialog interactions during project workflows.
+     * 
+     * @param data - Response data containing user selections and choices
+     */
     async function promptUserForOptionCallback(data: object){
         vscode.postMessage({
             command: "promptUserForOptionResponse",
@@ -351,6 +509,12 @@ function TranslationCheckingView() {
         });
     }
 
+    /**
+     * Requests opening of a checking file in the VS Code editor.
+     * Allows switching between Translation Notes and Translation Words checking interfaces.
+     * 
+     * @param openTNotes - Boolean indicating whether to open TN (true) or TWL (false) files
+     */
     async function openCheckingFile(openTNotes: boolean){
         vscode.postMessage({
             command: "openCheckingFile",
@@ -361,6 +525,10 @@ function TranslationCheckingView() {
         });
     }
     
+    /**
+     * Sends the initial load message to the VS Code extension backend.
+     * This signals that the webview is ready to receive data and begin the checking workflow.
+     */
     function sendFirstLoadMessage() {
         vscode.postMessage({
             command: "loaded",
@@ -368,6 +536,7 @@ function TranslationCheckingView() {
         });
     }
     
+    // Set up message event listeners and send initial load message when component mounts
     useEffect(() => {
         window.addEventListener("message", handleMessage);
         sendFirstLoadMessage();
@@ -378,9 +547,13 @@ function TranslationCheckingView() {
     }, []);
 
     /**
-     * send message back to extension to save new selection to file
+     * Saves checking data changes back to the VS Code extension backend and file system.
+     * This function handles the complete data persistence workflow including:
+     * - Updating the local component state with new checking data
+     * - Persisting changes to the file system via the extension backend
+     * - Updating stored context information for session persistence
      *
-     * @param {Object} newState - The new state object containing updated checking data
+     * @param {Object} newState - The new state object containing updated checking data and context
      *
      * @return {void} This method does not return any value.
      */
@@ -434,6 +607,7 @@ function TranslationCheckingView() {
             data: newState,
         });
 
+        // Update stored context for session persistence
         // @ts-ignore
         const nextContextId = newState && newState.nextContextId
         if (nextContextId && Object.keys(nextContextId).length) {
@@ -444,9 +618,13 @@ function TranslationCheckingView() {
     }
 
     /**
-     * search checkingData for check that matches currentContextId and return location within checkingData
-     * @param currentContextId
-     * @param checkingData
+     * Searches the checking data structure to find a specific check that matches the provided context.
+     * This function performs a deep search through the hierarchical checking data structure to locate
+     * the exact check item that corresponds to the current context, enabling precise data updates.
+     * 
+     * @param currentContextId - Context object containing check identification information
+     * @param checkingData - The complete checking data structure organized by categories and groups
+     * @returns Object containing the found check and its location within the data structure
      */
     function findCheckToUpdate(currentContextId:{}, checkingData:{}) {
         let foundCheck:null|object = null;
@@ -514,6 +692,7 @@ function TranslationCheckingView() {
         };
     }
 
+    // Main component render - wraps the checking interface with authentication context
     return (
       <>
           <AuthContextProvider
